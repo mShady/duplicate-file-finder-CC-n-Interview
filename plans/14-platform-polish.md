@@ -452,28 +452,31 @@ After completing all phases:
 - Build scripts for distribution
 - Final documentation
 
+**Next**: Proceed to [15-system-tray.md](./15-system-tray.md) for optional system tray integration.
+
 ---
 
 # Implementation Complete!
 
-Congratulations! You have completed the full implementation of DupliFind.
+After completing File 15, you will have completed the full implementation of DupliFind.
 
 ## Summary of Deliverables
 
 1. **Project Foundation** (File 01): Tauri + Svelte project setup
 2. **Database** (File 02): SQLite with complete schema
-3. **File Scanning** (File 03): Directory traversal and metadata collection
+3. **File Scanning** (File 03): Directory traversal, metadata collection, folder picker UI
 4. **Duplicate Detection** (File 04): BLAKE3 hashing with three-stage algorithm
 5. **Results UI** (File 05): Master-detail layout with groups and files
-6. **Selection & Deletion** (File 06): Batch deletion with verification
-7. **Progress & Controls** (File 07): Pause/resume with persistence
+6. **Selection & Deletion** (File 06): Batch deletion with verification, path depth selection
+7. **Progress & Controls** (File 07): Pause/resume with persistence, estimated time remaining
 8. **Settings** (File 08): Theme, parallelism, protected folders
-9. **File Operations** (File 09): Open, reveal, copy path, context menu
+9. **File Operations** (File 09): Open, reveal, copy path, view file info, context menu
 10. **Filtering & Thumbnails** (File 10): Type filters, search, image previews
 11. **Keyboard Navigation** (File 11): Full keyboard support and shortcuts
 12. **Permissions** (File 12): macOS Full Disk Access wizard
-13. **Error Handling** (File 13): Skip/retry, throttling, incremental scan
+13. **Error Handling** (File 13): Skip/retry, disk full handling, throttling, incremental scan
 14. **Platform Polish** (File 14): Native styling and E2E tests
+15. **System Tray** (File 15): Minimize to tray feature
 
 ## Next Steps
 

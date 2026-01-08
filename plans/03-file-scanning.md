@@ -1693,14 +1693,235 @@ Execute `/cl:commit` to commit changes with meaningful message.
 
 ---
 
-## Phase 3.8: Add Basic Scan UI
+## Phase 3.8: Add Folder Picker UI for Scan Scope Selection
 
 ### Overview
-Add a basic scan UI to test the scanning functionality from the frontend.
+Add a folder picker UI that allows users to select drives/folders to scan, with persistence of last scan settings.
 
 ### Changes Required
 
-#### 3.8.1 Create Scan Component
+#### 3.8.1 Add Dialog Plugin
+
+```bash
+npm run tauri add dialog
+```
+
+Update capabilities to include dialog permissions:
+
+**File**: `src-tauri/capabilities/default.json`
+
+Add to permissions array:
+```json
+"dialog:allow-open"
+```
+
+#### 3.8.2 Create Folder Picker Component
+
+**File**: `src/lib/components/FolderPicker.svelte`
+
+```svelte
+<script lang="ts">
+  import { invoke } from '@tauri-apps/api/core';
+  import { open } from '@tauri-apps/plugin-dialog';
+
+  interface Props {
+    selectedPaths: string[];
+    onPathsChange: (paths: string[]) => void;
+  }
+
+  let { selectedPaths, onPathsChange }: Props = $props();
+
+  async function addFolder() {
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: true,
+        title: 'Select folders to scan',
+      });
+
+      if (selected) {
+        const newPaths = Array.isArray(selected) ? selected : [selected];
+        const uniquePaths = [...new Set([...selectedPaths, ...newPaths])];
+        onPathsChange(uniquePaths);
+      }
+    } catch (e) {
+      console.error('Failed to select folder:', e);
+    }
+  }
+
+  function removePath(path: string) {
+    onPathsChange(selectedPaths.filter((p) => p !== path));
+  }
+
+  function clearAll() {
+    onPathsChange([]);
+  }
+
+  function truncatePath(path: string): string {
+    if (path.length <= 50) return path;
+    const parts = path.split('/');
+    if (parts.length <= 3) return path;
+    return `${parts[0]}/${parts[1]}/.../${parts.slice(-2).join('/')}`;
+  }
+</script>
+
+<div class="folder-picker">
+  <div class="header">
+    <h3>Scan Locations</h3>
+    <div class="actions">
+      {#if selectedPaths.length > 0}
+        <button class="clear-btn" onclick={clearAll}>Clear All</button>
+      {/if}
+      <button class="add-btn" onclick={addFolder}>Add Folder</button>
+    </div>
+  </div>
+
+  {#if selectedPaths.length === 0}
+    <div class="empty-state">
+      <p>No folders selected</p>
+      <p class="hint">Click "Add Folder" to select folders to scan for duplicates</p>
+    </div>
+  {:else}
+    <ul class="path-list">
+      {#each selectedPaths as path}
+        <li>
+          <span class="path" title={path}>{truncatePath(path)}</span>
+          <button class="remove-btn" onclick={() => removePath(path)} aria-label="Remove {path}">
+            ×
+          </button>
+        </li>
+      {/each}
+    </ul>
+  {/if}
+</div>
+
+<style>
+  .folder-picker {
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .add-btn {
+    padding: 0.5rem 1rem;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .clear-btn {
+    padding: 0.5rem 1rem;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+  }
+
+  .empty-state p {
+    margin: 0.25rem 0;
+  }
+
+  .empty-state .hint {
+    font-size: 0.85rem;
+  }
+
+  .path-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .path-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: var(--background);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+  }
+
+  .path {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .remove-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    line-height: 1;
+  }
+
+  .remove-btn:hover {
+    color: var(--error);
+  }
+</style>
+```
+
+### Success Criteria
+
+#### Automated Verification
+- [ ] `npm run check` passes
+
+#### Manual Verification
+- [ ] Folder picker opens native file dialog
+- [ ] Multiple folders can be selected
+- [ ] Folders can be removed individually
+- [ ] "Clear All" removes all selected folders
+
+### Code Review
+Run background code-reviewer agent on `src/lib/components/FolderPicker.svelte`.
+
+### Commit
+Execute `/cl:commit`
+
+---
+
+## Phase 3.9: Create Scan Button with Folder Picker Integration
+
+### Overview
+Create the scan button component that integrates with the folder picker and persists last scan settings.
+
+### Changes Required
+
+#### 3.9.1 Create Scan Component
 
 **File**: `src/lib/components/ScanButton.svelte`
 
@@ -1710,6 +1931,7 @@ Add a basic scan UI to test the scanning functionality from the frontend.
   import { listen } from '@tauri-apps/api/event';
   import { onMount, onDestroy } from 'svelte';
   import type { UnlistenFn } from '@tauri-apps/api/event';
+  import FolderPicker from './FolderPicker.svelte';
 
   interface ScanProgress {
     total_files: number;
@@ -1732,11 +1954,15 @@ Add a basic scan UI to test the scanning functionality from the frontend.
   let progress = $state<ScanProgress | null>(null);
   let scanResult = $state<{ session_id: number; stats: ScanStats } | null>(null);
   let error = $state<string | null>(null);
+  let selectedPaths = $state<string[]>([]);
 
   let unlistenProgress: UnlistenFn | null = null;
   let unlistenComplete: UnlistenFn | null = null;
 
   onMount(async () => {
+    // Load last scan paths from settings
+    await loadLastScanPaths();
+
     // Listen for progress events
     unlistenProgress = await listen<ScanProgress>('scan-progress', (event) => {
       progress = event.payload;
@@ -1755,18 +1981,49 @@ Add a basic scan UI to test the scanning functionality from the frontend.
     unlistenComplete?.();
   });
 
+  async function loadLastScanPaths() {
+    try {
+      const setting = await invoke<{ value: string } | null>('get_setting', { key: 'last_scan_paths' });
+      if (setting?.value) {
+        selectedPaths = JSON.parse(setting.value);
+      }
+    } catch (e) {
+      console.error('Failed to load last scan paths:', e);
+    }
+  }
+
+  async function saveLastScanPaths() {
+    try {
+      await invoke('set_setting', {
+        key: 'last_scan_paths',
+        value: JSON.stringify(selectedPaths),
+      });
+    } catch (e) {
+      console.error('Failed to save scan paths:', e);
+    }
+  }
+
+  function handlePathsChange(paths: string[]) {
+    selectedPaths = paths;
+  }
+
   async function startScan() {
+    if (selectedPaths.length === 0) {
+      error = 'Please select at least one folder to scan';
+      return;
+    }
+
     error = null;
     scanResult = null;
 
     try {
-      // For testing, scan the home directory
-      const homePath = await getHomePath();
+      // Save paths for next time
+      await saveLastScanPaths();
 
       isScanning = true;
       await invoke('start_scan', {
         request: {
-          paths: [homePath],
+          paths: selectedPaths,
           parallelism: 'normal',
         },
       });
@@ -1783,17 +2040,6 @@ Add a basic scan UI to test the scanning functionality from the frontend.
       progress = null;
     } catch (e) {
       error = String(e);
-    }
-  }
-
-  async function getHomePath(): Promise<string> {
-    // Get user's home directory
-    // This is a simple approach for testing
-    const platform = navigator.platform.toLowerCase();
-    if (platform.includes('mac') || platform.includes('linux')) {
-      return process.env.HOME || '/Users';
-    } else {
-      return process.env.USERPROFILE || 'C:\\Users';
     }
   }
 
@@ -1816,14 +2062,18 @@ Add a basic scan UI to test the scanning functionality from the frontend.
 </script>
 
 <div class="scan-container">
+  {#if !isScanning}
+    <FolderPicker {selectedPaths} onPathsChange={handlePathsChange} />
+  {/if}
+
   <div class="scan-controls">
     {#if isScanning}
       <button class="cancel-button" onclick={cancelScan}>
         Cancel Scan
       </button>
     {:else}
-      <button class="scan-button" onclick={startScan}>
-        Start Test Scan
+      <button class="scan-button" onclick={startScan} disabled={selectedPaths.length === 0}>
+        Start Scan
       </button>
     {/if}
   </div>
@@ -2150,7 +2400,8 @@ After completing all phases in this file, you should have:
 2. Scanner module with types and directory walker
 3. Progress tracking for scans
 4. Scan commands (start, cancel, progress)
-5. Basic scan UI for testing
-6. Comprehensive unit tests for scanner
+5. Folder picker UI for scan scope selection
+6. Last scan paths persistence (remembers settings)
+7. Comprehensive unit tests for scanner
 
 **Next**: Proceed to [04-duplicate-detection.md](./04-duplicate-detection.md) to implement the duplicate detection algorithm.

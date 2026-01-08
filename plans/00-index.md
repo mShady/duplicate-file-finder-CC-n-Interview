@@ -28,18 +28,19 @@ We follow a **vertical slice** approach - delivering complete, testable features
 |------|--------------|--------|-------------|
 | [01-project-foundation.md](./01-project-foundation.md) | Project Foundation | 1.1 - 1.8 | Tauri scaffolding, project structure, developer tooling |
 | [02-database-foundation.md](./02-database-foundation.md) | Database | 2.1 - 2.6 | SQLite setup, schema, migrations |
-| [03-file-scanning.md](./03-file-scanning.md) | File Scanning | 3.1 - 3.8 | Directory traversal, file metadata collection |
+| [03-file-scanning.md](./03-file-scanning.md) | File Scanning | 3.1 - 3.10 | Directory traversal, file metadata collection, folder picker UI |
 | [04-duplicate-detection.md](./04-duplicate-detection.md) | Detection | 4.1 - 4.10 | Size grouping, partial/full hashing, BLAKE3 |
 | [05-results-ui.md](./05-results-ui.md) | Results UI | 5.1 - 5.8 | Master-detail layout, duplicate groups display |
-| [06-selection-deletion.md](./06-selection-deletion.md) | Selection & Deletion | 6.1 - 6.10 | Selection logic, batch deletion, trash integration |
-| [07-scan-progress.md](./07-scan-progress.md) | Progress & Controls | 7.1 - 7.6 | Progress display, pause/resume, persistence |
+| [06-selection-deletion.md](./06-selection-deletion.md) | Selection & Deletion | 6.1 - 6.10 | Selection logic (incl. path depth), batch deletion, trash integration |
+| [07-scan-progress.md](./07-scan-progress.md) | Progress & Controls | 7.1 - 7.6 | Progress display with ETA, pause/resume, persistence |
 | [08-settings-protected.md](./08-settings-protected.md) | Settings | 8.1 - 8.6 | Theme, parallelism, protected folders |
-| [09-file-operations.md](./09-file-operations.md) | File Operations | 9.1 - 9.6 | Open, reveal, copy path, context menu |
+| [09-file-operations.md](./09-file-operations.md) | File Operations | 9.1 - 9.7 | Open, reveal, copy path, view file info, context menu |
 | [10-filtering-search.md](./10-filtering-search.md) | Filtering & Search | 10.1 - 10.8 | File type filters, search, thumbnails |
 | [11-keyboard-nav.md](./11-keyboard-nav.md) | Keyboard & A11y | 11.1 - 11.6 | Keyboard shortcuts, focus management |
 | [12-permissions.md](./12-permissions.md) | Permissions | 12.1 - 12.6 | Permission wizard, Full Disk Access guide |
-| [13-error-handling.md](./13-error-handling.md) | Error Handling | 13.1 - 13.6 | Skip/retry, error display, recovery |
+| [13-error-handling.md](./13-error-handling.md) | Error Handling | 13.1 - 13.7 | Skip/retry, disk full handling, error display, recovery |
 | [14-platform-polish.md](./14-platform-polish.md) | Polish & Final | 14.1 - 14.8 | Native styling, platform tweaks, final E2E |
+| [15-system-tray.md](./15-system-tray.md) | System Tray | 15.1 - 15.8 | Minimize to tray feature, tray icon and menu |
 
 ## Phase Structure
 

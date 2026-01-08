@@ -316,12 +316,35 @@ Create the specific context menu for files with all required actions.
     }
   }
 
+  let showFileInfo = $state(false);
+  let fileInfo = $state<FileInfoResponse | null>(null);
+
+  interface FileInfoResponse {
+    path: string;
+    name: string;
+    size: number;
+    is_file: boolean;
+    is_dir: boolean;
+    created: number | null;
+    modified: number | null;
+  }
+
+  async function viewFileInfo() {
+    try {
+      fileInfo = await invoke<FileInfoResponse>('get_file_info', { path: filePath });
+      showFileInfo = true;
+    } catch (e) {
+      console.error('Failed to get file info:', e);
+    }
+  }
+
   const items = [
     { label: 'Open', action: openFile, icon: '📄' },
     { label: 'Reveal in Finder', action: revealInFinder, icon: '📁' },
     { label: 'Open Containing Folder', action: openFolder, icon: '📂' },
     { separator: true },
     { label: 'Copy Path', action: copyPath, icon: '📋' },
+    { label: 'View File Info', action: viewFileInfo, icon: 'ℹ️' },
     { separator: true },
     {
       label: isSelected ? 'Unmark for Deletion' : 'Mark for Deletion',
@@ -333,6 +356,10 @@ Create the specific context menu for files with all required actions.
 </script>
 
 <ContextMenu {items} {x} {y} {onClose} />
+
+{#if showFileInfo && fileInfo}
+  <FileInfoDialog info={fileInfo} onClose={() => { showFileInfo = false; fileInfo = null; }} />
+{/if}
 ```
 
 ### Commit
@@ -340,7 +367,203 @@ Execute `/cl:commit`
 
 ---
 
-## Phase 9.5: Add Clipboard Plugin
+## Phase 9.5: Create File Info Dialog
+
+### Overview
+Create a dialog component to display detailed file information.
+
+### Changes Required
+
+**File**: `src/lib/components/FileInfoDialog.svelte`
+
+```svelte
+<script lang="ts">
+  interface FileInfoResponse {
+    path: string;
+    name: string;
+    size: number;
+    is_file: boolean;
+    is_dir: boolean;
+    created: number | null;
+    modified: number | null;
+  }
+
+  interface Props {
+    info: FileInfoResponse;
+    onClose: () => void;
+  }
+
+  let { info, onClose }: Props = $props();
+
+  function formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  function formatDate(timestamp: number | null): string {
+    if (!timestamp) return 'Unknown';
+    return new Date(timestamp * 1000).toLocaleString();
+  }
+
+  function getFileExtension(name: string): string {
+    const ext = name.split('.').pop();
+    return ext && ext !== name ? `.${ext}` : 'None';
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      onClose();
+    }
+  }
+</script>
+
+<svelte:window onkeydown={handleKeydown} />
+
+<div class="dialog-overlay" onclick={onClose}>
+  <div class="dialog" onclick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="file-info-title">
+    <h2 id="file-info-title">File Information</h2>
+
+    <div class="info-grid">
+      <div class="info-row">
+        <span class="label">Name:</span>
+        <span class="value">{info.name}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Type:</span>
+        <span class="value">{info.is_file ? 'File' : 'Directory'}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Extension:</span>
+        <span class="value">{getFileExtension(info.name)}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Size:</span>
+        <span class="value">{formatBytes(info.size)} ({info.size.toLocaleString()} bytes)</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Created:</span>
+        <span class="value">{formatDate(info.created)}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Modified:</span>
+        <span class="value">{formatDate(info.modified)}</span>
+      </div>
+      <div class="info-row full-width">
+        <span class="label">Path:</span>
+        <span class="value path">{info.path}</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="close-btn" onclick={onClose}>Close</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+  }
+
+  .dialog {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 1.5rem;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+
+  h2 {
+    margin: 0 0 1.5rem;
+    font-size: 1.25rem;
+  }
+
+  .info-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .info-row {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .info-row.full-width {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    min-width: 80px;
+  }
+
+  .value {
+    color: var(--text);
+    word-break: break-word;
+  }
+
+  .value.path {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    background: var(--background);
+    padding: 0.5rem;
+    border-radius: 4px;
+  }
+
+  .actions {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .close-btn {
+    padding: 0.5rem 1.5rem;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+
+  .close-btn:hover {
+    opacity: 0.9;
+  }
+</style>
+```
+
+### Success Criteria
+
+#### Automated Verification
+- [ ] `npm run check` passes
+
+#### Manual Verification
+- [ ] File info dialog displays all metadata correctly
+- [ ] Dialog closes on Escape key or clicking outside
+- [ ] Dates are formatted in user's locale
+
+### Code Review
+Run background code-reviewer agent on `src/lib/components/FileInfoDialog.svelte`.
+
+### Commit
+Execute `/cl:commit`
+
+---
+
+## Phase 9.6: Add Clipboard Plugin
 
 ### Overview
 Add clipboard plugin for copy path functionality.
@@ -356,7 +579,7 @@ Execute `/cl:commit`
 
 ---
 
-## Phase 9.6: Integrate Context Menu in Results
+## Phase 9.7: Integrate Context Menu in Results
 
 ### Overview
 Add right-click context menu to file items in the results view.
@@ -377,6 +600,7 @@ After completing all phases:
 - Reveal in Finder/Explorer
 - Open containing folder
 - Copy file path to clipboard
+- View file info dialog with metadata
 - Context menu with all actions
 - Mark for deletion from context menu
 

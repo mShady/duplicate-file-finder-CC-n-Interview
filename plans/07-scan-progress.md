@@ -228,7 +228,7 @@ Execute `/cl:commit`
 ## Phase 7.4: Create Progress Display Component
 
 ### Overview
-Create a detailed progress display component.
+Create a detailed progress display component with estimated time remaining.
 
 ### Changes Required
 
@@ -262,11 +262,46 @@ Create a detailed progress display component.
     return n.toLocaleString();
   }
 
+  function formatTimeRemaining(ms: number | null | undefined): string {
+    if (!ms || ms <= 0) return 'Calculating...';
+
+    const seconds = Math.floor(ms / 1000);
+    if (seconds < 60) return `${seconds}s remaining`;
+
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    if (minutes < 60) return `${minutes}m ${remainingSeconds}s remaining`;
+
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${hours}h ${remainingMinutes}m remaining`;
+  }
+
   let progressPercent = $derived(
     progress.estimated_total
       ? Math.min(100, (progress.processed_files / progress.estimated_total) * 100)
       : 0
   );
+
+  // Calculate estimated time remaining based on current progress rate
+  let estimatedTimeRemaining = $derived(() => {
+    // Use backend-provided estimate if available
+    if (progress.estimated_time_remaining_ms) {
+      return progress.estimated_time_remaining_ms;
+    }
+
+    // Otherwise calculate from progress
+    if (!progress.started_at_ms || !progress.estimated_total || progress.processed_files === 0) {
+      return null;
+    }
+
+    const elapsedMs = Date.now() - progress.started_at_ms;
+    const filesPerMs = progress.processed_files / elapsedMs;
+    const remainingFiles = progress.estimated_total - progress.processed_files;
+
+    if (filesPerMs <= 0) return null;
+    return Math.round(remainingFiles / filesPerMs);
+  });
 
   function truncatePath(path: string): string {
     if (!path) return '';
@@ -314,6 +349,11 @@ Create a detailed progress display component.
       <span class="stat-value">{formatNumber(progress.skipped_files)}</span>
       <span class="stat-label">Skipped</span>
     </div>
+  </div>
+
+  <div class="time-remaining">
+    <span class="time-icon">⏱️</span>
+    <span class="time-value">{formatTimeRemaining(estimatedTimeRemaining())}</span>
   </div>
 
   {#if progress.current_path}
@@ -432,6 +472,26 @@ Create a detailed progress display component.
   .current-file .path {
     font-family: var(--font-mono);
   }
+
+  .time-remaining {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: var(--background);
+    border-radius: 6px;
+    margin-bottom: 1rem;
+  }
+
+  .time-icon {
+    font-size: 1rem;
+  }
+
+  .time-value {
+    font-weight: 500;
+    color: var(--text);
+  }
 </style>
 ```
 
@@ -484,7 +544,7 @@ Execute `/cl:commit`
 ## End of File 07
 
 After completing all phases:
-- Detailed progress display
+- Detailed progress display with estimated time remaining
 - Pause/resume functionality
 - Progress state persistence
 - Resume after app restart

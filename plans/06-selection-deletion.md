@@ -752,17 +752,326 @@ Execute `/cl:commit`
 ## Phase 6.6: Add Smart Selection Options
 
 ### Overview
-Add selection helpers: select all except original, select by location, etc.
+Add selection helpers: select all except original, select by location, select by path depth, etc.
 
 ### Changes Required
 
-Create selection utility functions and update the FileDetailsPanel to support:
-- Select all except oldest (per group)
-- Select by location (folder path)
-- Clear selection
+#### 6.6.1 Create Selection Utilities
+
+**File**: `src/lib/utils/selection.ts`
+
+```typescript
+import type { DuplicateFile, DuplicateGroup } from '$lib/types';
+
+/**
+ * Select all files except the oldest (original) in each group
+ */
+export function selectAllExceptOldest(groups: DuplicateGroup[]): Set<string> {
+  const selected = new Set<string>();
+
+  for (const group of groups) {
+    // Sort by creation date, oldest first
+    const sorted = [...group.files].sort((a, b) => a.created_at - b.created_at);
+
+    // Select all except the first (oldest)
+    for (let i = 1; i < sorted.length; i++) {
+      selected.add(sorted[i].path);
+    }
+  }
+
+  return selected;
+}
+
+/**
+ * Select all files in a specific folder path
+ */
+export function selectByLocation(
+  groups: DuplicateGroup[],
+  folderPath: string,
+  currentSelection: Set<string>
+): Set<string> {
+  const selected = new Set(currentSelection);
+
+  for (const group of groups) {
+    for (const file of group.files) {
+      if (file.path.startsWith(folderPath)) {
+        selected.add(file.path);
+      }
+    }
+  }
+
+  return selected;
+}
+
+/**
+ * Select files by path depth (number of directory levels)
+ * Useful for selecting files in deeper nested directories
+ */
+export function selectByPathDepth(
+  groups: DuplicateGroup[],
+  minDepth: number,
+  maxDepth: number | null,
+  currentSelection: Set<string>
+): Set<string> {
+  const selected = new Set(currentSelection);
+
+  function getPathDepth(path: string): number {
+    // Count directory separators
+    const separator = path.includes('/') ? '/' : '\\';
+    return path.split(separator).filter(Boolean).length;
+  }
+
+  for (const group of groups) {
+    for (const file of group.files) {
+      const depth = getPathDepth(file.path);
+      if (depth >= minDepth && (maxDepth === null || depth <= maxDepth)) {
+        selected.add(file.path);
+      }
+    }
+  }
+
+  return selected;
+}
+
+/**
+ * Select deepest files in each group (files with longest path depth)
+ */
+export function selectDeepestInGroup(groups: DuplicateGroup[]): Set<string> {
+  const selected = new Set<string>();
+
+  function getPathDepth(path: string): number {
+    const separator = path.includes('/') ? '/' : '\\';
+    return path.split(separator).filter(Boolean).length;
+  }
+
+  for (const group of groups) {
+    // Find max depth in this group
+    let maxDepth = 0;
+    for (const file of group.files) {
+      const depth = getPathDepth(file.path);
+      if (depth > maxDepth) maxDepth = depth;
+    }
+
+    // Select all files at max depth (except keep at least one)
+    const deepestFiles = group.files.filter(f => getPathDepth(f.path) === maxDepth);
+    const otherFiles = group.files.filter(f => getPathDepth(f.path) < maxDepth);
+
+    // If all files are at the same depth, keep the oldest
+    if (otherFiles.length === 0) {
+      const sorted = [...deepestFiles].sort((a, b) => a.created_at - b.created_at);
+      for (let i = 1; i < sorted.length; i++) {
+        selected.add(sorted[i].path);
+      }
+    } else {
+      // Select all deepest files
+      for (const file of deepestFiles) {
+        selected.add(file.path);
+      }
+    }
+  }
+
+  return selected;
+}
+
+/**
+ * Clear all selections
+ */
+export function clearSelection(): Set<string> {
+  return new Set();
+}
+```
+
+#### 6.6.2 Create Smart Selection Panel
+
+**File**: `src/lib/components/SmartSelectionPanel.svelte`
+
+```svelte
+<script lang="ts">
+  import type { DuplicateGroup } from '$lib/types';
+  import {
+    selectAllExceptOldest,
+    selectByLocation,
+    selectByPathDepth,
+    selectDeepestInGroup,
+    clearSelection,
+  } from '$lib/utils/selection';
+
+  interface Props {
+    groups: DuplicateGroup[];
+    selectedFiles: Set<string>;
+    onSelectionChange: (selected: Set<string>) => void;
+  }
+
+  let { groups, selectedFiles, onSelectionChange }: Props = $props();
+
+  let pathDepthMin = $state(1);
+  let pathDepthMax = $state<number | null>(null);
+  let folderPath = $state('');
+
+  function handleSelectAllExceptOldest() {
+    onSelectionChange(selectAllExceptOldest(groups));
+  }
+
+  function handleSelectByLocation() {
+    if (folderPath.trim()) {
+      onSelectionChange(selectByLocation(groups, folderPath.trim(), selectedFiles));
+    }
+  }
+
+  function handleSelectByPathDepth() {
+    onSelectionChange(selectByPathDepth(groups, pathDepthMin, pathDepthMax, selectedFiles));
+  }
+
+  function handleSelectDeepest() {
+    onSelectionChange(selectDeepestInGroup(groups));
+  }
+
+  function handleClearSelection() {
+    onSelectionChange(clearSelection());
+  }
+</script>
+
+<div class="smart-selection">
+  <h3>Smart Selection</h3>
+
+  <div class="selection-option">
+    <button onclick={handleSelectAllExceptOldest}>
+      Select All Except Oldest
+    </button>
+    <p class="hint">Keep the original (oldest) file in each group</p>
+  </div>
+
+  <div class="selection-option">
+    <button onclick={handleSelectDeepest}>
+      Select Deepest Files
+    </button>
+    <p class="hint">Select files in the deepest directory levels</p>
+  </div>
+
+  <div class="selection-option">
+    <div class="input-group">
+      <label>
+        Path depth range:
+        <input type="number" bind:value={pathDepthMin} min="1" placeholder="Min" />
+        to
+        <input type="number" bind:value={pathDepthMax} min="1" placeholder="Max (optional)" />
+      </label>
+      <button onclick={handleSelectByPathDepth}>Select by Depth</button>
+    </div>
+    <p class="hint">Select files at specific directory depth levels</p>
+  </div>
+
+  <div class="selection-option">
+    <div class="input-group">
+      <input
+        type="text"
+        bind:value={folderPath}
+        placeholder="Enter folder path..."
+      />
+      <button onclick={handleSelectByLocation} disabled={!folderPath.trim()}>
+        Select by Location
+      </button>
+    </div>
+    <p class="hint">Select all duplicates in a specific folder</p>
+  </div>
+
+  <div class="selection-option">
+    <button class="clear-btn" onclick={handleClearSelection}>
+      Clear Selection
+    </button>
+  </div>
+</div>
+
+<style>
+  .smart-selection {
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+
+  h3 {
+    margin: 0 0 1rem;
+    font-size: 1rem;
+  }
+
+  .selection-option {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .selection-option:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  button {
+    padding: 0.5rem 1rem;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .clear-btn {
+    background: var(--error);
+  }
+
+  .hint {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin: 0.25rem 0 0;
+  }
+
+  .input-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  input[type="text"],
+  input[type="number"] {
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--background);
+    color: var(--text);
+  }
+
+  input[type="number"] {
+    width: 80px;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    min-width: 200px;
+  }
+</style>
+```
 
 ### Success Criteria
-- [ ] Selection helpers work correctly
+
+#### Automated Verification
+- [ ] `npm run check` passes
+
+#### Manual Verification
+- [ ] "Select all except oldest" works correctly
+- [ ] "Select by location" filters by folder path
+- [ ] "Select by path depth" filters by directory depth
+- [ ] "Select deepest files" selects files in deepest directories
+- [ ] Clear selection removes all selections
+
+### Code Review
+Run background code-reviewer agent on selection utilities and SmartSelectionPanel.
 
 ### Commit
 Execute `/cl:commit`
@@ -806,7 +1115,7 @@ After completing all phases:
 - Trash integration working
 - Pre-deletion verification
 - Confirmation and summary dialogs
-- Smart selection options
+- Smart selection options (including select by path depth)
 - Protected path enforcement
 - Deletion history recording
 
