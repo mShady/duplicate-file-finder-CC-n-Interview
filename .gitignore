@@ -1,18 +1,32 @@
 # macOS
 .DS_Store
 
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
 # Node
 node_modules/
 
-# Rust / Tauri
+# Rust
 target/
+**/*.rs.bk
+
+# Tauri
+src-tauri/target/
+src-tauri/WixTools/
+src-tauri/gen/
 
 # Build output
 dist/
+.svelte-kit/
+.vite/
 
 # Environment files
 .env
 .env.local
+.env*.local
 
 # IDE
 .idea/
@@ -22,3 +36,13 @@ dist/
 
 # Logs
 *.log
+npm-debug.log*
+
+# Testing
+coverage/
+
+# Obsidian vault
+.obsidian/
+
+# Claude
+.claude/
