@@ -324,7 +324,7 @@ if ($allGood) {
 - [x] `bash -n scripts/setup-mac.sh` passes syntax check (no output = success)
 
 #### Manual Verification
-- [ ] On Mac: `chmod +x scripts/setup-mac.sh && ./scripts/setup-mac.sh` runs without errors
+- [x] On Mac: `chmod +x scripts/setup-mac.sh && ./scripts/setup-mac.sh` runs without errors
 - [ ] On Windows: PowerShell script runs and shows all prerequisites
 
 ### Code Review
