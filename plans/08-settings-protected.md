@@ -13,7 +13,16 @@ This file covers implementing the settings UI, theme switching, parallelism conf
 ## Phase 8.1: Create Settings Store
 
 ### Overview
-Create a frontend store for settings management.
+Create a frontend store for settings management with **automatic restoration on app launch**.
+
+### Key Behavior: App Launch Restoration
+The settings store MUST:
+1. **Load all settings on app initialization** - Before the main UI renders
+2. **Restore last scan paths** - So users see their previous scan locations immediately
+3. **Apply theme preference** - Match user's saved theme choice
+4. **Restore parallelism setting** - For consistent scan performance
+
+This is critical for UX: users should see their last scan settings immediately when opening the app.
 
 ### Changes Required
 
@@ -80,6 +89,18 @@ class SettingsStore {
 
 export const settingsStore = new SettingsStore();
 ```
+
+### Success Criteria
+
+#### Automated Verification
+- [ ] `npm run check` passes
+
+#### Manual Verification
+- [ ] Settings load correctly on app startup
+- [ ] **Last scan paths are restored** when app opens (verify in FolderPicker component)
+- [ ] Theme is applied immediately on app launch
+- [ ] Parallelism setting persists across app restarts
+- [ ] Setting changes are saved immediately to database
 
 ### Commit
 Execute `/cl:commit`

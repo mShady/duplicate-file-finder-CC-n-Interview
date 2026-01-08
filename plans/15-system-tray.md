@@ -197,7 +197,7 @@ pub fn handle_tray_event(app: &AppHandle, event: SystemTrayEvent) {
     }
 }
 
-/// Update tray menu based on app state (e.g., during scan)
+/// Update tray tooltip with scan progress percentage
 pub fn update_tray_for_scanning(app: &AppHandle, is_scanning: bool) {
     if let Some(tray) = app.tray_handle() {
         let tooltip = if is_scanning {
@@ -207,6 +207,61 @@ pub fn update_tray_for_scanning(app: &AppHandle, is_scanning: bool) {
         };
         let _ = tray.set_tooltip(tooltip);
     }
+}
+
+/// Update tray tooltip with detailed scan progress including percentage
+/// Call this periodically during scans to keep tooltip updated
+pub fn update_tray_progress(app: &AppHandle, progress: &ScanProgress) {
+    if let Some(tray) = app.tray_handle() {
+        let tooltip = format_scan_progress_tooltip(progress);
+        let _ = tray.set_tooltip(&tooltip);
+    }
+}
+
+/// Format scan progress for tray tooltip
+fn format_scan_progress_tooltip(progress: &ScanProgress) -> String {
+    let percent = if progress.total_files > 0 {
+        (progress.files_processed as f64 / progress.total_files as f64 * 100.0) as u32
+    } else {
+        0
+    };
+
+    let phase_str = match progress.current_phase.as_str() {
+        "scanning" => "Scanning files",
+        "hashing" => "Computing hashes",
+        "comparing" => "Finding duplicates",
+        _ => "Processing",
+    };
+
+    let eta_str = if let Some(eta_seconds) = progress.eta_seconds {
+        if eta_seconds < 60 {
+            format!(" - {}s remaining", eta_seconds)
+        } else if eta_seconds < 3600 {
+            format!(" - {}m remaining", eta_seconds / 60)
+        } else {
+            format!(" - {}h {}m remaining", eta_seconds / 3600, (eta_seconds % 3600) / 60)
+        }
+    } else {
+        String::new()
+    };
+
+    format!(
+        "DupliFind - {} ({}%){}\n{} / {} files",
+        phase_str,
+        percent,
+        eta_str,
+        progress.files_processed,
+        progress.total_files
+    )
+}
+
+/// Scan progress info for tray updates
+#[derive(Debug, Clone)]
+pub struct ScanProgress {
+    pub current_phase: String,
+    pub files_processed: u64,
+    pub total_files: u64,
+    pub eta_seconds: Option<u64>,
 }
 ```
 
@@ -481,6 +536,10 @@ After completing all phases:
 - Minimize to tray setting in UI
 - Window hides to tray when setting enabled
 - Click tray icon to restore window
-- Tray tooltip shows scanning status
+- **Tray tooltip shows detailed scan progress including:**
+  - Current phase (Scanning/Hashing/Finding duplicates)
+  - Progress percentage (e.g., "45%")
+  - Estimated time remaining
+  - Files processed / total files
 
 **Next**: This is the final feature file. Proceed to final testing and release preparation.

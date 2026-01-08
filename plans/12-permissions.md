@@ -396,14 +396,257 @@ Execute `/cl:commit`
 
 ---
 
-## Phase 12.4: Create Windows Permission Guide
+## Phase 12.4: Create Windows Permission Wizard
 
 ### Overview
-Create Windows-specific permission guidance (if needed).
+Create Windows-specific permission wizard with step-by-step guidance for folder access permissions, particularly for protected system folders and user directories.
+
+### Windows Permission Scenarios
+
+1. **Controlled Folder Access (Windows Defender)** - May block app from accessing protected folders
+2. **User Account Control (UAC)** - May prompt for elevation
+3. **NTFS Permissions** - Folder-level access restrictions
+4. **Ransomware Protection** - Windows Security feature that blocks unauthorized apps
 
 ### Changes Required
 
-Add Windows-specific steps for folder access permissions.
+#### 12.4.1 Update Permission Check for Windows
+
+**File**: `src-tauri/src/commands/permissions.rs`
+
+Add Windows-specific checks:
+
+```rust
+/// Check if we have access to protected folders (Windows specific)
+#[tauri::command]
+pub async fn check_windows_folder_access() -> Result<WindowsAccessStatus, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::path::Path;
+
+        let test_paths = vec![
+            dirs::document_dir(),
+            dirs::download_dir(),
+            dirs::desktop_dir(),
+        ];
+
+        let mut blocked_paths = Vec::new();
+
+        for path in test_paths.into_iter().flatten() {
+            match std::fs::read_dir(&path) {
+                Ok(_) => {}
+                Err(e) => {
+                    if e.kind() == std::io::ErrorKind::PermissionDenied {
+                        blocked_paths.push(path.display().to_string());
+                    }
+                }
+            }
+        }
+
+        Ok(WindowsAccessStatus {
+            has_full_access: blocked_paths.is_empty(),
+            blocked_paths,
+            controlled_folder_access_enabled: check_controlled_folder_access(),
+        })
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(WindowsAccessStatus {
+            has_full_access: true,
+            blocked_paths: vec![],
+            controlled_folder_access_enabled: false,
+        })
+    }
+}
+
+#[derive(serde::Serialize)]
+pub struct WindowsAccessStatus {
+    pub has_full_access: bool,
+    pub blocked_paths: Vec<String>,
+    pub controlled_folder_access_enabled: bool,
+}
+
+#[cfg(target_os = "windows")]
+fn check_controlled_folder_access() -> bool {
+    // Check registry for Controlled Folder Access setting
+    use winreg::enums::*;
+    use winreg::RegKey;
+
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    if let Ok(key) = hklm.open_subkey(
+        "SOFTWARE\\Microsoft\\Windows Defender\\Windows Defender Exploit Guard\\Controlled Folder Access"
+    ) {
+        if let Ok(enabled) = key.get_value::<u32, _>("EnableControlledFolderAccess") {
+            return enabled == 1;
+        }
+    }
+    false
+}
+```
+
+#### 12.4.2 Update Permission Wizard for Windows
+
+**File**: `src/lib/components/PermissionWizard.svelte`
+
+Add Windows-specific wizard steps:
+
+```svelte
+<script lang="ts">
+  // ... existing imports ...
+
+  // Windows-specific state
+  let windowsStatus = $state<{
+    has_full_access: boolean;
+    blocked_paths: string[];
+    controlled_folder_access_enabled: boolean;
+  } | null>(null);
+
+  // ... existing code ...
+
+  const windowsSteps = [
+    {
+      title: 'Check Windows Security Settings',
+      description: 'Open Windows Security to manage Controlled Folder Access, which may be blocking DupliFind.',
+      action: () => invoke('open_file', { path: 'windowsdefender://threatsettings' }),
+      actionLabel: 'Open Windows Security',
+    },
+    {
+      title: 'Allow DupliFind Through Controlled Folder Access',
+      description: 'In "Ransomware protection", click "Allow an app through Controlled folder access" and add DupliFind.',
+    },
+    {
+      title: 'Check Blocked Folders',
+      description: windowsStatus?.blocked_paths.length
+        ? `The following folders are blocked: ${windowsStatus.blocked_paths.join(', ')}`
+        : 'No folders are currently blocked.',
+    },
+    {
+      title: 'Restart DupliFind',
+      description: 'Close and reopen DupliFind for the changes to take effect.',
+    },
+  ];
+</script>
+
+<!-- In the template, add Windows support: -->
+{#if platform === 'windows'}
+  <div class="steps">
+    {#each windowsSteps as step, i}
+      <div class="step" class:active={currentStep === i} class:completed={currentStep > i}>
+        <div class="step-number">{i + 1}</div>
+        <div class="step-content">
+          <h3>{step.title}</h3>
+          <p>{step.description}</p>
+          {#if step.action && currentStep === i}
+            <button class="step-action" onclick={step.action}>
+              {step.actionLabel}
+            </button>
+          {/if}
+        </div>
+      </div>
+    {/each}
+  </div>
+
+  {#if windowsStatus?.controlled_folder_access_enabled}
+    <div class="info-banner">
+      <strong>Controlled Folder Access is enabled</strong>
+      <p>This Windows Security feature protects your folders from unauthorized changes.
+         You need to add DupliFind to the allowed apps list.</p>
+    </div>
+  {/if}
+
+  {#if windowsStatus?.blocked_paths.length}
+    <div class="warning-banner">
+      <strong>Some folders are blocked:</strong>
+      <ul>
+        {#each windowsStatus.blocked_paths as path}
+          <li>{path}</li>
+        {/each}
+      </ul>
+    </div>
+  {/if}
+
+  <div class="navigation">
+    {#if currentStep > 0}
+      <button class="nav-btn" onclick={() => (currentStep -= 1)}>Back</button>
+    {/if}
+    {#if currentStep < windowsSteps.length - 1}
+      <button class="nav-btn primary" onclick={() => (currentStep += 1)}>Next</button>
+    {:else}
+      <button class="nav-btn primary" onclick={checkPermissions}>Check Again</button>
+    {/if}
+  </div>
+{/if}
+```
+
+Add styles for the info and warning banners:
+
+```css
+.info-banner {
+  background: var(--primary-bg);
+  border: 1px solid var(--primary);
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.info-banner strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--primary);
+}
+
+.info-banner p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.warning-banner {
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.warning-banner strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--warning);
+}
+
+.warning-banner ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+}
+```
+
+#### 12.4.3 Add Windows Registry Dependency
+
+**File**: `src-tauri/Cargo.toml`
+
+```toml
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"
+```
+
+### Success Criteria
+
+#### Automated Verification
+- [ ] `cargo check` passes on Windows
+- [ ] `npm run check` passes
+
+#### Manual Verification
+- [ ] Windows wizard shows Controlled Folder Access status
+- [ ] Blocked paths are listed when access is denied
+- [ ] "Open Windows Security" button opens correct settings page
+- [ ] Wizard guides user through adding DupliFind to allowed apps
+- [ ] Access check updates after adding app to allowed list
+
+### Code Review
+Run background code-reviewer agent on Windows permission code.
 
 ### Commit
 Execute `/cl:commit`

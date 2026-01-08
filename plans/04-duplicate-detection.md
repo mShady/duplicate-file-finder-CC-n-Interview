@@ -461,6 +461,83 @@ Execute `/cl:commit` to commit changes with meaningful message.
 
 ---
 
+## Phase 4.2.3: Empty File Handling Specification
+
+### Overview
+Zero-byte files require special handling since they all have identical content (nothing). This section documents the explicit empty file grouping behavior.
+
+### Empty File Behavior
+
+#### Design Decision
+All empty files (size = 0 bytes) are **grouped as duplicates** because:
+1. They have identical content (empty)
+2. They produce identical hashes (`blake3::hash(b"")`)
+3. They waste disk space through inode overhead
+
+#### Implementation Details
+
+The hasher already handles this correctly in Phase 4.2:
+
+```rust
+// In FileHasher::partial_hash() and FileHasher::full_hash()
+// For empty files, return a special hash
+if size == 0 {
+    return Ok(blake3::hash(b"").to_hex().to_string());
+}
+```
+
+**Empty file hash value** (BLAKE3 of empty byte array):
+```
+af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262
+```
+
+All empty files will:
+1. Be grouped together in Stage 1 (same size: 0)
+2. Have identical partial hash in Stage 2
+3. Have identical full hash in Stage 3
+4. Form a single duplicate group
+
+#### Wasted Space Calculation
+
+For empty files, wasted space is technically 0 bytes, but the UI should still display the group to help users clean up unnecessary empty files. The duplicate count reflects actual redundant files.
+
+```rust
+// In DuplicateGroup::new()
+let wasted_space = if files.len() > 1 {
+    file_size * (files.len() as u64 - 1)  // 0 * N = 0 for empty files
+} else {
+    0
+};
+```
+
+#### Test Coverage
+
+Add the following test to `detector.rs` (in Phase 4.7):
+
+```rust
+#[test]
+fn test_empty_files_are_duplicates() {
+    let dir = tempdir().unwrap();
+
+    let files = vec![
+        create_test_file(dir.path(), "empty1.txt", b""),
+        create_test_file(dir.path(), "empty2.txt", b""),
+        create_test_file(dir.path(), "empty3.txt", b""),
+    ];
+
+    let mut detector = DuplicateDetector::new();
+    let result = detector.detect(files).unwrap();
+
+    // All empty files should be in one group
+    assert_eq!(result.groups.len(), 1);
+    assert_eq!(result.groups[0].files.len(), 3);
+    assert_eq!(result.groups[0].file_size, 0);
+    assert_eq!(result.total_wasted_space, 0); // 0 bytes per file
+}
+```
+
+---
+
 ## Phase 4.3: Create Duplicate Detector
 
 ### Overview
@@ -1047,6 +1124,144 @@ Run background code-reviewer agent on `src-tauri/src/scanner/detector.rs`. Itera
 
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
+
+---
+
+## Phase 4.3.3: Live Streaming Event Emission
+
+### Overview
+This section specifies how and when duplicate discovery events are emitted to the frontend during detection, enabling live UI updates.
+
+### Event Emission Strategy
+
+#### Event Types and Timing
+
+| Event Name | Emission Point | Frequency | Purpose |
+|------------|----------------|-----------|---------|
+| `scan-progress` | During file collection | Every 100 files | Show file discovery progress |
+| `scan-phase` | Phase transitions | Once per phase | Indicate detection stage |
+| `duplicate-found` | After full hash confirms duplicate | Per group discovered | Live duplicate streaming |
+| `scan-results` | Detection complete | Once | Final complete results |
+| `scan-complete` | End of scan | Once | Summary statistics |
+
+#### New Event: `duplicate-found` (Live Streaming)
+
+Add this event to stream duplicate groups as they are discovered:
+
+**Backend emission** (in `detector.rs` `verify_with_full_hash`):
+
+```rust
+/// Stage 3: Verify duplicates with full hash (with live streaming)
+fn verify_with_full_hash(
+    &mut self,
+    partial_groups: Vec<(String, u64, Vec<FileInfo>)>,
+    stats: &mut DetectionStats,
+    app_handle: Option<&AppHandle>,  // Optional for streaming
+) -> Result<Vec<DuplicateGroup>, ScanError> {
+    let mut final_groups: Vec<DuplicateGroup> = Vec::new();
+
+    for (_partial_hash, size, files) in partial_groups {
+        // ... existing grouping logic ...
+
+        // Create duplicate groups for files with matching full hashes
+        for (hash, files) in full_hash_groups {
+            if files.len() > 1 {
+                // ... create dup_files ...
+
+                let group = DuplicateGroup::new(
+                    self.next_group_id,
+                    hash.clone(),
+                    size,
+                    dup_files,
+                );
+                self.next_group_id += 1;
+
+                // LIVE STREAMING: Emit duplicate-found event immediately
+                if let Some(handle) = app_handle {
+                    let _ = handle.emit("duplicate-found", &group);
+                }
+
+                final_groups.push(group);
+            }
+        }
+    }
+
+    // ... rest of method ...
+}
+```
+
+**Event payload structure**:
+
+```typescript
+interface DuplicateFoundEvent {
+  id: number;           // Group ID
+  hash: string;         // Full content hash
+  file_size: number;    // Size of each file
+  files: DuplicateFile[];
+  wasted_space: number;
+}
+```
+
+#### Updated `scan-phase` Events
+
+Emit phase transitions at each stage:
+
+```rust
+// In start_scan() command
+
+// Phase 1: File collection
+let _ = app_handle.emit("scan-phase", serde_json::json!({
+    "phase": "collecting",
+    "message": "Discovering files..."
+}));
+
+// Phase 2: Size grouping (implicit, very fast)
+
+// Phase 3: Partial hashing
+let _ = app_handle.emit("scan-phase", serde_json::json!({
+    "phase": "partial_hashing",
+    "message": "Quick-filtering candidates..."
+}));
+
+// Phase 4: Full hashing and verification
+let _ = app_handle.emit("scan-phase", serde_json::json!({
+    "phase": "full_hashing",
+    "message": "Verifying duplicates..."
+}));
+
+// Phase 5: Storing results
+let _ = app_handle.emit("scan-phase", serde_json::json!({
+    "phase": "storing",
+    "message": "Saving results..."
+}));
+```
+
+#### Detection Progress Event
+
+Add a new event for hashing progress:
+
+```rust
+// Emit during partial/full hashing
+if stats.partial_hashes % 50 == 0 {
+    let _ = app_handle.emit("detection-progress", serde_json::json!({
+        "partial_hashes": stats.partial_hashes,
+        "full_hashes": stats.full_hashes,
+        "groups_found": final_groups.len()
+    }));
+}
+```
+
+### Frontend Subscription Pattern
+
+See **Phase 5.1.5** in `05-results-ui.md` for the complete frontend event subscription pattern.
+
+### Throttling Guidelines
+
+To prevent UI flooding:
+- `scan-progress`: Every 100 files
+- `duplicate-found`: Immediately (groups are infrequent relative to files)
+- `detection-progress`: Every 50 hashes
+- `scan-phase`: Only on actual phase changes
 
 ---
 

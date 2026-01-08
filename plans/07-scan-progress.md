@@ -21,7 +21,199 @@ Create the data model for tracking scan progress with persistence.
 
 Add scan progress persistence table (already in initial migration).
 
-#### 7.1.2 Create Progress Queries
+#### 7.1.2 Total File Count Estimation Strategy
+
+The progress display shows "X of Y files" where Y (estimated total) is challenging to calculate efficiently. This section defines the strategy for providing accurate estimates without blocking the scan.
+
+##### The Challenge
+
+- **Pre-counting is slow**: Walking the entire directory tree just to count files before processing doubles the work
+- **Unknown total during streaming**: Files are discovered incrementally; we don't know the total upfront
+- **User expectation**: Users want to see "X of Y" progress, not just "X files processed"
+
+##### Strategy: Rolling Estimate with Statistical Sampling
+
+Use a **rolling estimate** that improves over time without requiring a pre-scan.
+
+###### Phase 1: Initial Estimate (First 5 seconds)
+
+During the first 5 seconds of scanning:
+1. Track files discovered per second
+2. Track directories discovered per second
+3. Calculate average files per directory
+
+```rust
+struct EstimationState {
+    start_time: Instant,
+    files_discovered: u64,
+    directories_discovered: u64,
+    pending_directories: u64,  // Directories queued but not yet scanned
+    estimation_complete: bool,
+}
+
+impl EstimationState {
+    fn estimate_total(&self) -> Option<u64> {
+        // Need at least 100 files and 10 directories for meaningful estimate
+        if self.files_discovered < 100 || self.directories_discovered < 10 {
+            return None;
+        }
+
+        // Average files per directory
+        let avg_files_per_dir = self.files_discovered as f64 / self.directories_discovered as f64;
+
+        // Estimate remaining files from pending directories
+        let estimated_remaining = (self.pending_directories as f64 * avg_files_per_dir) as u64;
+
+        Some(self.files_discovered + estimated_remaining)
+    }
+}
+```
+
+###### Phase 2: Continuous Refinement
+
+As the scan progresses, refine the estimate using exponential moving average:
+
+```rust
+fn refine_estimate(
+    current_estimate: u64,
+    files_discovered: u64,
+    directories_remaining: u64,
+    alpha: f64,  // 0.3 = responsive refinement
+) -> u64 {
+    let files_per_remaining_dir = if directories_remaining > 0 {
+        // Use recent discovery rate
+        files_discovered as f64 / (directories_remaining as f64).max(1.0)
+    } else {
+        0.0
+    };
+
+    let new_estimate = files_discovered + (directories_remaining as f64 * files_per_remaining_dir) as u64;
+
+    // EMA blending
+    let blended = alpha * new_estimate as f64 + (1.0 - alpha) * current_estimate as f64;
+    blended.round() as u64
+}
+```
+
+###### Phase 3: Finalization
+
+When all directories have been scanned, `estimated_total` equals `files_discovered`.
+
+##### Implementation in Progress Tracker
+
+Update `ScanProgressTracker` to include estimation:
+
+```rust
+pub struct ScanProgressTracker {
+    // ... existing fields ...
+
+    // Estimation fields
+    directories_discovered: AtomicU64,
+    pending_directories: AtomicU64,
+    estimated_total: AtomicU64,
+    estimation_start: Instant,
+}
+
+impl ScanProgressTracker {
+    pub fn get_progress(&self) -> ScanProgress {
+        let files = self.total_files.load(Ordering::Relaxed);
+        let dirs = self.directories_discovered.load(Ordering::Relaxed);
+        let pending = self.pending_directories.load(Ordering::Relaxed);
+
+        // Calculate estimate
+        let estimated_total = if pending == 0 {
+            // Scan complete - exact count
+            Some(files)
+        } else if files >= 100 && dirs >= 10 {
+            // Have enough data for estimate
+            let avg_per_dir = files as f64 / dirs as f64;
+            Some(files + (pending as f64 * avg_per_dir).round() as u64)
+        } else {
+            // Not enough data yet
+            None
+        };
+
+        ScanProgress {
+            total_files: files,
+            processed_files: self.processed_files.load(Ordering::Relaxed),
+            total_bytes: self.total_bytes.load(Ordering::Relaxed),
+            current_path: None,
+            skipped_files: self.skipped_files.load(Ordering::Relaxed),
+            estimated_total,
+        }
+    }
+
+    pub fn push_directory(&self) {
+        self.pending_directories.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn pop_directory(&self) {
+        self.pending_directories.fetch_sub(1, Ordering::Relaxed);
+        self.directories_discovered.fetch_add(1, Ordering::Relaxed);
+    }
+}
+```
+
+##### Walker Integration
+
+Update `DirectoryWalker` to track directory queue:
+
+```rust
+// In walk methods, track directory discovery
+for entry_result in walker {
+    match entry_result {
+        Ok(entry) => {
+            if entry.file_type().is_dir() {
+                self.progress.push_directory();  // Directory discovered
+                // ... later when processed ...
+                self.progress.pop_directory();   // Directory completed
+            }
+            // ... rest of handling ...
+        }
+        // ...
+    }
+}
+```
+
+##### Frontend Display
+
+The frontend uses `estimated_total` when available:
+
+```typescript
+// In progress display
+let progressText = $derived(() => {
+    if (progress?.estimated_total) {
+        return `${progress.processed_files.toLocaleString()} of ~${progress.estimated_total.toLocaleString()} files`;
+    }
+    return `${progress?.processed_files.toLocaleString() ?? 0} files processed`;
+});
+
+let progressPercent = $derived(() => {
+    if (!progress?.estimated_total || progress.estimated_total === 0) {
+        return null;  // Show indeterminate progress bar
+    }
+    return Math.min(99, (progress.processed_files / progress.estimated_total) * 100);
+});
+```
+
+##### Edge Cases
+
+| Scenario | Handling |
+|----------|----------|
+| Empty directory tree | Show "0 files" immediately, no estimate needed |
+| Single large directory | Estimate may fluctuate; use high alpha (0.4) for quick stabilization |
+| Many nested empty dirs | `pending_directories` decreases faster than files increase; estimate converges quickly |
+| Network drives (slow) | Estimation still works; just takes longer to accumulate data |
+| Cancel during estimation | Return last known estimate in progress state |
+
+##### Success Criteria
+
+- [ ] Estimate appears within 5 seconds of scan start
+- [ ] Estimate accuracy within 20% of final count after 10% of files scanned
+- [ ] Progress bar never exceeds 99% until scan truly complete
+- [ ] No blocking pre-scan required
+
+#### 7.1.3 Create Progress Queries
 
 **File**: `src-tauri/src/db/queries.rs`
 

@@ -29,18 +29,18 @@ We follow a **vertical slice** approach - delivering complete, testable features
 | [01-project-foundation.md](./01-project-foundation.md) | Project Foundation | 1.1 - 1.8 | Tauri scaffolding, project structure, developer tooling |
 | [02-database-foundation.md](./02-database-foundation.md) | Database | 2.1 - 2.6 | SQLite setup, schema, migrations |
 | [03-file-scanning.md](./03-file-scanning.md) | File Scanning | 3.1 - 3.10 | Directory traversal, file metadata collection, folder picker UI |
-| [04-duplicate-detection.md](./04-duplicate-detection.md) | Detection | 4.1 - 4.10 | Size grouping, partial/full hashing, BLAKE3 |
-| [05-results-ui.md](./05-results-ui.md) | Results UI | 5.1 - 5.8 | Master-detail layout, duplicate groups display |
-| [06-selection-deletion.md](./06-selection-deletion.md) | Selection & Deletion | 6.1 - 6.10 | Selection logic (incl. path depth), batch deletion, trash integration |
-| [07-scan-progress.md](./07-scan-progress.md) | Progress & Controls | 7.1 - 7.6 | Progress display with ETA, pause/resume, persistence |
-| [08-settings-protected.md](./08-settings-protected.md) | Settings | 8.1 - 8.6 | Theme, parallelism, protected folders |
+| [04-duplicate-detection.md](./04-duplicate-detection.md) | Detection | 4.1 - 4.10 | Size grouping, partial/full hashing, BLAKE3, empty file handling (4.2.3), live streaming events (4.3.3) |
+| [05-results-ui.md](./05-results-ui.md) | Results UI | 5.1 - 5.8 | Master-detail layout, duplicate groups display, live streaming subscription (5.1.5), **path truncation with middle ellipsis + hover tooltip**, **creation AND modified dates** |
+| [06-selection-deletion.md](./06-selection-deletion.md) | Selection & Deletion | 6.1 - 6.10 | Selection logic (incl. path depth), batch deletion, trash integration, **stronger delete-all-copies warning with checkbox confirmation**, **deletion history viewing UI** |
+| [07-scan-progress.md](./07-scan-progress.md) | Progress & Controls | 7.1 - 7.6 | Progress display with ETA (7.1.2 total count estimation), pause/resume, persistence |
+| [08-settings-protected.md](./08-settings-protected.md) | Settings | 8.1 - 8.6 | Theme, parallelism, protected folders, **last scan settings restoration on app launch** |
 | [09-file-operations.md](./09-file-operations.md) | File Operations | 9.1 - 9.7 | Open, reveal, copy path, view file info, context menu |
 | [10-filtering-search.md](./10-filtering-search.md) | Filtering & Search | 10.1 - 10.8 | File type filters, search, thumbnails |
 | [11-keyboard-nav.md](./11-keyboard-nav.md) | Keyboard & A11y | 11.1 - 11.6 | Keyboard shortcuts, focus management |
-| [12-permissions.md](./12-permissions.md) | Permissions | 12.1 - 12.6 | Permission wizard, Full Disk Access guide |
-| [13-error-handling.md](./13-error-handling.md) | Error Handling | 13.1 - 13.7 | Skip/retry, disk full handling, error display, recovery |
-| [14-platform-polish.md](./14-platform-polish.md) | Polish & Final | 14.1 - 14.8 | Native styling, platform tweaks, final E2E |
-| [15-system-tray.md](./15-system-tray.md) | System Tray | 15.1 - 15.8 | Minimize to tray feature, tray icon and menu |
+| [12-permissions.md](./12-permissions.md) | Permissions | 12.1 - 12.6 | Permission wizard, Full Disk Access guide, **Windows permissions wizard with Controlled Folder Access detection** |
+| [13-error-handling.md](./13-error-handling.md) | Error Handling | 13.1 - 13.7 | Skip/retry, disk full handling, error display, recovery, **clearer file moved/deleted error messaging with user-friendly explanations**, **detailed disk I/O throttling with adaptive queue depth monitoring** |
+| [14-platform-polish.md](./14-platform-polish.md) | Polish & Final | 14.1 - 14.8 | Native styling, platform tweaks, final E2E, **comprehensive E2E tests covering actual duplicate detection logic** |
+| [15-system-tray.md](./15-system-tray.md) | System Tray | 15.1 - 15.8 | Minimize to tray feature, tray icon and menu, **tray tooltip with scan progress % and ETA** |
 
 ## Phase Structure
 
@@ -180,3 +180,32 @@ duplicate-file-finder-CC-n-Interview/
 - **Vertical Slices**: Backend + Frontend + Tests together for each feature
 - **Code Review**: Every phase ends with code-reviewer agent review
 - **Commits**: Every phase ends with `/cl:commit`
+- **Sub-phases**: Some phases have detailed sub-phases (e.g., 4.2.3, 5.1.5, 7.1.2) for complex specifications
+
+## Recent Additions
+
+The following sub-phases were added to address specification gaps:
+
+| Sub-Phase | File | Description |
+|-----------|------|-------------|
+| 4.2.3 | 04-duplicate-detection.md | Empty file handling specification - zero-byte files grouped as duplicates |
+| 4.3.3 | 04-duplicate-detection.md | Live streaming event emission - `duplicate-found` event and throttling |
+| 5.1.5 | 05-results-ui.md | Frontend live streaming subscription pattern - `scanStore.ts` with event listeners |
+| 7.1.2 | 07-scan-progress.md | Total file count estimation strategy - rolling estimate without pre-scan |
+
+## January 2026 Updates
+
+The following updates address 10 specification gaps identified in the implementation plans:
+
+| # | Issue | Plan Location | Resolution |
+|---|-------|---------------|------------|
+| 1 | Path truncation (middle ellipsis + hover) not implemented | `05-results-ui.md` | Added `getDirectory()` function with middle-ellipsis truncation + CSS hover tooltip showing full path |
+| 2 | Both creation AND modified dates not displayed | `05-results-ui.md` | Updated file item template to display both dates with clear labels |
+| 3 | Last scan settings not restored on app launch | `03-file-scanning.md`, `08-settings-protected.md` | Added explicit app-launch restoration documentation and success criteria |
+| 4 | Delete-all-copies warning could be stronger | `06-selection-deletion.md` | Added danger banner with red styling, mandatory checkbox confirmation, disabled confirm button until checkbox is checked |
+| 5 | File moved/deleted error messaging unclear | `13-error-handling.md` | Added `FileMoved` and `FileDeleted` error variants with `user_message()` and `suggested_action()` methods |
+| 6 | Windows permissions wizard missing | `12-permissions.md` | Added Phase 12.4 with Windows-specific Controlled Folder Access detection and step-by-step wizard |
+| 7 | Tray tooltip doesn't show scan progress % | `15-system-tray.md` | Added `update_tray_progress()` function with percentage, phase, ETA, and file count in tooltip |
+| 8 | Disk I/O throttling implementation details vague | `13-error-handling.md` | Completely rewrote Phase 13.5 with `ThrottleProfile`, queue depth monitoring, adaptive throttling based on latency |
+| 9 | Deletion history viewing UI not planned | `06-selection-deletion.md` | Added Phase 6.8 with `DeletionHistoryPanel.svelte` component with pagination |
+| 10 | E2E tests don't cover actual duplicate detection logic | `14-platform-polish.md` | Added `duplicate-detection.spec.js` with tests for detection accuracy, edge cases (empty files, same-size different content, large files) |

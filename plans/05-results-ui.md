@@ -129,6 +129,354 @@ Execute `/cl:commit`
 
 ---
 
+## Phase 5.1.5: Live Duplicate Streaming Subscription Pattern
+
+### Overview
+This phase specifies the complete frontend event subscription pattern for receiving live duplicate discovery updates during scanning.
+
+### Event Subscription Architecture
+
+#### Full Event Subscription Setup
+
+**File**: `src/lib/stores/scanStore.ts`
+
+Create a centralized scan store for managing all scan-related events:
+
+```typescript
+import { writable, derived } from 'svelte/store';
+import { listen } from '@tauri-apps/api/event';
+import type { UnlistenFn } from '@tauri-apps/api/event';
+import type {
+  DuplicateGroup,
+  ScanProgress,
+  ScanComplete,
+  DetectionResult
+} from '$lib/types';
+
+// Event payload types
+interface ScanPhaseEvent {
+  phase: 'collecting' | 'partial_hashing' | 'full_hashing' | 'storing' | 'complete';
+  message: string;
+}
+
+interface DetectionProgressEvent {
+  partial_hashes: number;
+  full_hashes: number;
+  groups_found: number;
+}
+
+interface ScanErrorEvent {
+  session_id: number;
+  error: string;
+}
+
+// Store state
+interface ScanState {
+  isScanning: boolean;
+  phase: ScanPhaseEvent['phase'] | 'idle' | 'error';
+  phaseMessage: string;
+  progress: ScanProgress | null;
+  detectionProgress: DetectionProgressEvent | null;
+  liveGroups: DuplicateGroup[];  // Groups streamed during scan
+  finalResult: DetectionResult | null;
+  scanComplete: ScanComplete | null;
+  error: string | null;
+}
+
+function createScanStore() {
+  const { subscribe, set, update } = writable<ScanState>({
+    isScanning: false,
+    phase: 'idle',
+    phaseMessage: '',
+    progress: null,
+    detectionProgress: null,
+    liveGroups: [],
+    finalResult: null,
+    scanComplete: null,
+    error: null,
+  });
+
+  let unlisteners: UnlistenFn[] = [];
+
+  return {
+    subscribe,
+
+    // Initialize event listeners
+    async init() {
+      // Clean up any existing listeners
+      this.cleanup();
+
+      unlisteners = [
+        // File discovery progress
+        await listen<ScanProgress>('scan-progress', (e) => {
+          update(state => ({ ...state, progress: e.payload }));
+        }),
+
+        // Phase transitions
+        await listen<ScanPhaseEvent>('scan-phase', (e) => {
+          update(state => ({
+            ...state,
+            phase: e.payload.phase,
+            phaseMessage: e.payload.message,
+          }));
+        }),
+
+        // LIVE DUPLICATE STREAMING - Key pattern!
+        await listen<DuplicateGroup>('duplicate-found', (e) => {
+          update(state => ({
+            ...state,
+            // Append new group to live list, sorted by wasted space
+            liveGroups: [...state.liveGroups, e.payload]
+              .sort((a, b) => b.wasted_space - a.wasted_space),
+          }));
+        }),
+
+        // Detection progress (hashing stats)
+        await listen<DetectionProgressEvent>('detection-progress', (e) => {
+          update(state => ({ ...state, detectionProgress: e.payload }));
+        }),
+
+        // Final results
+        await listen<DetectionResult>('scan-results', (e) => {
+          update(state => ({
+            ...state,
+            finalResult: e.payload,
+            // Replace live groups with final sorted results
+            liveGroups: e.payload.groups,
+          }));
+        }),
+
+        // Scan completion
+        await listen<ScanComplete>('scan-complete', (e) => {
+          update(state => ({
+            ...state,
+            isScanning: false,
+            phase: 'complete',
+            scanComplete: e.payload,
+          }));
+        }),
+
+        // Error handling
+        await listen<ScanErrorEvent>('scan-error', (e) => {
+          update(state => ({
+            ...state,
+            isScanning: false,
+            phase: 'error',
+            error: e.payload.error,
+          }));
+        }),
+      ];
+    },
+
+    // Start a new scan
+    startScan() {
+      update(state => ({
+        ...state,
+        isScanning: true,
+        phase: 'collecting',
+        phaseMessage: 'Starting scan...',
+        progress: null,
+        detectionProgress: null,
+        liveGroups: [],  // Clear previous results
+        finalResult: null,
+        scanComplete: null,
+        error: null,
+      }));
+    },
+
+    // Reset store state
+    reset() {
+      set({
+        isScanning: false,
+        phase: 'idle',
+        phaseMessage: '',
+        progress: null,
+        detectionProgress: null,
+        liveGroups: [],
+        finalResult: null,
+        scanComplete: null,
+        error: null,
+      });
+    },
+
+    // Cleanup listeners
+    cleanup() {
+      unlisteners.forEach(fn => fn());
+      unlisteners = [];
+    },
+  };
+}
+
+export const scanStore = createScanStore();
+
+// Derived stores for convenience
+export const isScanning = derived(scanStore, $s => $s.isScanning);
+export const currentPhase = derived(scanStore, $s => $s.phase);
+export const duplicateGroups = derived(scanStore, $s =>
+  $s.finalResult?.groups ?? $s.liveGroups
+);
+export const totalWastedSpace = derived(scanStore, $s =>
+  $s.finalResult?.total_wasted_space ??
+  $s.liveGroups.reduce((sum, g) => sum + g.wasted_space, 0)
+);
+```
+
+#### Component Usage Pattern
+
+**File**: `src/lib/components/ResultsView.svelte`
+
+Using the store in a component:
+
+```svelte
+<script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
+  import { scanStore, duplicateGroups, totalWastedSpace, isScanning, currentPhase } from '$lib/stores/scanStore';
+
+  // Initialize listeners on mount
+  onMount(() => {
+    scanStore.init();
+  });
+
+  // Cleanup on destroy
+  onDestroy(() => {
+    scanStore.cleanup();
+  });
+
+  // Reactive access to store values
+  let groups = $derived($duplicateGroups);
+  let wasted = $derived($totalWastedSpace);
+  let scanning = $derived($isScanning);
+  let phase = $derived($currentPhase);
+</script>
+
+<!-- Live updating results list -->
+<div class="results">
+  {#if scanning}
+    <div class="scanning-indicator">
+      {phase}: Finding duplicates...
+      {#if groups.length > 0}
+        <span class="live-count">{groups.length} groups found so far</span>
+      {/if}
+    </div>
+  {/if}
+
+  <!-- Groups update in real-time as duplicate-found events arrive -->
+  {#each groups as group (group.id)}
+    <DuplicateGroupCard {group} />
+  {/each}
+</div>
+```
+
+### Live Streaming UI Behavior
+
+#### Visual Feedback During Streaming
+
+1. **New groups animate in**: Use CSS transitions when groups are added
+2. **List re-sorts**: As new groups arrive, list re-sorts by wasted space
+3. **Running totals update**: "X groups, Y wasted" updates in real-time
+4. **Phase indicator**: Shows current detection phase
+
+```svelte
+<style>
+  /* Animate new groups sliding in */
+  .group-card {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
+```
+
+#### Performance Considerations
+
+1. **Virtual scrolling**: For large result sets (>100 groups), use virtual scrolling
+2. **Batch UI updates**: Svelte's reactivity handles this automatically
+3. **Debounce re-sorting**: Only re-sort every 500ms during streaming to reduce jank
+
+```typescript
+// Debounced sorting for live updates
+let sortTimeout: number | null = null;
+
+await listen<DuplicateGroup>('duplicate-found', (e) => {
+  update(state => {
+    const newGroups = [...state.liveGroups, e.payload];
+
+    // Debounce sorting during rapid updates
+    if (sortTimeout) clearTimeout(sortTimeout);
+    sortTimeout = setTimeout(() => {
+      update(s => ({
+        ...s,
+        liveGroups: s.liveGroups.sort((a, b) => b.wasted_space - a.wasted_space)
+      }));
+    }, 500);
+
+    return { ...state, liveGroups: newGroups };
+  });
+});
+```
+
+### Type Definitions Update
+
+**File**: `src/lib/types.ts`
+
+Add new event types:
+
+```typescript
+// Add to existing types.ts
+
+export interface ScanPhaseEvent {
+  phase: 'collecting' | 'partial_hashing' | 'full_hashing' | 'storing' | 'complete';
+  message: string;
+}
+
+export interface DetectionProgressEvent {
+  partial_hashes: number;
+  full_hashes: number;
+  groups_found: number;
+}
+
+export interface ScanErrorEvent {
+  session_id: number;
+  error: string;
+}
+
+// Update ScanProgress to include started_at_ms for ETA calculation
+export interface ScanProgress {
+  total_files: number;
+  processed_files: number;
+  total_bytes: number;
+  current_path: string | null;
+  skipped_files: number;
+  estimated_total: number | null;
+  started_at_ms?: number;
+  estimated_time_remaining_ms?: number;
+}
+```
+
+### Success Criteria
+
+#### Automated Verification
+- [ ] `npm run check` passes
+- [ ] TypeScript types are correctly defined
+
+#### Manual Verification
+- [ ] Live groups appear as they are discovered
+- [ ] Groups re-sort by wasted space during streaming
+- [ ] Final results replace live groups seamlessly
+- [ ] No memory leaks from event listeners
+- [ ] UI remains responsive with 100+ live groups
+
+---
+
 ## Phase 5.2: Create Duplicate Groups List Component
 
 ### Overview
@@ -370,14 +718,30 @@ Create the detail panel that shows files within a selected duplicate group.
     return path.split('/').pop() || path;
   }
 
-  function getDirectory(path: string): string {
+  /**
+   * Truncate path with middle ellipsis for better readability.
+   * Shows beginning and end of path with "..." in the middle.
+   * Example: "/Users/john/Documents/.../backups/photos" instead of "...uments/backups/photos"
+   */
+  function getDirectory(path: string, maxLength: number = 50): string {
     const parts = path.split('/');
-    parts.pop();
+    parts.pop(); // Remove filename
     const dir = parts.join('/');
-    if (dir.length > 50) {
-      return '...' + dir.slice(-47);
+
+    if (dir.length <= maxLength) {
+      return dir;
     }
-    return dir;
+
+    // Middle ellipsis truncation: show start and end
+    const ellipsis = '/...';
+    const availableLength = maxLength - ellipsis.length;
+    const startLength = Math.ceil(availableLength * 0.4); // 40% for start
+    const endLength = Math.floor(availableLength * 0.6);  // 60% for end (more useful info)
+
+    const start = dir.slice(0, startLength);
+    const end = dir.slice(-endLength);
+
+    return `${start}${ellipsis}${end}`;
   }
 </script>
 
@@ -416,10 +780,14 @@ Create the detail panel that shows files within a selected duplicate group.
             </div>
             <div class="file-path" title={file.path}>
               {getDirectory(file.path)}
+              <span class="full-path-tooltip">{file.path}</span>
             </div>
             <div class="file-dates">
-              <span>Created: {formatDate(file.created_at)}</span>
-              <span>Modified: {formatDate(file.modified_at)}</span>
+              <span class="date-label">Created:</span>
+              <span class="date-value">{formatDate(file.created_at)}</span>
+              <span class="date-separator">|</span>
+              <span class="date-label">Modified:</span>
+              <span class="date-value">{formatDate(file.modified_at)}</span>
             </div>
           </div>
         </div>
@@ -539,14 +907,55 @@ Create the detail panel that shows files within a selected duplicate group.
     font-family: var(--font-mono);
     margin-top: 0.25rem;
     word-break: break-all;
+    position: relative;
+    cursor: help;
+  }
+
+  /* Full path tooltip on hover */
+  .full-path-tooltip {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 100%;
+    margin-top: 4px;
+    padding: 0.5rem 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    max-width: 500px;
+    overflow-x: auto;
+    z-index: 100;
+  }
+
+  .file-path:hover .full-path-tooltip {
+    display: block;
   }
 
   .file-dates {
     display: flex;
-    gap: 1rem;
+    align-items: center;
+    gap: 0.5rem;
     font-size: 0.75rem;
     color: var(--text-secondary);
     margin-top: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .file-dates .date-label {
+    color: var(--text-secondary);
+    opacity: 0.8;
+  }
+
+  .file-dates .date-value {
+    color: var(--text);
+  }
+
+  .file-dates .date-separator {
+    color: var(--border);
+    margin: 0 0.25rem;
   }
 
   .empty-state {
@@ -568,6 +977,10 @@ Create the detail panel that shows files within a selected duplicate group.
 - [ ] File details show correctly
 - [ ] Checkboxes work
 - [ ] Original file is highlighted and not selectable
+- [ ] Long paths are truncated with middle ellipsis (shows beginning and end)
+- [ ] Hovering over truncated path shows full path tooltip
+- [ ] Both creation date AND modified date are displayed for each file
+- [ ] Dates are clearly labeled and visually distinct
 
 ### Code Review
 Run background code-reviewer agent. Iterate until "Code looks good."

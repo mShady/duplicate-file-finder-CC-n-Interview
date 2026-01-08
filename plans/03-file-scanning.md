@@ -1917,7 +1917,14 @@ Execute `/cl:commit`
 ## Phase 3.9: Create Scan Button with Folder Picker Integration
 
 ### Overview
-Create the scan button component that integrates with the folder picker and persists last scan settings.
+Create the scan button component that integrates with the folder picker, persists last scan settings, and **automatically restores them on app launch**.
+
+### Key Behavior: App Launch Restoration
+When the app starts, the following scan settings MUST be automatically restored:
+1. **Last scanned paths** - The folders/drives selected in the previous scan session
+2. **Parallelism mode** - The CPU usage setting from the previous scan
+
+This ensures users can quickly re-run their last scan without re-selecting folders.
 
 ### Changes Required
 
@@ -2383,6 +2390,8 @@ mkdir -p src/lib/components
 - [ ] Progress updates are displayed during scan
 - [ ] Scan can be cancelled
 - [ ] Completion results are shown
+- [ ] **App launch restoration**: On app startup, previously selected scan paths are automatically loaded and displayed
+- [ ] **Persistence verification**: Close app, reopen, and verify paths are still shown
 
 ### Code Review
 Run background code-reviewer agent on Svelte components. Iterate until "Code looks good. No significant issues found."
