@@ -320,8 +320,8 @@ if ($allGood) {
 ### Success Criteria
 
 #### Automated Verification
-- [ ] `ls scripts/setup-mac.sh scripts/setup-windows.ps1` shows both files exist
-- [ ] `bash -n scripts/setup-mac.sh` passes syntax check (no output = success)
+- [x] `ls scripts/setup-mac.sh scripts/setup-windows.ps1` shows both files exist
+- [x] `bash -n scripts/setup-mac.sh` passes syntax check (no output = success)
 
 #### Manual Verification
 - [ ] On Mac: `chmod +x scripts/setup-mac.sh && ./scripts/setup-mac.sh` runs without errors
