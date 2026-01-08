@@ -1378,6 +1378,46 @@ pub mod file_cache {
 
         Ok(result.rows_affected())
     }
+
+    /// Remove cache entry for a specific path (for explicit invalidation)
+    pub async fn invalidate(
+        pool: &SqlitePool,
+        path: &str,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query("DELETE FROM file_cache WHERE path = ?")
+            .bind(path)
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Remove cache entries for files that no longer exist
+    /// Call this after a scan to clean up stale entries
+    pub async fn cleanup_missing_files(
+        pool: &SqlitePool,
+        valid_paths: &[String],
+    ) -> Result<u64, sqlx::Error> {
+        // For large sets, this should be done in batches
+        // Here we use a simple approach for moderate sizes
+        if valid_paths.is_empty() {
+            return Ok(0);
+        }
+
+        // Build placeholders for the IN clause
+        let placeholders: Vec<&str> = valid_paths.iter().map(|_| "?").collect();
+        let query = format!(
+            "DELETE FROM file_cache WHERE path NOT IN ({})",
+            placeholders.join(", ")
+        );
+
+        let mut query_builder = sqlx::query(&query);
+        for path in valid_paths {
+            query_builder = query_builder.bind(path);
+        }
+
+        let result = query_builder.execute(pool).await?;
+        Ok(result.rows_affected())
+    }
 }
 ```
 
@@ -1395,6 +1435,149 @@ Run background code-reviewer agent on the updated `src-tauri/src/db/queries.rs`.
 
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
+
+---
+
+## Phase 4.4.1: Cache Invalidation Strategy
+
+### Overview
+
+The file cache enables incremental scanning by storing computed hashes. This section documents the cache invalidation strategy to ensure cache correctness when files are modified, renamed, moved, or deleted.
+
+### Cache Invalidation Approach
+
+#### 1. Implicit Invalidation via Composite Key
+
+The cache uses a **composite key** of `(path, size, modified_at)` for lookups:
+
+```rust
+pub async fn get(
+    pool: &SqlitePool,
+    path: &str,
+    size: i64,
+    modified_at: i64,
+) -> Result<Option<FileCache>, sqlx::Error>
+```
+
+**How it works:**
+- When a file is **modified**, its `modified_at` timestamp changes
+- The cache lookup with the new timestamp returns `None` (cache miss)
+- The file is rehashed and the cache is updated via `upsert()`
+- The old entry is automatically replaced due to `ON CONFLICT(path) DO UPDATE`
+
+**Covered scenarios:**
+- File content modified (timestamp changes → cache miss → rehash)
+- File truncated/appended (size and/or timestamp changes → cache miss)
+
+#### 2. Explicit Invalidation for Path Changes
+
+When files are renamed or moved, the path changes but the content remains the same. The `invalidate()` function handles this:
+
+```rust
+pub async fn invalidate(pool: &SqlitePool, path: &str) -> Result<(), sqlx::Error>
+```
+
+**When to call:**
+- After detecting a file rename operation
+- After detecting a file move operation
+- When a user manually requests cache refresh
+
+#### 3. Cleanup of Deleted Files
+
+After a scan completes, files that no longer exist should be removed from the cache:
+
+```rust
+pub async fn cleanup_missing_files(
+    pool: &SqlitePool,
+    valid_paths: &[String],
+) -> Result<u64, sqlx::Error>
+```
+
+**When to call:**
+- At the end of each full scan, pass all discovered file paths
+- The function removes cache entries for paths not in the valid set
+
+#### 4. Time-Based Cache Expiration
+
+Stale cache entries are cleaned up periodically:
+
+```rust
+pub async fn clear_old(pool: &SqlitePool, days: i32) -> Result<u64, sqlx::Error>
+```
+
+**Recommended usage:**
+- Call on app startup with `days = 30` (configurable)
+- Removes entries not accessed in the specified period
+- Prevents unbounded cache growth
+
+### Cache Invalidation Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     File Cache Lookup                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   File discovered during scan                                    │
+│           │                                                      │
+│           ▼                                                      │
+│   ┌───────────────────────────────────┐                         │
+│   │ Query cache with (path, size, mtime) │                      │
+│   └───────────────────────────────────┘                         │
+│           │                                                      │
+│     ┌─────┴─────┐                                               │
+│     │           │                                                │
+│   Cache Hit   Cache Miss                                         │
+│     │           │                                                │
+│     ▼           ▼                                                │
+│  Use cached   Compute hash                                       │
+│   hashes         │                                               │
+│     │           ▼                                                │
+│     │      Upsert to cache                                       │
+│     │      (replaces old entry                                   │
+│     │       if path exists)                                      │
+│     │           │                                                │
+│     └─────┬─────┘                                                │
+│           ▼                                                      │
+│    Continue scan                                                 │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                   Post-Scan Cleanup                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   Scan completes with list of valid paths                        │
+│           │                                                      │
+│           ▼                                                      │
+│   cleanup_missing_files(valid_paths)                             │
+│           │                                                      │
+│           ▼                                                      │
+│   Removes cache entries for:                                     │
+│   - Deleted files                                                │
+│   - Files outside scan scope                                     │
+│   - Renamed/moved files (old paths)                              │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Edge Cases Handled
+
+| Scenario | Detection Method | Invalidation Action |
+|----------|------------------|---------------------|
+| File modified | `modified_at` changes | Implicit (cache miss) |
+| File renamed | Old path not in scan results | `cleanup_missing_files()` |
+| File moved | Old path not in scan results | `cleanup_missing_files()` |
+| File deleted | Path not in scan results | `cleanup_missing_files()` |
+| File replaced (same name) | `size` or `modified_at` changes | Implicit (cache miss) |
+| Cache corruption | N/A | `clear_old(0)` to purge all |
+
+### Implementation Notes
+
+1. **Batch cleanup**: For large scans (>100k files), `cleanup_missing_files()` should be called in batches to avoid SQLite query size limits.
+
+2. **Incremental scan mode**: When doing a "quick scan" that only checks previously scanned directories, skip `cleanup_missing_files()` to preserve cache entries for unscanned areas.
+
+3. **Watch mode** (future): For real-time file watching, call `invalidate()` on file change events from the OS file watcher.
 
 ---
 

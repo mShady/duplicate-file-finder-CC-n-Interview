@@ -230,6 +230,191 @@ Execute `/cl:commit`
 ### Overview
 Create a detailed progress display component with estimated time remaining.
 
+### ETA Calculation Algorithm
+
+The ETA (Estimated Time of Arrival) calculation uses an **Exponential Moving Average (EMA)** approach to provide smooth, accurate time estimates that adapt to changing scan speeds.
+
+#### Why EMA Over Simple Linear Calculation
+
+A simple linear approach (`remaining_files / files_per_second`) produces jumpy estimates because:
+- File sizes vary dramatically (1KB text file vs 1GB video)
+- Disk I/O speed fluctuates based on file location and system load
+- Hashing large files takes longer, causing sudden rate drops
+
+EMA smooths these fluctuations while still adapting to sustained speed changes.
+
+#### Algorithm Specification
+
+```typescript
+// ETA Calculator State (maintained across progress updates)
+interface ETAState {
+  emaRate: number;           // Exponential moving average of processing rate (bytes/ms)
+  lastUpdateTime: number;    // Timestamp of last update
+  lastProcessedBytes: number; // Bytes processed at last update
+  alpha: number;             // EMA smoothing factor (0.1 = smooth, 0.3 = responsive)
+}
+
+// Initialize when scan starts
+function initETAState(): ETAState {
+  return {
+    emaRate: 0,
+    lastUpdateTime: Date.now(),
+    lastProcessedBytes: 0,
+    alpha: 0.2  // Balance between smoothness and responsiveness
+  };
+}
+
+// Calculate ETA on each progress update
+function calculateETA(
+  state: ETAState,
+  currentProcessedBytes: number,
+  totalBytes: number
+): { etaMs: number; state: ETAState } {
+  const now = Date.now();
+  const timeDelta = now - state.lastUpdateTime;
+  const bytesDelta = currentProcessedBytes - state.lastProcessedBytes;
+
+  // Minimum time between updates to avoid division instability
+  if (timeDelta < 100) {
+    // Return previous estimate
+    const remainingBytes = totalBytes - currentProcessedBytes;
+    return {
+      etaMs: state.emaRate > 0 ? remainingBytes / state.emaRate : null,
+      state
+    };
+  }
+
+  // Calculate instantaneous rate (bytes per millisecond)
+  const instantRate = bytesDelta / timeDelta;
+
+  // Update EMA rate
+  // First update: use instantaneous rate directly
+  // Subsequent updates: blend with previous rate
+  const newEmaRate = state.emaRate === 0
+    ? instantRate
+    : state.alpha * instantRate + (1 - state.alpha) * state.emaRate;
+
+  // Calculate remaining time
+  const remainingBytes = totalBytes - currentProcessedBytes;
+  const etaMs = newEmaRate > 0 ? Math.round(remainingBytes / newEmaRate) : null;
+
+  return {
+    etaMs,
+    state: {
+      ...state,
+      emaRate: newEmaRate,
+      lastUpdateTime: now,
+      lastProcessedBytes: currentProcessedBytes
+    }
+  };
+}
+```
+
+#### Backend vs Frontend Calculation
+
+| Aspect | Backend (Rust) | Frontend (Svelte) |
+|--------|---------------|-------------------|
+| **Responsibility** | Primary ETA calculation | Fallback/display |
+| **Data available** | Precise byte counts, file queue | Progress events only |
+| **Update frequency** | Every 100 files or 1 second | On event receipt |
+| **Sent to frontend** | `estimated_time_remaining_ms` | Used directly if present |
+
+**Backend implementation** (in `src-tauri/src/scanner/progress.rs`):
+
+```rust
+pub struct ProgressTracker {
+    start_time: Instant,
+    ema_rate: f64,           // bytes per millisecond
+    last_update: Instant,
+    last_bytes: u64,
+    alpha: f64,              // EMA smoothing factor
+}
+
+impl ProgressTracker {
+    pub fn new() -> Self {
+        Self {
+            start_time: Instant::now(),
+            ema_rate: 0.0,
+            last_update: Instant::now(),
+            last_bytes: 0,
+            alpha: 0.2,
+        }
+    }
+
+    pub fn update(&mut self, processed_bytes: u64, total_bytes: u64) -> Option<u64> {
+        let now = Instant::now();
+        let time_delta = now.duration_since(self.last_update).as_millis() as f64;
+
+        // Skip if too soon (avoid instability)
+        if time_delta < 100.0 {
+            return self.calculate_eta(processed_bytes, total_bytes);
+        }
+
+        let bytes_delta = (processed_bytes - self.last_bytes) as f64;
+        let instant_rate = bytes_delta / time_delta;
+
+        // Update EMA
+        self.ema_rate = if self.ema_rate == 0.0 {
+            instant_rate
+        } else {
+            self.alpha * instant_rate + (1.0 - self.alpha) * self.ema_rate
+        };
+
+        self.last_update = now;
+        self.last_bytes = processed_bytes;
+
+        self.calculate_eta(processed_bytes, total_bytes)
+    }
+
+    fn calculate_eta(&self, processed_bytes: u64, total_bytes: u64) -> Option<u64> {
+        if self.ema_rate <= 0.0 || processed_bytes >= total_bytes {
+            return None;
+        }
+
+        let remaining = (total_bytes - processed_bytes) as f64;
+        Some((remaining / self.ema_rate) as u64)
+    }
+}
+```
+
+#### Frontend Fallback
+
+When `estimated_time_remaining_ms` is not provided by the backend (e.g., during the discovery phase before total size is known), the frontend uses a simpler file-count-based calculation:
+
+```typescript
+function fallbackETA(progress: ScanProgress): number | null {
+  if (!progress.started_at_ms || !progress.estimated_total || progress.processed_files === 0) {
+    return null;
+  }
+
+  const elapsedMs = Date.now() - progress.started_at_ms;
+  const filesPerMs = progress.processed_files / elapsedMs;
+  const remainingFiles = progress.estimated_total - progress.processed_files;
+
+  if (filesPerMs <= 0) return null;
+  return Math.round(remainingFiles / filesPerMs);
+}
+```
+
+#### Edge Cases
+
+| Scenario | Handling |
+|----------|----------|
+| Scan just started (< 1 second) | Show "Calculating..." |
+| ETA > 24 hours | Show "More than a day" |
+| Scan paused | Freeze ETA display, don't update state |
+| Scan resumed | Reset `lastUpdateTime`, preserve `emaRate` |
+| Zero bytes processed | Return null (show "Calculating...") |
+| Negative remaining (overestimate) | Show "Almost done..." |
+
+#### Tuning the Alpha Parameter
+
+- **α = 0.1**: Very smooth, slow to adapt. Good for consistent workloads.
+- **α = 0.2**: Balanced (recommended default). Smooths spikes while adapting.
+- **α = 0.3**: More responsive. Better for highly variable file sizes.
+
+For duplicate file scanning where file sizes vary dramatically, **α = 0.2** provides the best balance.
+
 ### Changes Required
 
 #### 7.4.1 Create Progress Component
