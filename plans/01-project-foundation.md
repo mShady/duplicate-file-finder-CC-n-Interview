@@ -408,13 +408,13 @@ After scaffolding, update the package.json to include all required dependencies 
 ### Success Criteria
 
 #### Automated Verification
-- [ ] `ls package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json` shows all files exist
-- [ ] `npm install` completes without errors
-- [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
+- [x] `ls package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json` shows all files exist
+- [x] `npm install` completes without errors
+- [x] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 
 #### Manual Verification
-- [ ] Project structure matches expected layout
-- [ ] `npm run dev` starts the Vite dev server (Ctrl+C to exit)
+- [x] Project structure matches expected layout
+- [x] `npm run dev` starts the Vite dev server (Ctrl+C to exit)
 
 ### Code Review
 Run background code-reviewer agent on `package.json`. Iterate until "Code looks good. No significant issues found."
