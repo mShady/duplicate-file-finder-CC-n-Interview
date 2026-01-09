@@ -547,12 +547,12 @@ strip = true
 ### Success Criteria
 
 #### Automated Verification
-- [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
-- [ ] `cat src-tauri/tauri.conf.json | jq .productName` outputs "DupliFind"
-- [ ] `ls src-tauri/capabilities/default.json` confirms capabilities file exists
+- [x] `cargo check --manifest-path src-tauri/Cargo.toml` passes
+- [x] `cat src-tauri/tauri.conf.json | jq .productName` outputs "DupliFind"
+- [x] `ls src-tauri/capabilities/default.json` confirms capabilities file exists
 
 #### Manual Verification
-- [ ] Configuration values match specification requirements
+- [x] Configuration values match specification requirements
 
 ### Code Review
 Run background code-reviewer agent on `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and `src-tauri/capabilities/default.json`. Iterate until "Code looks good. No significant issues found."
