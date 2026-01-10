@@ -1,4 +1,5 @@
 // DupliFind - Main library entry point
+#![warn(clippy::all, clippy::pedantic)]
 
 mod commands;
 mod state;

@@ -30,7 +30,7 @@ else
     echo -e "${YELLOW}Installing Xcode Command Line Tools...${NC}"
     xcode-select --install
     echo "Please complete the installation dialog, then run this script again."
-    exit 1
+    exit 0
 fi
 
 # Check Homebrew
@@ -106,7 +106,7 @@ if cargo install --list | grep -q "tauri-cli"; then
     echo -e "${GREEN}✓${NC} Tauri CLI is installed"
 else
     echo -e "${YELLOW}Installing Tauri CLI...${NC}"
-    cargo install tauri-cli
+    cargo install tauri-cli@^2
 fi
 
 # Verify all installations

@@ -747,7 +747,7 @@ export default defineConfig({
 
   build: {
     // Tauri uses Chromium on Windows and WebKit on macOS and Linux
-    target: process.env.TAURI_PLATFORM === 'windows' ? 'chrome105' : 'safari14',
+    target: process.env.TAURI_PLATFORM === 'windows' ? 'chrome105' : 'safari15',
     // Don't minify for debug builds
     minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
     // Produce sourcemaps for debug builds
@@ -763,10 +763,10 @@ export default defineConfig({
 ```json
 {
   "compilerOptions": {
-    "target": "ES2021",
+    "target": "ES2022",
     "useDefineForClassFields": true,
     "module": "ESNext",
-    "lib": ["ES2021", "DOM", "DOM.Iterable"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "moduleResolution": "bundler",
     "strict": true,
     "noEmit": true,
@@ -831,11 +831,11 @@ export default defineConfig({
 ### Success Criteria
 
 #### Automated Verification
-- [ ] `npm run check` passes (svelte-check)
-- [ ] `ls vite.config.ts tsconfig.json tsconfig.node.json index.html` shows all files
+- [x] `npm run check` passes (svelte-check)
+- [x] `ls vite.config.ts tsconfig.json tsconfig.node.json index.html` shows all files
 
 #### Manual Verification
-- [ ] TypeScript configuration is strict and appropriate for the project
+- [x] TypeScript configuration is strict and appropriate for the project
 
 ### Code Review
 Run background code-reviewer agent on configuration files. Iterate until "Code looks good. No significant issues found."

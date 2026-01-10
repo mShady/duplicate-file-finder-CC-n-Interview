@@ -125,7 +125,7 @@ if ($tauriInstalled) {
     Write-Status "Tauri CLI is installed" $true
 } else {
     Write-Host "Installing Tauri CLI..." -ForegroundColor Yellow
-    cargo install tauri-cli
+    cargo install tauri-cli@^2
 }
 
 # Final verification

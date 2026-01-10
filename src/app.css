@@ -64,10 +64,17 @@ body {
   min-height: 100vh;
 }
 
-/* Disable text selection and drag on non-input elements for native feel */
-body:not(input):not(textarea) {
+/* Disable text selection and drag for native feel */
+body {
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* Re-enable selection for input fields */
+input,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 /* Re-enable selection for text content */
