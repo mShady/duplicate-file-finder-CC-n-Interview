@@ -1,21 +1,26 @@
 // DupliFind - Main library entry point
 #![warn(clippy::all, clippy::pedantic)]
+// Allow dead_code for now - is_scanning will be used in future phases
+#![allow(dead_code)]
 
 mod commands;
 mod state;
 
 use state::AppState;
-use std::sync::Mutex;
 use tauri::Manager;
 
+/// Run the Tauri application.
+///
+/// # Panics
+///
+/// Panics if the Tauri application fails to initialize or run.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
-            // Initialize application state
-            let state = AppState::new();
-            app.manage(Mutex::new(state));
+            // Initialize application state (internally thread-safe via AtomicBool)
+            app.manage(AppState::new());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

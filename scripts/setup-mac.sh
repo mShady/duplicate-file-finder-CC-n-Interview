@@ -48,8 +48,17 @@ fi
 
 # Add Homebrew to path for Apple Silicon if not already present
 if [[ $(uname -m) == 'arm64' ]]; then
-    if ! grep -qF '/opt/homebrew/bin/brew shellenv' ~/.zprofile 2>/dev/null; then
-        echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+    BREW_SHELLENV_LINE='eval "$(/opt/homebrew/bin/brew shellenv)"'
+    ZPROFILE="${HOME}/.zprofile"
+    # Only add if the exact line doesn't already exist (idempotent)
+    if [ -f "$ZPROFILE" ]; then
+        if ! grep -qxF "$BREW_SHELLENV_LINE" "$ZPROFILE" 2>/dev/null; then
+            echo "$BREW_SHELLENV_LINE" >> "$ZPROFILE"
+            echo -e "${GREEN}✓${NC} Added Homebrew to ~/.zprofile"
+        fi
+    else
+        echo "$BREW_SHELLENV_LINE" >> "$ZPROFILE"
+        echo -e "${GREEN}✓${NC} Created ~/.zprofile with Homebrew path"
     fi
     eval "$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null || true
 fi

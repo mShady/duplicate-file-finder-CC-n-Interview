@@ -3,7 +3,7 @@
 /// Simple greet command for testing
 #[tauri::command]
 pub fn greet(name: &str) -> String {
-    format!("Hello, {}! Welcome to DupliFind.", name)
+    format!("Hello, {name}! Welcome to DupliFind.")
 }
 
 #[cfg(test)]

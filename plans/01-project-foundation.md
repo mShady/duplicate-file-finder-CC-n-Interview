@@ -461,7 +461,7 @@ Configure the Tauri application settings, window properties, and application met
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'"
     }
   },
   "bundle": {
@@ -485,6 +485,8 @@ Configure the Tauri application settings, window properties, and application met
   }
 }
 ```
+
+**Note on CSP**: The `style-src 'unsafe-inline'` directive is intentionally required because Svelte component scoped styles inject inline `<style>` tags at runtime. Without this directive, the styles would be blocked by the Content Security Policy.
 
 #### 1.3.2 Create Capabilities Configuration
 
@@ -1120,13 +1122,13 @@ a:hover {
 ### Success Criteria
 
 #### Automated Verification
-- [ ] `npm run check` passes
-- [ ] `ls src/main.ts src/App.svelte src/app.css` shows all files
+- [x] `npm run check` passes
+- [x] `ls src/main.ts src/App.svelte src/app.css` shows all files
 
 #### Manual Verification
-- [ ] `npm run tauri dev` launches the application
-- [ ] Light/dark theme follows system preference
-- [ ] Backend test (greet) works correctly
+- [x] `npm run tauri dev` launches the application
+- [x] Light/dark theme follows system preference
+- [x] Backend test (greet) works correctly
 
 ### Code Review
 Run background code-reviewer agent on Svelte and CSS files. Iterate until "Code looks good. No significant issues found."
