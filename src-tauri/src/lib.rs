@@ -1,7 +1,5 @@
 // DupliFind - Main library entry point
 #![warn(clippy::all, clippy::pedantic)]
-// Allow dead_code for now - is_scanning will be used in future phases
-#![allow(dead_code)]
 
 mod commands;
 mod state;

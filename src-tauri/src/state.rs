@@ -18,6 +18,8 @@ impl AppState {
     }
 
     /// Check if a scan is currently running
+    /// (Will be used by scan commands in future phases)
+    #[allow(dead_code)]
     pub fn is_scanning(&self) -> bool {
         // Acquire ordering ensures we see all writes that happened before the flag was set.
         // This is important if is_scanning ever guards access to other shared state.
@@ -25,6 +27,8 @@ impl AppState {
     }
 
     /// Set the scanning state
+    /// (Will be used by scan commands in future phases)
+    #[allow(dead_code)]
     pub fn set_scanning(&self, value: bool) {
         // Release ordering ensures all prior writes are visible to threads that subsequently
         // observe this flag change via Acquire load.

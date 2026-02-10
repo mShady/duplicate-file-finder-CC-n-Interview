@@ -11,7 +11,13 @@
       greeting = await invoke<string>('greet', { name });
     } catch (e: unknown) {
       greeting = '';
-      error = e instanceof Error ? e.message : 'Failed to connect to backend';
+      if (e instanceof Error) {
+        error = e.message;
+      } else if (typeof e === 'string') {
+        error = e;
+      } else {
+        error = 'Failed to connect to backend';
+      }
     }
   }
 
