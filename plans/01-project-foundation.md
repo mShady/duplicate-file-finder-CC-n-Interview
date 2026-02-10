@@ -1274,12 +1274,12 @@ MIT
 ### Success Criteria
 
 #### Automated Verification
-- [ ] `ls README.md` shows file exists
-- [ ] `head -1 README.md` shows "# DupliFind"
+- [x] `ls README.md` shows file exists
+- [x] `head -1 README.md` shows "# DupliFind"
 
 #### Manual Verification
-- [ ] README is comprehensive and follows standard format
-- [ ] All commands work as documented
+- [x] README is comprehensive and follows standard format
+- [x] All commands work as documented
 
 ### Code Review
 Run background code-reviewer agent on README.md. Iterate until "Code looks good. No significant issues found."
