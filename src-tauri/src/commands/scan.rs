@@ -24,7 +24,7 @@ pub struct ScanResponse {
     pub message: String,
 }
 
-/// Global scan state (separate from AppState for cancellation)
+/// Global scan state (separate from `AppState` for cancellation)
 pub struct ScanState {
     pub cancel_flag: Option<Arc<AtomicBool>>,
 }
@@ -43,6 +43,7 @@ impl Default for ScanState {
 
 /// Start a new scan
 #[tauri::command]
+#[allow(clippy::too_many_lines)]
 pub async fn start_scan(
     request: ScanRequest,
     app_handle: AppHandle,
@@ -130,7 +131,7 @@ pub async fn start_scan(
                     total_size += file_info.size;
 
                     // Emit progress event every 100 files
-                    if file_count % 100 == 0 {
+                    if file_count.is_multiple_of(100) {
                         let progress = ScanProgress {
                             total_files: file_count,
                             processed_files: file_count,
@@ -152,7 +153,7 @@ pub async fn start_scan(
         }
 
         // Wait for walker to complete
-        let stats = walker_handle.join().unwrap_or_default();
+        let walk_stats = walker_handle.join().unwrap_or_default();
 
         // Update database with final stats - retrieve state from AppHandle
         // Extract the db Arc before awaiting to avoid holding MutexGuard across await
@@ -160,15 +161,16 @@ pub async fn start_scan(
         let db_arc = app_state
             .lock()
             .ok()
-            .and_then(|state| state.database());
+            .and_then(|s| s.database());
 
+        #[allow(clippy::cast_possible_wrap)]
         if let Some(db_arc) = db_arc {
             let db = db_arc.lock().await;
             let _ = queries::scan_sessions::update_stats(
                 db.pool(),
                 session_id,
-                stats.total_files as i64,
-                stats.total_bytes as i64,
+                walk_stats.total_files as i64,
+                walk_stats.total_bytes as i64,
                 0, // duplicate_groups - set later
                 0, // wasted_space - set later
             )
@@ -199,7 +201,7 @@ pub async fn start_scan(
             "scan-complete",
             serde_json::json!({
                 "session_id": session_id,
-                "stats": stats,
+                "stats": walk_stats,
             }),
         );
     });

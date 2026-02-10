@@ -6,6 +6,7 @@ mod db;
 mod scanner;
 mod state;
 
+use commands::scan::ScanState;
 use state::AppState;
 use std::sync::Mutex;
 use tauri::Manager;
@@ -40,6 +41,10 @@ pub fn run() {
             });
 
             app.manage(Mutex::new(state));
+
+            // Initialize scan state
+            app.manage(Mutex::new(ScanState::new()));
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -53,6 +58,11 @@ pub fn run() {
             commands::remove_protected_folder,
             commands::get_protected_folders,
             commands::is_path_protected,
+            // Scan commands
+            commands::start_scan,
+            commands::cancel_scan,
+            commands::get_scan_progress,
+            commands::is_scanning,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
