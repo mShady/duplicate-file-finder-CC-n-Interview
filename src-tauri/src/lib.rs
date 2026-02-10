@@ -2,6 +2,7 @@
 #![warn(clippy::all, clippy::pedantic)]
 
 mod commands;
+mod db;
 mod state;
 
 use state::AppState;
