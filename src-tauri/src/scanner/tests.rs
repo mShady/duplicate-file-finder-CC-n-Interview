@@ -204,7 +204,11 @@ mod integration_tests {
         let walker = DirectoryWalker::new(config);
         let result = walker.walk().unwrap();
 
-        assert_eq!(result.files.len(), 0, "Empty directory should have no files");
+        assert_eq!(
+            result.files.len(),
+            0,
+            "Empty directory should have no files"
+        );
     }
 
     #[test]

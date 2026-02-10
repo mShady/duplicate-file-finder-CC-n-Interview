@@ -12,12 +12,10 @@ pub mod settings {
 
     /// Get a setting value by key
     pub async fn get(pool: &SqlitePool, key: &str) -> Result<Option<String>, sqlx::Error> {
-        let result: Option<(String,)> = sqlx::query_as(
-            "SELECT value FROM settings WHERE key = ?"
-        )
-        .bind(key)
-        .fetch_optional(pool)
-        .await?;
+        let result: Option<(String,)> = sqlx::query_as("SELECT value FROM settings WHERE key = ?")
+            .bind(key)
+            .fetch_optional(pool)
+            .await?;
 
         Ok(result.map(|r| r.0))
     }
@@ -26,7 +24,7 @@ pub mod settings {
     pub async fn set(pool: &SqlitePool, key: &str, value: &str) -> Result<(), sqlx::Error> {
         sqlx::query(
             "INSERT INTO settings (key, value) VALUES (?, ?)
-             ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         )
         .bind(key)
         .bind(value)
@@ -38,13 +36,14 @@ pub mod settings {
 
     /// Get all settings
     pub async fn get_all(pool: &SqlitePool) -> Result<Vec<Setting>, sqlx::Error> {
-        let results: Vec<(String, String)> = sqlx::query_as(
-            "SELECT key, value FROM settings"
-        )
-        .fetch_all(pool)
-        .await?;
+        let results: Vec<(String, String)> = sqlx::query_as("SELECT key, value FROM settings")
+            .fetch_all(pool)
+            .await?;
 
-        Ok(results.into_iter().map(|(key, value)| Setting { key, value }).collect())
+        Ok(results
+            .into_iter()
+            .map(|(key, value)| Setting { key, value })
+            .collect())
     }
 }
 
@@ -54,12 +53,10 @@ pub mod protected_folders {
 
     /// Add a protected folder
     pub async fn add(pool: &SqlitePool, path: &str) -> Result<i64, sqlx::Error> {
-        let result = sqlx::query(
-            "INSERT INTO protected_folders (path) VALUES (?) RETURNING id"
-        )
-        .bind(path)
-        .fetch_one(pool)
-        .await?;
+        let result = sqlx::query("INSERT INTO protected_folders (path) VALUES (?) RETURNING id")
+            .bind(path)
+            .fetch_one(pool)
+            .await?;
 
         Ok(sqlx::Row::get(&result, 0))
     }
@@ -76,15 +73,15 @@ pub mod protected_folders {
 
     /// Get all protected folders
     pub async fn get_all(pool: &SqlitePool) -> Result<Vec<ProtectedFolder>, sqlx::Error> {
-        let results: Vec<(i64, String, i64)> = sqlx::query_as(
-            "SELECT id, path, added_at FROM protected_folders ORDER BY path"
-        )
-        .fetch_all(pool)
-        .await?;
+        let results: Vec<(i64, String, i64)> =
+            sqlx::query_as("SELECT id, path, added_at FROM protected_folders ORDER BY path")
+                .fetch_all(pool)
+                .await?;
 
-        Ok(results.into_iter().map(|(id, path, added_at)| {
-            ProtectedFolder { id, path, added_at }
-        }).collect())
+        Ok(results
+            .into_iter()
+            .map(|(id, path, added_at)| ProtectedFolder { id, path, added_at })
+            .collect())
     }
 
     /// Check if a path is protected
@@ -94,7 +91,7 @@ pub mod protected_folders {
     pub async fn is_protected(pool: &SqlitePool, path: &str) -> Result<bool, sqlx::Error> {
         // Check if the path exactly matches or starts with a protected folder path followed by '/'
         let result: Option<(i32,)> = sqlx::query_as(
-            "SELECT 1 FROM protected_folders WHERE ? = path OR ? LIKE path || '/' || '%' LIMIT 1"
+            "SELECT 1 FROM protected_folders WHERE ? = path OR ? LIKE path || '/' || '%' LIMIT 1",
         )
         .bind(path)
         .bind(path)
@@ -110,10 +107,7 @@ pub mod scan_sessions {
     use super::{ScanSession, ScanSessionRow, ScanStatus, SqlitePool};
 
     /// Create a new scan session
-    pub async fn create(
-        pool: &SqlitePool,
-        paths: &[String],
-    ) -> Result<i64, sqlx::Error> {
+    pub async fn create(pool: &SqlitePool, paths: &[String]) -> Result<i64, sqlx::Error> {
         let paths_json = serde_json::to_string(paths).unwrap_or_else(|_| "[]".to_string());
         #[allow(clippy::cast_possible_wrap)]
         let now = std::time::SystemTime::now()
@@ -123,7 +117,7 @@ pub mod scan_sessions {
 
         let result = sqlx::query(
             "INSERT INTO scan_sessions (started_at, status, scanned_paths)
-             VALUES (?, 'running', ?) RETURNING id"
+             VALUES (?, 'running', ?) RETURNING id",
         )
         .bind(now)
         .bind(paths_json)
@@ -141,10 +135,12 @@ pub mod scan_sessions {
     ) -> Result<(), sqlx::Error> {
         #[allow(clippy::cast_possible_wrap)]
         let now = if status == ScanStatus::Completed || status == ScanStatus::Cancelled {
-            Some(std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64)
+            Some(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs() as i64,
+            )
         } else {
             None
         };
@@ -173,7 +169,7 @@ pub mod scan_sessions {
         sqlx::query(
             "UPDATE scan_sessions
              SET total_files = ?, total_size = ?, duplicate_groups = ?, wasted_space = ?
-             WHERE id = ?"
+             WHERE id = ?",
         )
         .bind(total_files)
         .bind(total_size)
@@ -188,20 +184,18 @@ pub mod scan_sessions {
 
     /// Get the latest scan session
     pub async fn get_latest(pool: &SqlitePool) -> Result<Option<ScanSession>, sqlx::Error> {
-        let result: Option<ScanSessionRow> =
-            sqlx::query_as(
-                "SELECT id, started_at, completed_at, status, scanned_paths,
+        let result: Option<ScanSessionRow> = sqlx::query_as(
+            "SELECT id, started_at, completed_at, status, scanned_paths,
                         total_files, total_size, duplicate_groups, wasted_space
                  FROM scan_sessions
                  ORDER BY started_at DESC
-                 LIMIT 1"
-            )
-            .fetch_optional(pool)
-            .await?;
+                 LIMIT 1",
+        )
+        .fetch_optional(pool)
+        .await?;
 
-        Ok(result.map(|(id, started_at, completed_at, status, scanned_paths,
-                        total_files, total_size, duplicate_groups, wasted_space)| {
-            ScanSession {
+        Ok(result.map(
+            |(
                 id,
                 started_at,
                 completed_at,
@@ -211,27 +205,37 @@ pub mod scan_sessions {
                 total_size,
                 duplicate_groups,
                 wasted_space,
-            }
-        }))
+            )| {
+                ScanSession {
+                    id,
+                    started_at,
+                    completed_at,
+                    status,
+                    scanned_paths,
+                    total_files,
+                    total_size,
+                    duplicate_groups,
+                    wasted_space,
+                }
+            },
+        ))
     }
 
     /// Get a paused scan session (for resume)
     pub async fn get_paused(pool: &SqlitePool) -> Result<Option<ScanSession>, sqlx::Error> {
-        let result: Option<ScanSessionRow> =
-            sqlx::query_as(
-                "SELECT id, started_at, completed_at, status, scanned_paths,
+        let result: Option<ScanSessionRow> = sqlx::query_as(
+            "SELECT id, started_at, completed_at, status, scanned_paths,
                         total_files, total_size, duplicate_groups, wasted_space
                  FROM scan_sessions
                  WHERE status = 'paused'
                  ORDER BY started_at DESC
-                 LIMIT 1"
-            )
-            .fetch_optional(pool)
-            .await?;
+                 LIMIT 1",
+        )
+        .fetch_optional(pool)
+        .await?;
 
-        Ok(result.map(|(id, started_at, completed_at, status, scanned_paths,
-                        total_files, total_size, duplicate_groups, wasted_space)| {
-            ScanSession {
+        Ok(result.map(
+            |(
                 id,
                 started_at,
                 completed_at,
@@ -241,8 +245,20 @@ pub mod scan_sessions {
                 total_size,
                 duplicate_groups,
                 wasted_space,
-            }
-        }))
+            )| {
+                ScanSession {
+                    id,
+                    started_at,
+                    completed_at,
+                    status,
+                    scanned_paths,
+                    total_files,
+                    total_size,
+                    duplicate_groups,
+                    wasted_space,
+                }
+            },
+        ))
     }
 }
 
@@ -263,7 +279,7 @@ pub mod deletion_history {
         let result = sqlx::query(
             "INSERT INTO deletion_history
              (file_path, file_size, file_hash, group_id, original_created_at, original_modified_at)
-             VALUES (?, ?, ?, ?, ?, ?) RETURNING id"
+             VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
         )
         .bind(file_path)
         .bind(file_size)
@@ -287,23 +303,26 @@ pub mod deletion_history {
             "SELECT id, file_path, file_size, file_hash, deleted_at, group_id
              FROM deletion_history
              ORDER BY deleted_at DESC
-             LIMIT ? OFFSET ?"
+             LIMIT ? OFFSET ?",
         )
         .bind(limit)
         .bind(offset)
         .fetch_all(pool)
         .await?;
 
-        Ok(results.into_iter().map(|(id, file_path, file_size, file_hash, deleted_at, group_id)| {
-            DeletionRecord {
-                id,
-                file_path,
-                file_size,
-                file_hash,
-                deleted_at,
-                group_id,
-            }
-        }).collect())
+        Ok(results
+            .into_iter()
+            .map(
+                |(id, file_path, file_size, file_hash, deleted_at, group_id)| DeletionRecord {
+                    id,
+                    file_path,
+                    file_size,
+                    file_hash,
+                    deleted_at,
+                    group_id,
+                },
+            )
+            .collect())
     }
 
     /// Get total deletion count
@@ -335,7 +354,9 @@ mod tests {
         let (db, _dir) = setup_test_db().await;
 
         // Test setting a value
-        settings::set(db.pool(), "test_key", "test_value").await.unwrap();
+        settings::set(db.pool(), "test_key", "test_value")
+            .await
+            .unwrap();
 
         // Test getting the value
         let value = settings::get(db.pool(), "test_key").await.unwrap();
@@ -351,23 +372,33 @@ mod tests {
         let (db, _dir) = setup_test_db().await;
 
         // Add a protected folder
-        let id = protected_folders::add(db.pool(), "/test/path").await.unwrap();
+        let id = protected_folders::add(db.pool(), "/test/path")
+            .await
+            .unwrap();
         assert!(id > 0);
 
         // Check if path is protected
-        let is_protected = protected_folders::is_protected(db.pool(), "/test/path/subdir").await.unwrap();
+        let is_protected = protected_folders::is_protected(db.pool(), "/test/path/subdir")
+            .await
+            .unwrap();
         assert!(is_protected);
 
         // Check non-protected path
-        let not_protected = protected_folders::is_protected(db.pool(), "/other/path").await.unwrap();
+        let not_protected = protected_folders::is_protected(db.pool(), "/other/path")
+            .await
+            .unwrap();
         assert!(!not_protected);
 
         // Check exact match is also protected
-        let exact_match = protected_folders::is_protected(db.pool(), "/test/path").await.unwrap();
+        let exact_match = protected_folders::is_protected(db.pool(), "/test/path")
+            .await
+            .unwrap();
         assert!(exact_match);
 
         // Check that a path with a similar prefix but not a subdirectory is NOT protected
-        let false_positive = protected_folders::is_protected(db.pool(), "/test/pathological").await.unwrap();
+        let false_positive = protected_folders::is_protected(db.pool(), "/test/pathological")
+            .await
+            .unwrap();
         assert!(!false_positive);
 
         // Remove and verify
@@ -390,7 +421,9 @@ mod tests {
         assert_eq!(session.unwrap().status, "running");
 
         // Update status
-        scan_sessions::update_status(db.pool(), id, ScanStatus::Completed).await.unwrap();
+        scan_sessions::update_status(db.pool(), id, ScanStatus::Completed)
+            .await
+            .unwrap();
 
         let session = scan_sessions::get_latest(db.pool()).await.unwrap();
         assert_eq!(session.unwrap().status, "completed");

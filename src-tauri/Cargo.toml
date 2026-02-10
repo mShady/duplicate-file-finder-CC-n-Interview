@@ -50,6 +50,7 @@ num_cpus = "1.16"
 
 # Channel for async communication
 crossbeam-channel = "0.5"
+tauri-plugin-dialog = "2"
 
 [dev-dependencies]
 tempfile = "3.14"

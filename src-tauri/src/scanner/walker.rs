@@ -170,10 +170,7 @@ impl DirectoryWalker {
                             }
                             Err(e) => {
                                 self.progress.increment_skipped();
-                                skipped.push((
-                                    entry.path().display().to_string(),
-                                    e.to_string(),
-                                ));
+                                skipped.push((entry.path().display().to_string(), e.to_string()));
                             }
                         }
                     }
@@ -290,9 +287,7 @@ impl DirectoryWalker {
 
     /// Walk directories using a channel for streaming results
     #[allow(clippy::cast_possible_truncation)]
-    pub fn walk_channel(
-        &self,
-    ) -> (Receiver<WalkChannelItem>, thread::JoinHandle<ScanStats>) {
+    pub fn walk_channel(&self) -> (Receiver<WalkChannelItem>, thread::JoinHandle<ScanStats>) {
         let (sender, receiver) = bounded(1000);
         let config = self.config.clone();
         let cancelled = Arc::clone(&self.cancelled);
@@ -352,20 +347,15 @@ impl DirectoryWalker {
                                 }
                                 Err(e) => {
                                     progress.increment_skipped();
-                                    let _ = sender.send(Err((
-                                        entry.path().to_path_buf(),
-                                        e.to_string(),
-                                    )));
+                                    let _ = sender
+                                        .send(Err((entry.path().to_path_buf(), e.to_string())));
                                 }
                             }
                         }
                         Err(e) => {
                             progress.increment_skipped();
                             if let Some(path) = e.path() {
-                                let _ = sender.send(Err((
-                                    path.to_path_buf(),
-                                    e.to_string(),
-                                )));
+                                let _ = sender.send(Err((path.to_path_buf(), e.to_string())));
                             }
                         }
                     }

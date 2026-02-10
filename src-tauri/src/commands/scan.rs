@@ -158,10 +158,7 @@ pub async fn start_scan(
         // Update database with final stats - retrieve state from AppHandle
         // Extract the db Arc before awaiting to avoid holding MutexGuard across await
         let app_state = handle.state::<Mutex<AppState>>();
-        let db_arc = app_state
-            .lock()
-            .ok()
-            .and_then(|s| s.database());
+        let db_arc = app_state.lock().ok().and_then(|s| s.database());
 
         #[allow(clippy::cast_possible_wrap)]
         if let Some(db_arc) = db_arc {
@@ -176,12 +173,9 @@ pub async fn start_scan(
             )
             .await;
 
-            let _ = queries::scan_sessions::update_status(
-                db.pool(),
-                session_id,
-                ScanStatus::Completed,
-            )
-            .await;
+            let _ =
+                queries::scan_sessions::update_status(db.pool(), session_id, ScanStatus::Completed)
+                    .await;
         }
 
         // Clear scanning state
@@ -242,13 +236,9 @@ pub async fn cancel_scan(
 
         if let Some((db, session_id)) = db {
             let db = db.lock().await;
-            queries::scan_sessions::update_status(
-                db.pool(),
-                session_id,
-                ScanStatus::Cancelled,
-            )
-            .await
-            .map_err(|e| e.to_string())?;
+            queries::scan_sessions::update_status(db.pool(), session_id, ScanStatus::Cancelled)
+                .await
+                .map_err(|e| e.to_string())?;
         }
     }
 
@@ -272,9 +262,7 @@ pub async fn get_scan_progress(
 
 /// Check if a scan is currently running
 #[tauri::command]
-pub async fn is_scanning(
-    state: State<'_, Mutex<AppState>>,
-) -> Result<bool, String> {
+pub async fn is_scanning(state: State<'_, Mutex<AppState>>) -> Result<bool, String> {
     let state = state.lock().map_err(|e| e.to_string())?;
     Ok(state.is_scanning)
 }

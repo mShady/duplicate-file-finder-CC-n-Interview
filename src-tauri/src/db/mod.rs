@@ -4,8 +4,8 @@ pub mod models;
 pub mod queries;
 mod schema;
 
-use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use sqlx::migrate::MigrateDatabase;
+use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use std::path::PathBuf;
 use thiserror::Error;
 
@@ -39,7 +39,10 @@ impl Database {
         let db_url = format!("sqlite:{}?mode=rwc", db_path.display());
 
         // Create database if it doesn't exist
-        if !sqlx::Sqlite::database_exists(&db_url).await.unwrap_or(false) {
+        if !sqlx::Sqlite::database_exists(&db_url)
+            .await
+            .unwrap_or(false)
+        {
             log::info!("Creating database at: {}", db_path.display());
             sqlx::Sqlite::create_database(&db_url).await?;
         }
@@ -56,9 +59,7 @@ impl Database {
             .await?;
 
         // Enable foreign keys
-        sqlx::query("PRAGMA foreign_keys=ON")
-            .execute(&pool)
-            .await?;
+        sqlx::query("PRAGMA foreign_keys=ON").execute(&pool).await?;
 
         let db = Self { pool };
 
@@ -71,9 +72,7 @@ impl Database {
     /// Run database migrations
     async fn run_migrations(&self) -> Result<(), DbError> {
         log::info!("Running database migrations...");
-        sqlx::migrate!("./migrations")
-            .run(&self.pool)
-            .await?;
+        sqlx::migrate!("./migrations").run(&self.pool).await?;
         log::info!("Migrations complete");
         Ok(())
     }

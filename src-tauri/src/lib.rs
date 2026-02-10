@@ -23,10 +23,13 @@ pub fn run() {
     env_logger::init();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             // Get app data directory
-            let app_data_dir = app.path().app_data_dir()
+            let app_data_dir = app
+                .path()
+                .app_data_dir()
                 .expect("Failed to get app data directory");
 
             log::info!("App data directory: {}", app_data_dir.display());
@@ -35,7 +38,9 @@ pub fn run() {
             // We use block_on here since setup is synchronous
             let state = tauri::async_runtime::block_on(async {
                 let mut state = AppState::new();
-                state.init_database(app_data_dir).await
+                state
+                    .init_database(app_data_dir)
+                    .await
                     .expect("Failed to initialize database");
                 state
             });
