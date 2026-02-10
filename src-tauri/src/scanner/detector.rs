@@ -530,4 +530,149 @@ mod tests {
         let result = detector.detect(files);
         assert!(matches!(result, Err(ScanError::Cancelled)));
     }
+
+    fn create_large_test_file(dir: &std::path::Path, name: &str, content: &[u8]) -> FileInfo {
+        let path = dir.join(name);
+        let mut file = File::create(&path).unwrap();
+        file.write_all(content).unwrap();
+
+        let metadata = std::fs::metadata(&path).unwrap();
+        let created = metadata
+            .created()
+            .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64)
+            .unwrap_or(0);
+        let modified = metadata
+            .modified()
+            .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64)
+            .unwrap_or(0);
+
+        FileInfo {
+            path,
+            size: content.len() as u64,
+            created_at: created,
+            modified_at: modified,
+            is_symlink: false,
+        }
+    }
+
+    #[test]
+    fn test_large_file_detection() {
+        let dir = tempdir().unwrap();
+
+        // Create larger files (16KB) to test partial hash path
+        let large_content: Vec<u8> = (0..16384).map(|i| (i % 256) as u8).collect();
+
+        let files = vec![
+            create_large_test_file(dir.path(), "large1.bin", &large_content),
+            create_large_test_file(dir.path(), "large2.bin", &large_content),
+        ];
+
+        let mut detector = DuplicateDetector::new();
+        let result = detector.detect(files).unwrap();
+
+        assert_eq!(result.groups.len(), 1);
+        assert_eq!(result.groups[0].files.len(), 2);
+    }
+
+    #[test]
+    fn test_partial_hash_false_positive() {
+        let dir = tempdir().unwrap();
+
+        // Create files with same start/end but different middle
+        // This tests that full hash is used to eliminate false positives
+        let mut content1: Vec<u8> = vec![0u8; 16384];
+        let mut content2: Vec<u8> = vec![0u8; 16384];
+
+        // Same first 4KB
+        for i in 0..4096 {
+            content1[i] = 0xAA;
+            content2[i] = 0xAA;
+        }
+
+        // Different middle
+        content1[8000] = 0xFF;
+        content2[8000] = 0x00;
+
+        // Same last 4KB
+        for i in 12288..16384 {
+            content1[i] = 0xBB;
+            content2[i] = 0xBB;
+        }
+
+        let files = vec![
+            create_large_test_file(dir.path(), "false_pos1.bin", &content1),
+            create_large_test_file(dir.path(), "false_pos2.bin", &content2),
+        ];
+
+        let mut detector = DuplicateDetector::new();
+        let result = detector.detect(files).unwrap();
+
+        // Should NOT be detected as duplicates because full hash differs
+        assert_eq!(result.groups.len(), 0);
+    }
+
+    #[test]
+    fn test_many_duplicates_performance() {
+        let dir = tempdir().unwrap();
+        let content = b"Duplicate content for performance test";
+
+        // Create 100 duplicate files
+        let files: Vec<FileInfo> = (0..100)
+            .map(|i| create_test_file(dir.path(), &format!("file{i}.txt"), content))
+            .collect();
+
+        let mut detector = DuplicateDetector::new();
+        let result = detector.detect(files).unwrap();
+
+        assert_eq!(result.groups.len(), 1);
+        assert_eq!(result.groups[0].files.len(), 100);
+        assert_eq!(result.duplicate_count, 99);
+    }
+
+    #[test]
+    fn test_mixed_sizes_and_duplicates() {
+        let dir = tempdir().unwrap();
+
+        let files = vec![
+            // Size 10
+            create_test_file(dir.path(), "a1.txt", b"0123456789"),
+            create_test_file(dir.path(), "a2.txt", b"0123456789"),
+            // Size 10 but different content
+            create_test_file(dir.path(), "b1.txt", b"9876543210"),
+            // Size 5
+            create_test_file(dir.path(), "c1.txt", b"12345"),
+            create_test_file(dir.path(), "c2.txt", b"12345"),
+            create_test_file(dir.path(), "c3.txt", b"12345"),
+            // Unique
+            create_test_file(dir.path(), "unique.txt", b"unique content here"),
+        ];
+
+        let mut detector = DuplicateDetector::new();
+        let result = detector.detect(files).unwrap();
+
+        // Should have 2 groups: size 10 dups and size 5 dups
+        assert_eq!(result.groups.len(), 2);
+
+        // Total duplicates: 1 (from size 10 group) + 2 (from size 5 group)
+        assert_eq!(result.duplicate_count, 3);
+    }
+
+    #[test]
+    fn test_stats_tracking() {
+        let dir = tempdir().unwrap();
+        let content = b"Test content";
+
+        let files = vec![
+            create_test_file(dir.path(), "file1.txt", content),
+            create_test_file(dir.path(), "file2.txt", content),
+            create_test_file(dir.path(), "file3.txt", b"Different"),
+        ];
+
+        let mut detector = DuplicateDetector::new();
+        let result = detector.detect(files).unwrap();
+
+        // Check that stats were tracked
+        assert!(result.stats.partial_hashes > 0);
+        assert!(result.stats.full_hashes > 0);
+    }
 }
