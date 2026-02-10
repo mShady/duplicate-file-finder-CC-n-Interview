@@ -40,6 +40,9 @@ Add to permissions array:
 #### Automated Verification
 - [ ] `cargo check` passes
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -71,6 +74,9 @@ The icon should be:
 #### Manual Verification
 - [ ] Icon files exist in correct locations
 - [ ] Icons are visually clear at small sizes
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -131,6 +137,9 @@ async load() {
 
 #### Automated Verification
 - [ ] `npm run check` passes
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -283,6 +292,9 @@ mod tray;
 #### Automated Verification
 - [ ] `cargo check` passes
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -376,6 +388,9 @@ Update `lib.rs` to handle window close events:
 - [ ] With setting enabled, closing window hides to tray
 - [ ] With setting disabled, closing window quits app
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -440,6 +455,9 @@ Add styles:
 - [ ] Toggle appears in settings
 - [ ] Setting persists across app restarts
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -500,6 +518,9 @@ Add to commands module and register in lib.rs.
 #### Automated Verification
 - [ ] `cargo check` passes
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -522,6 +543,9 @@ Add tests for:
 
 #### Automated Verification
 - [ ] `cargo test tray` passes
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`

@@ -47,8 +47,7 @@ blake3 = { version = "1.8", features = ["rayon"] }
 - [ ] BLAKE3 version is 1.8.x or later
 
 ### Code Review
-Run background code-reviewer agent on `src-tauri/Cargo.toml`. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on `src-tauri/Cargo.toml`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -454,8 +453,7 @@ pub use walker::DirectoryWalker;
 - [ ] Partial hash covers first/last 4KB
 
 ### Code Review
-Run background code-reviewer agent on `src-tauri/src/scanner/hasher.rs`. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on `src-tauri/src/scanner/hasher.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -1120,8 +1118,7 @@ pub use walker::DirectoryWalker;
 - [ ] Three-stage algorithm works as expected
 
 ### Code Review
-Run background code-reviewer agent on `src-tauri/src/scanner/detector.rs`. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on `src-tauri/src/scanner/detector.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -1646,8 +1643,7 @@ pub mod file_cache {
 - [ ] Database queries are comprehensive
 
 ### Code Review
-Run background code-reviewer agent on the updated `src-tauri/src/db/queries.rs`. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on the updated `src-tauri/src/db/queries.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -2326,8 +2322,7 @@ Add the `get_scan_results` command:
 - [ ] Events are emitted to the frontend
 
 ### Code Review
-Run background code-reviewer agent on `src-tauri/src/commands/scan.rs`. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on `src-tauri/src/commands/scan.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -2378,8 +2373,7 @@ pub use walker::DirectoryWalker;
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 
 ### Code Review
-Run background code-reviewer agent on scanner module files. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on scanner module files.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -2558,8 +2552,7 @@ Add additional tests to the existing test module:
 - [ ] Tests cover edge cases and performance scenarios
 
 ### Code Review
-Run background code-reviewer agent on the test additions. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on the test additions.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -3060,8 +3053,7 @@ Update the ScanButton component to display duplicate detection results.
 - [ ] "Original" badge is shown on oldest file
 
 ### Code Review
-Run background code-reviewer agent on `src/lib/components/ScanButton.svelte`. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on `src/lib/components/ScanButton.svelte`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 

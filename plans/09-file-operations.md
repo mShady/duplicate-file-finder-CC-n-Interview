@@ -30,6 +30,9 @@ Update capabilities:
 }
 ```
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -128,6 +131,9 @@ pub struct FileInfoResponse {
     modified: Option<u64>,
 }
 ```
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -252,6 +258,9 @@ Create a reusable context menu component.
 </style>
 ```
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -361,6 +370,9 @@ Create the specific context menu for files with all required actions.
   <FileInfoDialog info={fileInfo} onClose={() => { showFileInfo = false; fileInfo = null; }} />
 {/if}
 ```
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -556,7 +568,7 @@ Create a dialog component to display detailed file information.
 - [ ] Dates are formatted in user's locale
 
 ### Code Review
-Run background code-reviewer agent on `src/lib/components/FileInfoDialog.svelte`.
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -574,6 +586,9 @@ Add clipboard plugin for copy path functionality.
 npm run tauri add clipboard-manager
 ```
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -587,6 +602,9 @@ Add right-click context menu to file items in the results view.
 ### Changes Required
 
 Update FileDetailsPanel to handle right-click and show FileContextMenu.
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`

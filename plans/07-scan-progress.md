@@ -282,6 +282,9 @@ pub mod scan_progress {
 ### Success Criteria
 - [ ] `cargo check` passes
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -330,6 +333,9 @@ impl DirectoryWalker {
 ### Success Criteria
 - [ ] `cargo check` passes
 - [ ] Pause/resume works in tests
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -411,6 +417,9 @@ pub async fn get_paused_scan(
 
 ### Success Criteria
 - [ ] `cargo check` passes
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -875,6 +884,9 @@ For duplicate file scanning where file sizes vary dramatically, **α = 0.2** pro
 ### Success Criteria
 - [ ] `npm run check` passes
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -892,6 +904,9 @@ Update App.svelte to use ScanProgressDisplay with pause/resume.
 ### Success Criteria
 - [ ] Progress display works
 - [ ] Pause/resume buttons work
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -912,6 +927,9 @@ Save scan progress periodically and restore on app restart.
 ### Success Criteria
 - [ ] Progress is saved periodically
 - [ ] Paused scans can be resumed after restart
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`

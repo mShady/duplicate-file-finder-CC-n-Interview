@@ -98,8 +98,7 @@ Note: This is only used during development for sqlx compile-time checking. The a
 - [ ] Dependencies are appropriate versions
 
 ### Code Review
-Run background code-reviewer agent on `src-tauri/Cargo.toml`. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on `src-tauri/Cargo.toml`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -445,8 +444,7 @@ pub fn run() {
 - [ ] Module structure is clean and follows Rust conventions
 
 ### Code Review
-Run background code-reviewer agent on all new Rust files in db module. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on all new Rust files in db module.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -594,8 +592,7 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
 - [ ] Indexes are appropriate for expected query patterns
 
 ### Code Review
-Run background code-reviewer agent on migration SQL. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on migration SQL.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -1021,8 +1018,7 @@ mod schema;
 - [ ] Tests validate core functionality
 
 ### Code Review
-Run background code-reviewer agent on `src-tauri/src/db/queries.rs`. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on `src-tauri/src/db/queries.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -1235,8 +1231,7 @@ pub fn run() {
 - [ ] Database file is created in app data directory
 
 ### Code Review
-Run background code-reviewer agent on `src-tauri/src/state.rs` and `src-tauri/src/lib.rs`. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on `src-tauri/src/state.rs` and `src-tauri/src/lib.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -1502,8 +1497,7 @@ pub fn run() {
 - [ ] Commands are callable from the frontend (test via browser console)
 
 ### Code Review
-Run background code-reviewer agent on all command files. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on all command files.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 

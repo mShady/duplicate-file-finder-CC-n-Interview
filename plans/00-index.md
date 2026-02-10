@@ -66,7 +66,7 @@ Each phase follows this structure:
 - [ ] Step 2
 
 #### Code Review
-Run background code-reviewer agent on changed files. Iterate until "Code looks good. No significant issues found."
+Run code-review-fix-loop agent.
 
 #### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
@@ -178,7 +178,7 @@ duplicate-file-finder-CC-n-Interview/
 - **Commit Size**: Each phase targets ~5 files or fewer per commit
 - **Test Separation**: When tests would make a commit too large, they're in separate phases
 - **Vertical Slices**: Backend + Frontend + Tests together for each feature
-- **Code Review**: Every phase ends with code-reviewer agent review
+- **Code Review**: Every phase ends with code-review-fix-loop agent review
 - **Commits**: Every phase ends with `/cl:commit`
 - **Sub-phases**: Some phases have detailed sub-phases (e.g., 4.2.3, 5.1.5, 7.1.2) for complex specifications
 

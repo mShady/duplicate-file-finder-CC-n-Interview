@@ -328,8 +328,7 @@ if ($allGood) {
 - [ ] On Windows: PowerShell script runs and shows all prerequisites
 
 ### Code Review
-Run background code-reviewer agent on `scripts/setup-mac.sh` and `scripts/setup-windows.ps1`. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on `scripts/setup-mac.sh` and `scripts/setup-windows.ps1`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -417,7 +416,7 @@ After scaffolding, update the package.json to include all required dependencies 
 - [x] `npm run dev` starts the Vite dev server (Ctrl+C to exit)
 
 ### Code Review
-Run background code-reviewer agent on `package.json`. Iterate until "Code looks good. No significant issues found."
+Run code-review-fix-loop agent on `package.json`.
 
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
@@ -557,7 +556,7 @@ strip = true
 - [x] Configuration values match specification requirements
 
 ### Code Review
-Run background code-reviewer agent on `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and `src-tauri/capabilities/default.json`. Iterate until "Code looks good. No significant issues found."
+Run code-review-fix-loop agent on `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and `src-tauri/capabilities/default.json`.
 
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
@@ -706,7 +705,7 @@ fn main() {
 - [x] Module structure is clean and follows Rust conventions
 
 ### Code Review
-Run background code-reviewer agent on all new Rust files. Iterate until "Code looks good. No significant issues found."
+Run code-review-fix-loop agent on all new Rust files.
 
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
@@ -840,8 +839,7 @@ export default defineConfig({
 - [x] TypeScript configuration is strict and appropriate for the project
 
 ### Code Review
-Run background code-reviewer agent on configuration files. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on configuration files.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -1131,8 +1129,7 @@ a:hover {
 - [x] Backend test (greet) works correctly
 
 ### Code Review
-Run background code-reviewer agent on Svelte and CSS files. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on Svelte and CSS files.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -1282,8 +1279,7 @@ MIT
 - [x] All commands work as documented
 
 ### Code Review
-Run background code-reviewer agent on README.md. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on README.md.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -1393,8 +1389,7 @@ Ensure package.json has the test scripts (already added in Phase 1.2, but verify
 - [ ] Test infrastructure is ready for component tests
 
 ### Code Review
-Run background code-reviewer agent on test configuration files. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on test configuration files.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 

@@ -32,6 +32,9 @@ trash = "5.2"
 ### Success Criteria
 - [ ] `cargo check` passes
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -239,7 +242,7 @@ mod tests {
 - [ ] `cargo test deletion` passes
 
 ### Code Review
-Run background code-reviewer agent.
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -378,7 +381,7 @@ Register the new commands in the invoke handler.
 - [ ] `cargo check` passes
 
 ### Code Review
-Run background code-reviewer agent.
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -635,7 +638,7 @@ Create the frontend deletion confirmation dialog.
 - [ ] `npm run check` passes
 
 ### Code Review
-Run background code-reviewer agent.
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -825,7 +828,7 @@ Create the post-deletion summary dialog.
 - [ ] `npm run check` passes
 
 ### Code Review
-Run background code-reviewer agent.
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -1154,7 +1157,7 @@ export function clearSelection(): Set<string> {
 - [ ] Clear selection removes all selections
 
 ### Code Review
-Run background code-reviewer agent on selection utilities and SmartSelectionPanel.
+Run code-review-fix-loop agent on selection utilities and SmartSelectionPanel.
 
 ### Commit
 Execute `/cl:commit`
@@ -1176,6 +1179,9 @@ Update ResultsView.svelte to:
 
 ### Success Criteria
 - [ ] Complete deletion flow works
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -1465,7 +1471,7 @@ Create a UI component for viewing deletion history. The backend `get_deletion_hi
 - [ ] Empty state is shown when no history exists
 
 ### Code Review
-Run background code-reviewer agent on DeletionHistoryPanel.svelte.
+Run code-review-fix-loop agent on DeletionHistoryPanel.svelte.
 
 ### Commit
 Execute `/cl:commit`

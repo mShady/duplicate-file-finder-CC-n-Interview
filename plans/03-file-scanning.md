@@ -52,8 +52,7 @@ crossbeam-channel = "0.5"
 - [ ] Dependencies are appropriate versions
 
 ### Code Review
-Run background code-reviewer agent on `src-tauri/Cargo.toml`. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on `src-tauri/Cargo.toml`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -314,8 +313,7 @@ mod tests {
 - [ ] Types are comprehensive and well-documented
 
 ### Code Review
-Run background code-reviewer agent on scanner type files. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on scanner type files.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -871,8 +869,7 @@ mod tests {
 - [ ] Progress tracking is accurate
 
 ### Code Review
-Run background code-reviewer agent on `src-tauri/src/scanner/walker.rs`. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on `src-tauri/src/scanner/walker.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -954,8 +951,7 @@ pub fn run() {
 - [ ] Application starts without errors
 
 ### Code Review
-Run background code-reviewer agent on `src-tauri/src/lib.rs`. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on `src-tauri/src/lib.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -1307,8 +1303,7 @@ mod tests {
 - [ ] Scan commands compile correctly
 
 ### Code Review
-Run background code-reviewer agent on `src-tauri/src/commands/scan.rs`. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on `src-tauri/src/commands/scan.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -1401,8 +1396,7 @@ pub fn run() {
 - [ ] Application starts without errors
 
 ### Code Review
-Run background code-reviewer agent on `src-tauri/src/lib.rs`. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on `src-tauri/src/lib.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -1686,8 +1680,7 @@ pub use walker::DirectoryWalker;
 - [ ] Tests cover the main scanner functionality
 
 ### Code Review
-Run background code-reviewer agent on `src-tauri/src/scanner/tests.rs`. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on `src-tauri/src/scanner/tests.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
@@ -1907,7 +1900,7 @@ Add to permissions array:
 - [ ] "Clear All" removes all selected folders
 
 ### Code Review
-Run background code-reviewer agent on `src/lib/components/FolderPicker.svelte`.
+Run code-review-fix-loop agent on `src/lib/components/FolderPicker.svelte`.
 
 ### Commit
 Execute `/cl:commit`
@@ -2394,8 +2387,7 @@ mkdir -p src/lib/components
 - [ ] **Persistence verification**: Close app, reopen, and verify paths are still shown
 
 ### Code Review
-Run background code-reviewer agent on Svelte components. Iterate until "Code looks good. No significant issues found."
-
+Run code-review-fix-loop agent on Svelte components.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 

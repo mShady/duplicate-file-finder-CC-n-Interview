@@ -70,6 +70,9 @@ function getExtension(path: string): string {
 }
 ```
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -232,6 +235,9 @@ Create the filter bar UI with file type buttons and search.
 </style>
 ```
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -290,6 +296,9 @@ pub fn is_image_file(path: &Path) -> bool {
 }
 ```
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -334,6 +343,9 @@ Add to Cargo.toml:
 ```toml
 base64 = "0.22"
 ```
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -428,6 +440,9 @@ Create a component that displays thumbnails with lazy loading.
 </style>
 ```
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -441,6 +456,9 @@ Add filter bar and filtering logic to the results view.
 ### Changes Required
 
 Update ResultsView.svelte to include FilterBar and apply filtering to groups.
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -456,6 +474,9 @@ Cache thumbnails to avoid regenerating on every view.
 
 Add thumbnail caching table and logic.
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -464,6 +485,9 @@ Execute `/cl:commit`
 ## Phase 10.8: Tests
 
 Add tests for filtering and thumbnail generation.
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`

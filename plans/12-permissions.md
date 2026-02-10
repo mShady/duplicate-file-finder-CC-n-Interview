@@ -108,6 +108,9 @@ fn os_version() -> Option<String> {
 }
 ```
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -377,6 +380,9 @@ Create the blocking permission wizard UI.
 </style>
 ```
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -390,6 +396,9 @@ Remember if user has granted permissions or skipped.
 ### Changes Required
 
 Store permission state in settings and check on app startup.
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -646,7 +655,7 @@ winreg = "0.52"
 - [ ] Access check updates after adding app to allowed list
 
 ### Code Review
-Run background code-reviewer agent on Windows permission code.
+Run code-review-fix-loop agent on Windows permission code.
 
 ### Commit
 Execute `/cl:commit`
@@ -662,6 +671,9 @@ Show permission wizard on first launch or when access is lost.
 
 Update App.svelte to check permissions on mount and show wizard if needed.
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -670,6 +682,9 @@ Execute `/cl:commit`
 ## Phase 12.6: Tests
 
 Add tests for permission checking.
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`

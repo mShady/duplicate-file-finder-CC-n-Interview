@@ -67,6 +67,9 @@ Apply macOS-specific styling for native look and feel.
 }
 ```
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -130,6 +133,9 @@ Apply Windows-specific styling for native look and feel.
 }
 ```
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -177,6 +183,9 @@ detectPlatform().then(() => {
 });
 ```
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -196,6 +205,9 @@ Review and polish all UI components for consistency.
 - Empty state designs
 - Hover effects
 - Focus indicators
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -569,6 +581,9 @@ describe('Duplicate Detection Edge Cases', () => {
 });
 ```
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -606,6 +621,9 @@ Run full E2E test suite and fix any issues.
     - [ ] Empty files grouped as duplicates
     - [ ] Same-size different-content files NOT grouped
     - [ ] Large file duplicate detection works
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -653,6 +671,9 @@ Write-Host "Build complete! Installer at:" -ForegroundColor Green
 Write-Host "  src-tauri\target\release\bundle\msi\DupliFind_*.msi"
 Write-Host "  src-tauri\target\release\bundle\nsis\DupliFind_*-setup.exe"
 ```
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`

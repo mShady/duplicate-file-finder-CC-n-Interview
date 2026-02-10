@@ -122,8 +122,7 @@ Create the main layout component with a resizable split panel.
 - [ ] Divider can be dragged to resize panels
 
 ### Code Review
-Run background code-reviewer agent. Iterate until "Code looks good."
-
+Run code-review-fix-loop agent.
 ### Commit
 Execute `/cl:commit`
 
@@ -665,8 +664,7 @@ Create the component that displays the list of duplicate groups in the master pa
 - [ ] Selection works
 
 ### Code Review
-Run background code-reviewer agent. Iterate until "Code looks good."
-
+Run code-review-fix-loop agent.
 ### Commit
 Execute `/cl:commit`
 
@@ -983,8 +981,7 @@ Create the detail panel that shows files within a selected duplicate group.
 - [ ] Dates are clearly labeled and visually distinct
 
 ### Code Review
-Run background code-reviewer agent. Iterate until "Code looks good."
-
+Run code-review-fix-loop agent.
 ### Commit
 Execute `/cl:commit`
 
@@ -1084,8 +1081,7 @@ export interface FilterState {
 - [ ] `npm run check` passes
 
 ### Code Review
-Run background code-reviewer agent. Iterate until "Code looks good."
-
+Run code-review-fix-loop agent.
 ### Commit
 Execute `/cl:commit`
 
@@ -1300,8 +1296,7 @@ Create the main results view that combines all components.
 - [ ] File selection works
 
 ### Code Review
-Run background code-reviewer agent. Iterate until "Code looks good."
-
+Run code-review-fix-loop agent.
 ### Commit
 Execute `/cl:commit`
 
@@ -1651,8 +1646,7 @@ Update the main App.svelte to use the results view.
 - [ ] Results are displayed correctly
 
 ### Code Review
-Run background code-reviewer agent. Iterate until "Code looks good."
-
+Run code-review-fix-loop agent.
 ### Commit
 Execute `/cl:commit`
 

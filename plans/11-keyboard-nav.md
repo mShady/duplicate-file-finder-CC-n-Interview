@@ -99,6 +99,9 @@ export const defaultShortcuts = {
 };
 ```
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -165,6 +168,9 @@ export function createFocusManager<T>(items: () => T[], onSelect: (item: T) => v
 }
 ```
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -181,6 +187,9 @@ Update DuplicateGroupsList.svelte:
 - Add tabindex for focusability
 - Handle arrow key navigation
 - Add visual focus indicator
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -199,6 +208,9 @@ Update FileDetailsPanel.svelte:
 - Enter to open file
 - Arrow keys to navigate
 - Delete to mark for deletion
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
@@ -372,6 +384,9 @@ Create a dialog showing all available keyboard shortcuts.
 </style>
 ```
 
+### Code Review
+Run code-review-fix-loop agent.
+
 ### Commit
 Execute `/cl:commit`
 
@@ -390,6 +405,9 @@ Update all interactive components with:
 - aria-selected for selections
 - aria-expanded for collapsible sections
 - Focus visible styles
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ### Commit
 Execute `/cl:commit`
