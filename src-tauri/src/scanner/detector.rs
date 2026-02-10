@@ -136,6 +136,11 @@ impl DuplicateDetector {
         Arc::clone(&self.cancelled)
     }
 
+    /// Set an external cancellation flag (e.g., from scan state)
+    pub fn set_cancel_flag(&mut self, flag: Arc<AtomicBool>) {
+        self.cancelled = flag;
+    }
+
     /// Detect duplicates from a list of files
     pub fn detect(&mut self, files: Vec<FileInfo>) -> Result<DetectionResult, ScanError> {
         let mut stats = DetectionStats::default();

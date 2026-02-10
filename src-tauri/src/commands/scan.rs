@@ -146,16 +146,19 @@ pub async fn start_scan(
         let (receiver, walker_handle) = walker.walk_channel();
 
         let mut files: Vec<FileInfo> = Vec::new();
+        let mut total_bytes: u64 = 0;
 
         for result in receiver {
             match result {
                 Ok(file_info) => {
+                    total_bytes += file_info.size;
+
                     // Emit progress event every 100 files
-                    if (files.len() + 1).is_multiple_of(100) {
+                    if (files.len() + 1) % 100 == 0 {
                         let progress = ScanProgress {
                             total_files: (files.len() + 1) as u64,
                             processed_files: (files.len() + 1) as u64,
-                            total_bytes: files.iter().map(|f| f.size).sum::<u64>() + file_info.size,
+                            total_bytes,
                             current_path: Some(file_info.path.display().to_string()),
                             skipped_files: 0,
                             estimated_total: None,
@@ -189,6 +192,16 @@ pub async fn start_scan(
         );
 
         let mut detector = DuplicateDetector::new();
+
+        // Wire the scan cancel flag to the detector so cancellation works during detection
+        let cancel_flag = handle
+            .state::<Mutex<ScanState>>()
+            .lock()
+            .ok()
+            .and_then(|ss| ss.cancel_flag.clone());
+        if let Some(flag) = cancel_flag {
+            detector.set_cancel_flag(flag);
+        }
         let detection_result = match detector.detect(files) {
             Ok(result) => result,
             Err(e) => {
