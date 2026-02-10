@@ -33,7 +33,7 @@ pub fn run() {
             let state = tauri::async_runtime::block_on(async {
                 let mut state = AppState::new();
                 if let Err(e) = state.init_database(app_data_dir).await {
-                    log::error!("Failed to initialize database: {}", e);
+                    log::error!("Failed to initialize database: {e}");
                 }
                 state
             });
@@ -43,6 +43,15 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::greet,
+            // Settings commands
+            commands::get_setting,
+            commands::set_setting,
+            commands::get_all_settings,
+            // Protected folders commands
+            commands::add_protected_folder,
+            commands::remove_protected_folder,
+            commands::get_protected_folders,
+            commands::is_path_protected,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

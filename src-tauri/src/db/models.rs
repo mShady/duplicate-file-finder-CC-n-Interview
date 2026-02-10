@@ -53,13 +53,13 @@ pub enum ScanStatus {
 }
 
 impl ScanStatus {
-    pub fn as_str(&self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
-            ScanStatus::Running => "running",
-            ScanStatus::Paused => "paused",
-            ScanStatus::Completed => "completed",
-            ScanStatus::Cancelled => "cancelled",
-            ScanStatus::Failed => "failed",
+            Self::Running => "running",
+            Self::Paused => "paused",
+            Self::Completed => "completed",
+            Self::Cancelled => "cancelled",
+            Self::Failed => "failed",
         }
     }
 

@@ -1,5 +1,8 @@
 //! Tauri command handlers
 
+pub mod protected;
+pub mod settings;
+
 /// Simple greet command for testing
 #[tauri::command]
 pub fn greet(name: &str) -> String {
@@ -9,6 +12,10 @@ pub fn greet(name: &str) -> String {
     }
     format!("Hello, {trimmed}! Welcome to DupliFind.")
 }
+
+// Re-export command functions for convenience
+pub use protected::*;
+pub use settings::*;
 
 #[cfg(test)]
 mod tests {

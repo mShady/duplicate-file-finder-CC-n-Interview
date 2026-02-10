@@ -1,11 +1,14 @@
 //! Database query functions
 
-use super::models::*;
+use super::models::{DeletionRecord, ProtectedFolder, ScanSession, ScanStatus, Setting};
 use sqlx::SqlitePool;
+
+/// Row type for scan session queries
+type ScanSessionRow = (i64, i64, Option<i64>, String, String, i64, i64, i32, i64);
 
 /// Settings-related queries
 pub mod settings {
-    use super::*;
+    use super::{Setting, SqlitePool};
 
     /// Get a setting value by key
     pub async fn get(pool: &SqlitePool, key: &str) -> Result<Option<String>, sqlx::Error> {
@@ -47,7 +50,7 @@ pub mod settings {
 
 /// Protected folder queries
 pub mod protected_folders {
-    use super::*;
+    use super::{ProtectedFolder, SqlitePool};
 
     /// Add a protected folder
     pub async fn add(pool: &SqlitePool, path: &str) -> Result<i64, sqlx::Error> {
@@ -100,7 +103,7 @@ pub mod protected_folders {
 
 /// Scan session queries
 pub mod scan_sessions {
-    use super::*;
+    use super::{ScanSession, ScanSessionRow, ScanStatus, SqlitePool};
 
     /// Create a new scan session
     pub async fn create(
@@ -111,7 +114,7 @@ pub mod scan_sessions {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_secs() as i64;
+            .as_secs().cast_signed();
 
         let result = sqlx::query(
             "INSERT INTO scan_sessions (started_at, status, scanned_paths)
@@ -135,7 +138,7 @@ pub mod scan_sessions {
             Some(std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_secs() as i64)
+                .as_secs().cast_signed())
         } else {
             None
         };
@@ -179,7 +182,7 @@ pub mod scan_sessions {
 
     /// Get the latest scan session
     pub async fn get_latest(pool: &SqlitePool) -> Result<Option<ScanSession>, sqlx::Error> {
-        let result: Option<(i64, i64, Option<i64>, String, String, i64, i64, i32, i64)> =
+        let result: Option<ScanSessionRow> =
             sqlx::query_as(
                 "SELECT id, started_at, completed_at, status, scanned_paths,
                         total_files, total_size, duplicate_groups, wasted_space
@@ -208,7 +211,7 @@ pub mod scan_sessions {
 
     /// Get a paused scan session (for resume)
     pub async fn get_paused(pool: &SqlitePool) -> Result<Option<ScanSession>, sqlx::Error> {
-        let result: Option<(i64, i64, Option<i64>, String, String, i64, i64, i32, i64)> =
+        let result: Option<ScanSessionRow> =
             sqlx::query_as(
                 "SELECT id, started_at, completed_at, status, scanned_paths,
                         total_files, total_size, duplicate_groups, wasted_space
@@ -239,7 +242,7 @@ pub mod scan_sessions {
 
 /// Deletion history queries
 pub mod deletion_history {
-    use super::*;
+    use super::{DeletionRecord, SqlitePool};
 
     /// Record a deletion
     pub async fn record(
