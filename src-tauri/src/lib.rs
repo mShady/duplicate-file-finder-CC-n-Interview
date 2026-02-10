@@ -68,6 +68,7 @@ pub fn run() {
             commands::cancel_scan,
             commands::get_scan_progress,
             commands::is_scanning,
+            commands::get_scan_results,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
