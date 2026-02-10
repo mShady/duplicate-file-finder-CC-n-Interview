@@ -1,29 +1,12 @@
 <script lang="ts">
   import { invoke } from '@tauri-apps/api/core';
+  import ScanButton from './lib/components/ScanButton.svelte';
 
   let name = $state('');
   let greeting = $state('');
-  let error = $state('');
 
-  async function greet(): Promise<void> {
-    error = '';
-    try {
-      greeting = await invoke<string>('greet', { name });
-    } catch (e: unknown) {
-      greeting = '';
-      if (e instanceof Error) {
-        error = e.message;
-      } else if (typeof e === 'string') {
-        error = e;
-      } else {
-        error = 'Failed to connect to backend';
-      }
-    }
-  }
-
-  function handleSubmit(e: SubmitEvent): void {
-    e.preventDefault();
-    void greet();
+  async function greet() {
+    greeting = await invoke('greet', { name });
   }
 </script>
 
@@ -31,28 +14,24 @@
   <h1>DupliFind</h1>
   <p class="subtitle">Find and remove duplicate files</p>
 
+  <div class="scan-section">
+    <ScanButton />
+  </div>
+
   <div class="test-section">
-    <h2>Connection Test</h2>
-    <form onsubmit={handleSubmit}>
-      <label for="name-input" class="sr-only">Your name</label>
-      <input
-        id="name-input"
-        type="text"
-        bind:value={name}
-        placeholder="Enter your name"
-      />
-      <button type="submit">Test Backend</button>
+    <h2>Backend Connection Test</h2>
+    <form
+      onsubmit={(e) => {
+        e.preventDefault();
+        greet();
+      }}
+    >
+      <input type="text" bind:value={name} placeholder="Enter your name" />
+      <button type="submit">Test</button>
     </form>
     {#if greeting}
       <p class="greeting">{greeting}</p>
     {/if}
-    {#if error}
-      <p class="error">{error}</p>
-    {/if}
-  </div>
-
-  <div class="info">
-    <p>This is a placeholder UI. The full interface will be built in subsequent phases.</p>
   </div>
 </main>
 
@@ -61,9 +40,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    min-height: 100vh;
     padding: 2rem;
+    min-height: 100vh;
   }
 
   h1 {
@@ -76,18 +54,24 @@
     margin-bottom: 2rem;
   }
 
+  .scan-section {
+    width: 100%;
+    max-width: 500px;
+    margin-bottom: 2rem;
+  }
+
   .test-section {
     background: var(--surface);
-    padding: 2rem;
+    padding: 1.5rem;
     border-radius: 8px;
-    margin-bottom: 2rem;
     width: 100%;
     max-width: 400px;
   }
 
   .test-section h2 {
-    font-size: 1.2rem;
+    font-size: 1rem;
     margin-bottom: 1rem;
+    color: var(--text-secondary);
   }
 
   form {
@@ -111,7 +95,6 @@
     background: var(--primary);
     color: white;
     cursor: pointer;
-    font-weight: 500;
   }
 
   button:hover {
@@ -120,23 +103,9 @@
 
   .greeting {
     margin-top: 1rem;
-    padding: 1rem;
+    padding: 0.75rem;
     background: var(--success-bg);
     border-radius: 4px;
     color: var(--success);
-  }
-
-  .error {
-    margin-top: 1rem;
-    padding: 1rem;
-    background: var(--error-bg);
-    border-radius: 4px;
-    color: var(--error);
-  }
-
-  .info {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    text-align: center;
   }
 </style>
