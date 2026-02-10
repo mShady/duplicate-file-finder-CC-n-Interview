@@ -1,4 +1,11 @@
 //! Scanner type definitions
+//!
+//! NOTE: Some types and methods are used in tests or future phases:
+//! - `ScanResult`, `walk()`, `walk_with_callback()`: Used in scanner tests
+//! - `thread_count()`: Will be used when parallel hashing is implemented
+//! - Various error variants: Reserved for comprehensive error handling
+
+#![allow(dead_code)] // Some items used only in tests or future phases
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;

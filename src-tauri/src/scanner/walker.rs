@@ -1,4 +1,11 @@
 //! Directory traversal implementation
+//!
+//! NOTE: Some methods are used in tests or provide alternative APIs:
+//! - `walk()`, `walk_with_callback()`: Alternative walking APIs used in tests
+//! - `get_progress()`: Used for progress polling (event-based is preferred)
+//! - `create_walker()`: Helper method (cannot be used in spawned thread)
+
+#![allow(dead_code)] // Some methods used only in tests or as alternative APIs
 
 use super::types::{FileInfo, ScanConfig, ScanError, ScanProgress, ScanResult, ScanStats};
 use crossbeam_channel::{bounded, Receiver};
@@ -305,6 +312,9 @@ impl DirectoryWalker {
                     let _ = sender.send(Err((path.clone(), "Path does not exist".to_string())));
                     continue;
                 }
+
+                // NOTE: Cannot use create_walker() here as it requires &self,
+                // but we are in a spawned thread that has moved the config
 
                 let mut walker = WalkDir::new(path)
                     .follow_links(config.follow_symlinks)

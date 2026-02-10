@@ -1,4 +1,10 @@
 //! Database query functions
+//!
+//! NOTE: Some query functions are used in future phases:
+//! - `scan_sessions::{get_latest, get_paused}`: Phase 4 (Resume Scans)
+//! - `deletions::{record, get_history, get_count}`: Phase 5 (Deletion History)
+
+#![allow(dead_code)] // Query functions used in future phases
 
 use super::models::{DeletionRecord, ProtectedFolder, ScanSession, ScanStatus, Setting};
 use sqlx::SqlitePool;

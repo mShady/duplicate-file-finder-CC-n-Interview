@@ -1,4 +1,8 @@
 //! Database module for `SQLite` operations
+//!
+//! NOTE: `Database::close()` method will be used for graceful shutdown in future phases
+
+#![allow(dead_code)] // Methods used in future phases
 
 pub mod models;
 pub mod queries;

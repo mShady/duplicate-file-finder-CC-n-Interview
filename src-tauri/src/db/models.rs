@@ -1,4 +1,12 @@
 //! Database models representing table structures
+//!
+//! NOTE: Some models and methods in this module are marked as used in future phases:
+//! - `ScannedFile`, `DuplicateGroup`: Phase 4 (Duplicate Detection)
+//! - `ScanSession` queries: Phase 4 (Scan Results Display)
+//! - `DeletionRecord`: Phase 5 (Deletion Tracking & History)
+//! - `FileCache`: Phase 4 (Incremental Scanning)
+
+#![allow(dead_code)] // Models/queries used in future phases
 
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
