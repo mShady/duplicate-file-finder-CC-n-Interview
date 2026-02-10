@@ -48,6 +48,9 @@ num_cpus = "1.16"
 
 # Channel for async communication
 crossbeam-channel = "0.5"
+
+# Hashing
+blake3 = { version = "1.8", features = ["rayon"] }
 tauri-plugin-dialog = "2"
 
 [dev-dependencies]
