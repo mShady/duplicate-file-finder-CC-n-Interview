@@ -108,11 +108,11 @@ fn os_version() -> Option<String> {
 }
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -380,11 +380,11 @@ Create the blocking permission wizard UI.
 </style>
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -397,11 +397,11 @@ Remember if user has granted permissions or skipped.
 
 Store permission state in settings and check on app startup.
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -654,11 +654,11 @@ winreg = "0.52"
 - [ ] Wizard guides user through adding DupliFind to allowed apps
 - [ ] Access check updates after adding app to allowed list
 
-### Code Review
-Run code-review-fix-loop agent on Windows permission code.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent on Windows permission code.
 
 ---
 
@@ -671,11 +671,11 @@ Show permission wizard on first launch or when access is lost.
 
 Update App.svelte to check permissions on mount and show wizard if needed.
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -683,11 +683,11 @@ Execute `/cl:commit`
 
 Add tests for permission checking.
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 

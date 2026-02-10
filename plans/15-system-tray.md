@@ -40,11 +40,11 @@ Add to permissions array:
 #### Automated Verification
 - [ ] `cargo check` passes
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -75,11 +75,11 @@ The icon should be:
 - [ ] Icon files exist in correct locations
 - [ ] Icons are visually clear at small sizes
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -138,11 +138,11 @@ async load() {
 #### Automated Verification
 - [ ] `npm run check` passes
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -292,11 +292,11 @@ mod tray;
 #### Automated Verification
 - [ ] `cargo check` passes
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -388,11 +388,11 @@ Update `lib.rs` to handle window close events:
 - [ ] With setting enabled, closing window hides to tray
 - [ ] With setting disabled, closing window quits app
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -455,11 +455,11 @@ Add styles:
 - [ ] Toggle appears in settings
 - [ ] Setting persists across app restarts
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -518,11 +518,11 @@ Add to commands module and register in lib.rs.
 #### Automated Verification
 - [ ] `cargo check` passes
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -544,11 +544,11 @@ Add tests for:
 #### Automated Verification
 - [ ] `cargo test tray` passes
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 

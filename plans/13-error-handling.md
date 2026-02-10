@@ -169,11 +169,11 @@ impl From<std::io::Error> for AppError {
 }
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -267,11 +267,11 @@ impl Default for SkippedFilesManager {
 }
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -431,11 +431,11 @@ Create UI for viewing and retrying skipped files.
 </style>
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -727,11 +727,11 @@ if let Err(ScanError::DiskFull(msg)) = &result {
 - [ ] "Check & Resume" verifies space before resuming
 - [ ] Scan can be cancelled from the alert
 
-### Code Review
-Run code-review-fix-loop agent on disk monitoring code.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent on disk monitoring code.
 
 ---
 
@@ -996,11 +996,11 @@ for entry in walker {
 - [ ] Throttling adapts when disk becomes saturated
 - [ ] Queue depth is respected (pending operations don't exceed max)
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -1017,11 +1017,11 @@ Update scanner to:
 3. Store new hashes in cache
 4. Provide "quick scan" vs "full rescan" options
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -1033,11 +1033,11 @@ Add tests for:
 - Throttling
 - Incremental scanning
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 

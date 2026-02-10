@@ -30,11 +30,11 @@ Update capabilities:
 }
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -132,11 +132,11 @@ pub struct FileInfoResponse {
 }
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -258,11 +258,11 @@ Create a reusable context menu component.
 </style>
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -371,11 +371,11 @@ Create the specific context menu for files with all required actions.
 {/if}
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -567,11 +567,11 @@ Create a dialog component to display detailed file information.
 - [ ] Dialog closes on Escape key or clicking outside
 - [ ] Dates are formatted in user's locale
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -586,11 +586,11 @@ Add clipboard plugin for copy path functionality.
 npm run tauri add clipboard-manager
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -603,11 +603,11 @@ Add right-click context menu to file items in the results view.
 
 Update FileDetailsPanel to handle right-click and show FileContextMenu.
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 

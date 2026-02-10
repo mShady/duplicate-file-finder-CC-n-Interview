@@ -102,11 +102,11 @@ export const settingsStore = new SettingsStore();
 - [ ] Parallelism setting persists across app restarts
 - [ ] Setting changes are saved immediately to database
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -197,11 +197,11 @@ Create the settings UI panel.
 </style>
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -360,11 +360,11 @@ Create UI for managing protected folders.
 </style>
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -381,11 +381,11 @@ npm run tauri add dialog
 
 Update capabilities to include dialog permissions.
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -400,11 +400,11 @@ Combine settings and protected folders into settings view.
 
 Combine SettingsPanel and ProtectedFolders.
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -412,11 +412,11 @@ Execute `/cl:commit`
 
 Add tests for settings and protected folders.
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 

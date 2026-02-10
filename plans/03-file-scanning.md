@@ -51,11 +51,11 @@ crossbeam-channel = "0.5"
 #### Manual Verification
 - [ ] Dependencies are appropriate versions
 
-### Code Review
-Run code-review-fix-loop agent on `src-tauri/Cargo.toml`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on `src-tauri/Cargo.toml`.
 ---
 
 ## Phase 3.2: Create Scanner Module Structure
@@ -312,11 +312,11 @@ mod tests {
 #### Manual Verification
 - [ ] Types are comprehensive and well-documented
 
-### Code Review
-Run code-review-fix-loop agent on scanner type files.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on scanner type files.
 ---
 
 ## Phase 3.3: Implement Directory Walker
@@ -868,11 +868,11 @@ mod tests {
 - [ ] Symlinks are skipped per specification
 - [ ] Progress tracking is accurate
 
-### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/scanner/walker.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on `src-tauri/src/scanner/walker.rs`.
 ---
 
 ## Phase 3.4: Update lib.rs to Include Scanner
@@ -950,11 +950,11 @@ pub fn run() {
 #### Manual Verification
 - [ ] Application starts without errors
 
-### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/lib.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on `src-tauri/src/lib.rs`.
 ---
 
 ## Phase 3.5: Create Scan Commands
@@ -1302,11 +1302,11 @@ mod tests {
 #### Manual Verification
 - [ ] Scan commands compile correctly
 
-### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/commands/scan.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on `src-tauri/src/commands/scan.rs`.
 ---
 
 ## Phase 3.6: Register Scan Commands and State
@@ -1395,11 +1395,11 @@ pub fn run() {
 #### Manual Verification
 - [ ] Application starts without errors
 
-### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/lib.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on `src-tauri/src/lib.rs`.
 ---
 
 ## Phase 3.7: Add Rust Unit Tests for Scanner
@@ -1679,11 +1679,11 @@ pub use walker::DirectoryWalker;
 #### Manual Verification
 - [ ] Tests cover the main scanner functionality
 
-### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/scanner/tests.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on `src-tauri/src/scanner/tests.rs`.
 ---
 
 ## Phase 3.8: Add Folder Picker UI for Scan Scope Selection
@@ -1899,11 +1899,11 @@ Add to permissions array:
 - [ ] Folders can be removed individually
 - [ ] "Clear All" removes all selected folders
 
-### Code Review
-Run code-review-fix-loop agent on `src/lib/components/FolderPicker.svelte`.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent on `src/lib/components/FolderPicker.svelte`.
 
 ---
 
@@ -2386,11 +2386,11 @@ mkdir -p src/lib/components
 - [ ] **App launch restoration**: On app startup, previously selected scan paths are automatically loaded and displayed
 - [ ] **Persistence verification**: Close app, reopen, and verify paths are still shown
 
-### Code Review
-Run code-review-fix-loop agent on Svelte components.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on Svelte components.
 ---
 
 ## End of File 03

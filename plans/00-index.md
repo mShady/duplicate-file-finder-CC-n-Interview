@@ -19,8 +19,8 @@ We follow a **vertical slice** approach - delivering complete, testable features
 2. Frontend (Svelte) implementation
 3. Unit tests
 4. E2E tests (where applicable)
-5. Code review
-6. Git commit via `/cl:commit`
+5. Git commit via `/cl:commit`
+6. Code review (via code-review-fix-loop agent)
 
 ## Plan Files
 
@@ -65,11 +65,11 @@ Each phase follows this structure:
 - [ ] Step 1
 - [ ] Step 2
 
-#### Code Review
-Run code-review-fix-loop agent.
-
 #### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
+
+#### Code Review
+Run code-review-fix-loop agent.
 ```
 
 ## Key Technical Decisions
@@ -171,15 +171,15 @@ duplicate-file-finder-CC-n-Interview/
 1. Start with [01-project-foundation.md](./01-project-foundation.md)
 2. Complete each phase in order within each file
 3. After completing all phases in a file, proceed to the next file
-4. Each phase must pass code review and be committed before proceeding
+4. Each phase must be committed and pass code review before proceeding
 
 ## Notes
 
 - **Commit Size**: Each phase targets ~5 files or fewer per commit
 - **Test Separation**: When tests would make a commit too large, they're in separate phases
 - **Vertical Slices**: Backend + Frontend + Tests together for each feature
-- **Code Review**: Every phase ends with code-review-fix-loop agent review
-- **Commits**: Every phase ends with `/cl:commit`
+- **Commits**: Every phase includes `/cl:commit` to commit implementation work
+- **Code Review**: Every phase ends with code-review-fix-loop agent review (after commit)
 - **Sub-phases**: Some phases have detailed sub-phases (e.g., 4.2.3, 5.1.5, 7.1.2) for complex specifications
 
 ## Recent Additions

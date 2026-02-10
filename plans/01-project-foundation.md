@@ -327,11 +327,11 @@ if ($allGood) {
 - [x] On Mac: `chmod +x scripts/setup-mac.sh && ./scripts/setup-mac.sh` runs without errors
 - [ ] On Windows: PowerShell script runs and shows all prerequisites
 
-### Code Review
-Run code-review-fix-loop agent on `scripts/setup-mac.sh` and `scripts/setup-windows.ps1`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on `scripts/setup-mac.sh` and `scripts/setup-windows.ps1`.
 ---
 
 ## Phase 1.2: Initialize Tauri Project
@@ -415,11 +415,11 @@ After scaffolding, update the package.json to include all required dependencies 
 - [x] Project structure matches expected layout
 - [x] `npm run dev` starts the Vite dev server (Ctrl+C to exit)
 
-### Code Review
-Run code-review-fix-loop agent on `package.json`.
-
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
+
+### Code Review
+Run code-review-fix-loop agent on `package.json`.
 
 ---
 
@@ -555,11 +555,11 @@ strip = true
 #### Manual Verification
 - [x] Configuration values match specification requirements
 
-### Code Review
-Run code-review-fix-loop agent on `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and `src-tauri/capabilities/default.json`.
-
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
+
+### Code Review
+Run code-review-fix-loop agent on `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and `src-tauri/capabilities/default.json`.
 
 ---
 
@@ -704,11 +704,11 @@ fn main() {
 #### Manual Verification
 - [x] Module structure is clean and follows Rust conventions
 
-### Code Review
-Run code-review-fix-loop agent on all new Rust files.
-
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
+
+### Code Review
+Run code-review-fix-loop agent on all new Rust files.
 
 ---
 
@@ -838,11 +838,11 @@ export default defineConfig({
 #### Manual Verification
 - [x] TypeScript configuration is strict and appropriate for the project
 
-### Code Review
-Run code-review-fix-loop agent on configuration files.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on configuration files.
 ---
 
 ## Phase 1.6: Create Base Svelte Application
@@ -1128,11 +1128,11 @@ a:hover {
 - [x] Light/dark theme follows system preference
 - [x] Backend test (greet) works correctly
 
-### Code Review
-Run code-review-fix-loop agent on Svelte and CSS files.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on Svelte and CSS files.
 ---
 
 ## Phase 1.7: Create README Documentation
@@ -1278,11 +1278,11 @@ MIT
 - [x] README is comprehensive and follows standard format
 - [x] All commands work as documented
 
-### Code Review
-Run code-review-fix-loop agent on README.md.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on README.md.
 ---
 
 ## Phase 1.8: Add Testing Infrastructure
@@ -1388,11 +1388,11 @@ Ensure package.json has the test scripts (already added in Phase 1.2, but verify
 - [ ] `npm run test:watch` works and shows passing tests
 - [ ] Test infrastructure is ready for component tests
 
-### Code Review
-Run code-review-fix-loop agent on test configuration files.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on test configuration files.
 ---
 
 ## End of File 01

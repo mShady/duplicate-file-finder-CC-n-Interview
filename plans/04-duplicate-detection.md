@@ -46,11 +46,11 @@ blake3 = { version = "1.8", features = ["rayon"] }
 #### Manual Verification
 - [ ] BLAKE3 version is 1.8.x or later
 
-### Code Review
-Run code-review-fix-loop agent on `src-tauri/Cargo.toml`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on `src-tauri/Cargo.toml`.
 ---
 
 ## Phase 4.2: Create Hasher Module
@@ -452,11 +452,11 @@ pub use walker::DirectoryWalker;
 - [ ] Hasher correctly produces BLAKE3 hashes
 - [ ] Partial hash covers first/last 4KB
 
-### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/scanner/hasher.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on `src-tauri/src/scanner/hasher.rs`.
 ---
 
 ## Phase 4.2.3: Empty File Handling Specification
@@ -1117,11 +1117,11 @@ pub use walker::DirectoryWalker;
 - [ ] Detector correctly identifies duplicate files
 - [ ] Three-stage algorithm works as expected
 
-### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/scanner/detector.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on `src-tauri/src/scanner/detector.rs`.
 ---
 
 ## Phase 4.3.3: Live Streaming Event Emission
@@ -1642,11 +1642,11 @@ pub mod file_cache {
 #### Manual Verification
 - [ ] Database queries are comprehensive
 
-### Code Review
-Run code-review-fix-loop agent on the updated `src-tauri/src/db/queries.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on the updated `src-tauri/src/db/queries.rs`.
 ---
 
 ## Phase 4.4.1: Cache Invalidation Strategy
@@ -2321,11 +2321,11 @@ Add the `get_scan_results` command:
 - [ ] Results are stored in the database
 - [ ] Events are emitted to the frontend
 
-### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/commands/scan.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on `src-tauri/src/commands/scan.rs`.
 ---
 
 ## Phase 4.6: Update Detection Stats Type
@@ -2372,11 +2372,11 @@ pub use walker::DirectoryWalker;
 #### Automated Verification
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 
-### Code Review
-Run code-review-fix-loop agent on scanner module files.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on scanner module files.
 ---
 
 ## Phase 4.7: Add Detection Unit Tests
@@ -2551,11 +2551,11 @@ Add additional tests to the existing test module:
 #### Manual Verification
 - [ ] Tests cover edge cases and performance scenarios
 
-### Code Review
-Run code-review-fix-loop agent on the test additions.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on the test additions.
 ---
 
 ## Phase 4.8: Update Frontend to Display Detection Results
@@ -3052,11 +3052,11 @@ Update the ScanButton component to display duplicate detection results.
 - [ ] Duplicate groups are listed with file paths
 - [ ] "Original" badge is shown on oldest file
 
-### Code Review
-Run code-review-fix-loop agent on `src/lib/components/ScanButton.svelte`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on `src/lib/components/ScanButton.svelte`.
 ---
 
 ## End of File 04

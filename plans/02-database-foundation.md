@@ -97,11 +97,11 @@ Note: This is only used during development for sqlx compile-time checking. The a
 #### Manual Verification
 - [ ] Dependencies are appropriate versions
 
-### Code Review
-Run code-review-fix-loop agent on `src-tauri/Cargo.toml`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on `src-tauri/Cargo.toml`.
 ---
 
 ## Phase 2.2: Create Database Module Structure
@@ -443,11 +443,11 @@ pub fn run() {
 #### Manual Verification
 - [ ] Module structure is clean and follows Rust conventions
 
-### Code Review
-Run code-review-fix-loop agent on all new Rust files in db module.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on all new Rust files in db module.
 ---
 
 ## Phase 2.3: Create Database Migrations
@@ -591,11 +591,11 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
 - [ ] Schema covers all required tables from specification
 - [ ] Indexes are appropriate for expected query patterns
 
-### Code Review
-Run code-review-fix-loop agent on migration SQL.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on migration SQL.
 ---
 
 ## Phase 2.4: Implement Database Queries
@@ -1017,11 +1017,11 @@ mod schema;
 - [ ] Query functions cover the main use cases
 - [ ] Tests validate core functionality
 
-### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/db/queries.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on `src-tauri/src/db/queries.rs`.
 ---
 
 ## Phase 2.5: Integrate Database with Application State
@@ -1230,11 +1230,11 @@ pub fn run() {
 - [ ] `npm run tauri dev` starts without errors
 - [ ] Database file is created in app data directory
 
-### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/state.rs` and `src-tauri/src/lib.rs`.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on `src-tauri/src/state.rs` and `src-tauri/src/lib.rs`.
 ---
 
 ## Phase 2.6: Add Database Commands for Frontend
@@ -1496,11 +1496,11 @@ pub fn run() {
 - [ ] `npm run tauri dev` starts without errors
 - [ ] Commands are callable from the frontend (test via browser console)
 
-### Code Review
-Run code-review-fix-loop agent on all command files.
 ### Commit
 Execute `/cl:commit` to commit changes with meaningful message.
 
+### Code Review
+Run code-review-fix-loop agent on all command files.
 ---
 
 ## End of File 02

@@ -67,11 +67,11 @@ Apply macOS-specific styling for native look and feel.
 }
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -133,11 +133,11 @@ Apply Windows-specific styling for native look and feel.
 }
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -183,11 +183,11 @@ detectPlatform().then(() => {
 });
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -206,11 +206,11 @@ Review and polish all UI components for consistency.
 - Hover effects
 - Focus indicators
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -581,11 +581,11 @@ describe('Duplicate Detection Edge Cases', () => {
 });
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -622,11 +622,11 @@ Run full E2E test suite and fix any issues.
     - [ ] Same-size different-content files NOT grouped
     - [ ] Large file duplicate detection works
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -672,11 +672,11 @@ Write-Host "  src-tauri\target\release\bundle\msi\DupliFind_*.msi"
 Write-Host "  src-tauri\target\release\bundle\nsis\DupliFind_*-setup.exe"
 ```
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -707,11 +707,11 @@ Update documentation and clean up code.
 - [ ] All features work as specified
 - [ ] UI is polished and consistent
 
-### Code Review
-Run final comprehensive code review across all files.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run final comprehensive code review across all files.
 
 ---
 

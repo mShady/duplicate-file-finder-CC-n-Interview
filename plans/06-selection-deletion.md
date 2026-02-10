@@ -32,11 +32,11 @@ trash = "5.2"
 ### Success Criteria
 - [ ] `cargo check` passes
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -241,11 +241,11 @@ mod tests {
 - [ ] `cargo check` passes
 - [ ] `cargo test deletion` passes
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -380,11 +380,11 @@ Register the new commands in the invoke handler.
 ### Success Criteria
 - [ ] `cargo check` passes
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -637,11 +637,11 @@ Create the frontend deletion confirmation dialog.
 ### Success Criteria
 - [ ] `npm run check` passes
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -827,11 +827,11 @@ Create the post-deletion summary dialog.
 ### Success Criteria
 - [ ] `npm run check` passes
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -1156,11 +1156,11 @@ export function clearSelection(): Set<string> {
 - [ ] "Select deepest files" selects files in deepest directories
 - [ ] Clear selection removes all selections
 
-### Code Review
-Run code-review-fix-loop agent on selection utilities and SmartSelectionPanel.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent on selection utilities and SmartSelectionPanel.
 
 ---
 
@@ -1180,11 +1180,11 @@ Update ResultsView.svelte to:
 ### Success Criteria
 - [ ] Complete deletion flow works
 
-### Code Review
-Run code-review-fix-loop agent.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent.
 
 ---
 
@@ -1470,11 +1470,11 @@ Create a UI component for viewing deletion history. The backend `get_deletion_hi
 - [ ] Total freed space is calculated and displayed
 - [ ] Empty state is shown when no history exists
 
-### Code Review
-Run code-review-fix-loop agent on DeletionHistoryPanel.svelte.
-
 ### Commit
 Execute `/cl:commit`
+
+### Code Review
+Run code-review-fix-loop agent on DeletionHistoryPanel.svelte.
 
 ---
 

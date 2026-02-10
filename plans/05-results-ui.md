@@ -121,11 +121,11 @@ Create the main layout component with a resizable split panel.
 - [ ] Layout renders with two panels
 - [ ] Divider can be dragged to resize panels
 
-### Code Review
-Run code-review-fix-loop agent.
 ### Commit
 Execute `/cl:commit`
 
+### Code Review
+Run code-review-fix-loop agent.
 ---
 
 ## Phase 5.1.5: Live Duplicate Streaming Subscription Pattern
@@ -663,11 +663,11 @@ Create the component that displays the list of duplicate groups in the master pa
 - [ ] Groups list renders correctly
 - [ ] Selection works
 
-### Code Review
-Run code-review-fix-loop agent.
 ### Commit
 Execute `/cl:commit`
 
+### Code Review
+Run code-review-fix-loop agent.
 ---
 
 ## Phase 5.3: Create File Details Panel Component
@@ -980,11 +980,11 @@ Create the detail panel that shows files within a selected duplicate group.
 - [ ] Both creation date AND modified date are displayed for each file
 - [ ] Dates are clearly labeled and visually distinct
 
-### Code Review
-Run code-review-fix-loop agent.
 ### Commit
 Execute `/cl:commit`
 
+### Code Review
+Run code-review-fix-loop agent.
 ---
 
 ## Phase 5.4: Create TypeScript Types
@@ -1080,11 +1080,11 @@ export interface FilterState {
 #### Automated Verification
 - [ ] `npm run check` passes
 
-### Code Review
-Run code-review-fix-loop agent.
 ### Commit
 Execute `/cl:commit`
 
+### Code Review
+Run code-review-fix-loop agent.
 ---
 
 ## Phase 5.5: Create Main Results View
@@ -1295,11 +1295,11 @@ Create the main results view that combines all components.
 - [ ] Group selection works
 - [ ] File selection works
 
-### Code Review
-Run code-review-fix-loop agent.
 ### Commit
 Execute `/cl:commit`
 
+### Code Review
+Run code-review-fix-loop agent.
 ---
 
 ## Phase 5.6: Update Main App with Results View
@@ -1645,11 +1645,11 @@ Update the main App.svelte to use the results view.
 - [ ] Complete scan flow works
 - [ ] Results are displayed correctly
 
-### Code Review
-Run code-review-fix-loop agent.
 ### Commit
 Execute `/cl:commit`
 
+### Code Review
+Run code-review-fix-loop agent.
 ---
 
 ## Phases 5.7-5.8: Tests
