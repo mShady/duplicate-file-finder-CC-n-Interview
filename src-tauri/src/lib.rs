@@ -6,6 +6,7 @@ mod db;
 mod state;
 
 use state::AppState;
+use std::sync::Mutex;
 use tauri::Manager;
 
 /// Run the Tauri application.
@@ -15,11 +16,29 @@ use tauri::Manager;
 /// Panics if the Tauri application fails to initialize or run.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize logging
+    env_logger::init();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
-            // Initialize application state (internally thread-safe via AtomicBool)
-            app.manage(AppState::new());
+            // Get app data directory
+            let app_data_dir = app.path().app_data_dir()
+                .expect("Failed to get app data directory");
+
+            log::info!("App data directory: {}", app_data_dir.display());
+
+            // Initialize application state with database
+            // We use block_on here since setup is synchronous
+            let state = tauri::async_runtime::block_on(async {
+                let mut state = AppState::new();
+                if let Err(e) = state.init_database(app_data_dir).await {
+                    log::error!("Failed to initialize database: {}", e);
+                }
+                state
+            });
+
+            app.manage(Mutex::new(state));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
