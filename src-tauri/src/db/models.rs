@@ -1,6 +1,7 @@
 //! Database models representing table structures
 
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 /// Represents a scanned file in the database
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,15 +63,19 @@ impl ScanStatus {
             Self::Failed => "failed",
         }
     }
+}
 
-    pub fn from_str(s: &str) -> Option<Self> {
+impl FromStr for ScanStatus {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "running" => Some(ScanStatus::Running),
-            "paused" => Some(ScanStatus::Paused),
-            "completed" => Some(ScanStatus::Completed),
-            "cancelled" => Some(ScanStatus::Cancelled),
-            "failed" => Some(ScanStatus::Failed),
-            _ => None,
+            "running" => Ok(ScanStatus::Running),
+            "paused" => Ok(ScanStatus::Paused),
+            "completed" => Ok(ScanStatus::Completed),
+            "cancelled" => Ok(ScanStatus::Cancelled),
+            "failed" => Ok(ScanStatus::Failed),
+            other => Err(format!("Unknown scan status: {other}")),
         }
     }
 }
@@ -98,7 +103,7 @@ pub struct DeletionRecord {
     pub file_size: i64,
     pub file_hash: String,
     pub deleted_at: i64,
-    pub group_id: i64,
+    pub group_id: Option<i64>,
 }
 
 /// Represents a file in the hash cache (for incremental scanning)
@@ -120,7 +125,23 @@ mod tests {
     #[test]
     fn test_scan_status_conversion() {
         assert_eq!(ScanStatus::Running.as_str(), "running");
-        assert_eq!(ScanStatus::from_str("running"), Some(ScanStatus::Running));
-        assert_eq!(ScanStatus::from_str("invalid"), None);
+        assert_eq!("running".parse::<ScanStatus>(), Ok(ScanStatus::Running));
+        assert!("invalid".parse::<ScanStatus>().is_err());
+    }
+
+    #[test]
+    fn test_scan_status_roundtrip() {
+        let statuses = [
+            ScanStatus::Running,
+            ScanStatus::Paused,
+            ScanStatus::Completed,
+            ScanStatus::Cancelled,
+            ScanStatus::Failed,
+        ];
+        for status in statuses {
+            let s = status.as_str();
+            let parsed: ScanStatus = s.parse().unwrap();
+            assert_eq!(parsed, status);
+        }
     }
 }

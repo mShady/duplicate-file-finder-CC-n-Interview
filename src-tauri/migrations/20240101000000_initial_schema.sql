@@ -46,7 +46,8 @@ CREATE INDEX IF NOT EXISTS idx_scanned_files_size ON scanned_files(size);
 CREATE INDEX IF NOT EXISTS idx_scanned_files_partial_hash ON scanned_files(partial_hash);
 CREATE INDEX IF NOT EXISTS idx_scanned_files_full_hash ON scanned_files(full_hash);
 CREATE INDEX IF NOT EXISTS idx_scanned_files_group_id ON scanned_files(group_id);
-CREATE INDEX IF NOT EXISTS idx_duplicate_groups_hash ON duplicate_groups(hash);
+-- Note: No explicit index needed on duplicate_groups(hash) because the UNIQUE constraint
+-- already creates an implicit index
 CREATE INDEX IF NOT EXISTS idx_duplicate_groups_wasted_space ON duplicate_groups(wasted_space DESC);
 
 -- User settings (key-value store)
@@ -87,7 +88,8 @@ CREATE TABLE IF NOT EXISTS file_cache (
     cached_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_file_cache_path ON file_cache(path);
+-- Note: No explicit index needed on file_cache(path) because the UNIQUE constraint
+-- already creates an implicit index
 CREATE INDEX IF NOT EXISTS idx_file_cache_size_mtime ON file_cache(size, modified_at);
 
 -- Scan progress tracking (for pause/resume)

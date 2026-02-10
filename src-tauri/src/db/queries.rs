@@ -88,11 +88,15 @@ pub mod protected_folders {
     }
 
     /// Check if a path is protected
+    ///
+    /// Returns true if the given path exactly matches a protected folder
+    /// or is a subdirectory of a protected folder.
     pub async fn is_protected(pool: &SqlitePool, path: &str) -> Result<bool, sqlx::Error> {
-        // Check if the path or any of its parents is protected
+        // Check if the path exactly matches or starts with a protected folder path followed by '/'
         let result: Option<(i32,)> = sqlx::query_as(
-            "SELECT 1 FROM protected_folders WHERE ? LIKE path || '%' LIMIT 1"
+            "SELECT 1 FROM protected_folders WHERE ? = path OR ? LIKE path || '/' || '%' LIMIT 1"
         )
+        .bind(path)
         .bind(path)
         .fetch_optional(pool)
         .await?;
@@ -111,10 +115,11 @@ pub mod scan_sessions {
         paths: &[String],
     ) -> Result<i64, sqlx::Error> {
         let paths_json = serde_json::to_string(paths).unwrap_or_else(|_| "[]".to_string());
+        #[allow(clippy::cast_possible_wrap)]
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_secs().cast_signed();
+            .as_secs() as i64;
 
         let result = sqlx::query(
             "INSERT INTO scan_sessions (started_at, status, scanned_paths)
@@ -134,11 +139,12 @@ pub mod scan_sessions {
         id: i64,
         status: ScanStatus,
     ) -> Result<(), sqlx::Error> {
+        #[allow(clippy::cast_possible_wrap)]
         let now = if status == ScanStatus::Completed || status == ScanStatus::Cancelled {
             Some(std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_secs().cast_signed())
+                .as_secs() as i64)
         } else {
             None
         };
@@ -295,7 +301,7 @@ pub mod deletion_history {
                 file_size,
                 file_hash,
                 deleted_at,
-                group_id: group_id.unwrap_or(0),
+                group_id,
             }
         }).collect())
     }
@@ -355,6 +361,14 @@ mod tests {
         // Check non-protected path
         let not_protected = protected_folders::is_protected(db.pool(), "/other/path").await.unwrap();
         assert!(!not_protected);
+
+        // Check exact match is also protected
+        let exact_match = protected_folders::is_protected(db.pool(), "/test/path").await.unwrap();
+        assert!(exact_match);
+
+        // Check that a path with a similar prefix but not a subdirectory is NOT protected
+        let false_positive = protected_folders::is_protected(db.pool(), "/test/pathological").await.unwrap();
+        assert!(!false_positive);
 
         // Remove and verify
         let removed = protected_folders::remove(db.pool(), id).await.unwrap();

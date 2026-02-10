@@ -13,7 +13,8 @@ use tauri::Manager;
 ///
 /// # Panics
 ///
-/// Panics if the Tauri application fails to initialize or run.
+/// Panics if the Tauri application fails to initialize or run,
+/// or if the database cannot be initialized.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize logging
@@ -32,9 +33,8 @@ pub fn run() {
             // We use block_on here since setup is synchronous
             let state = tauri::async_runtime::block_on(async {
                 let mut state = AppState::new();
-                if let Err(e) = state.init_database(app_data_dir).await {
-                    log::error!("Failed to initialize database: {e}");
-                }
+                state.init_database(app_data_dir).await
+                    .expect("Failed to initialize database");
                 state
             });
 

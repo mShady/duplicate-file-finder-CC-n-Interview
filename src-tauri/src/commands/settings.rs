@@ -11,6 +11,11 @@ pub async fn get_setting(
     key: String,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<Option<String>, String> {
+    let key = key.trim().to_string();
+    if key.is_empty() {
+        return Err("Setting key cannot be empty".to_string());
+    }
+
     let db = {
         let state = state.lock().map_err(|e| e.to_string())?;
         state.database().ok_or("Database not initialized")?
@@ -29,6 +34,11 @@ pub async fn set_setting(
     value: String,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<(), String> {
+    let key = key.trim().to_string();
+    if key.is_empty() {
+        return Err("Setting key cannot be empty".to_string());
+    }
+
     let db = {
         let state = state.lock().map_err(|e| e.to_string())?;
         state.database().ok_or("Database not initialized")?

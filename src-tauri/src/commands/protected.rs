@@ -12,6 +12,11 @@ pub async fn add_protected_folder(
     path: String,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<i64, String> {
+    let path = path.trim().to_string();
+    if path.is_empty() {
+        return Err("Protected folder path cannot be empty".to_string());
+    }
+
     let db = {
         let state = state.lock().map_err(|e| e.to_string())?;
         state.database().ok_or("Database not initialized")?
@@ -62,6 +67,11 @@ pub async fn is_path_protected(
     path: String,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<bool, String> {
+    let path = path.trim().to_string();
+    if path.is_empty() {
+        return Err("Path cannot be empty".to_string());
+    }
+
     let db = {
         let state = state.lock().map_err(|e| e.to_string())?;
         state.database().ok_or("Database not initialized")?
