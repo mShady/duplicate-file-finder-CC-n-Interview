@@ -3,6 +3,7 @@
 
 mod commands;
 mod db;
+mod scanner;
 mod state;
 
 use state::AppState;
