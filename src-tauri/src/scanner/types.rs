@@ -81,7 +81,7 @@ impl FileInfo {
 }
 
 /// Scan progress information
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ScanProgress {
     /// Total files discovered so far
     pub total_files: u64,
@@ -95,19 +95,6 @@ pub struct ScanProgress {
     pub skipped_files: u64,
     /// Estimated total files (if known)
     pub estimated_total: Option<u64>,
-}
-
-impl Default for ScanProgress {
-    fn default() -> Self {
-        Self {
-            total_files: 0,
-            processed_files: 0,
-            total_bytes: 0,
-            current_path: None,
-            skipped_files: 0,
-            estimated_total: None,
-        }
-    }
 }
 
 /// Scan configuration
@@ -153,10 +140,10 @@ impl ParallelismMode {
         clippy::cast_sign_loss,
         clippy::cast_precision_loss
     )]
-    pub fn thread_count(&self) -> usize {
+    pub fn thread_count(self) -> usize {
         let cpus = num_cpus::get();
         match self {
-            ParallelismMode::Light => cpus.min(2).max(1),
+            ParallelismMode::Light => cpus.clamp(1, 2),
             ParallelismMode::Normal => ((cpus as f64 * 0.75).ceil() as usize).max(1),
             ParallelismMode::Aggressive => cpus,
         }
