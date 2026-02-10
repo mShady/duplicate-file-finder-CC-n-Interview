@@ -6,7 +6,10 @@
 
 #![allow(dead_code)] // Query functions used in future phases
 
-use super::models::{DeletionRecord, ProtectedFolder, ScanSession, ScanStatus, Setting};
+use super::models::{
+    DeletionRecord, DuplicateGroup, FileCache, ProtectedFolder, ScanSession, ScanStatus,
+    ScannedFile, Setting,
+};
 use sqlx::SqlitePool;
 
 /// Row type for scan session queries
@@ -338,6 +341,396 @@ pub mod deletion_history {
             .await?;
 
         Ok(result.0)
+    }
+}
+
+/// Duplicate groups queries
+pub mod duplicate_groups {
+    use super::{DuplicateGroup, SqlitePool};
+
+    /// Create a new duplicate group
+    pub async fn create(
+        pool: &SqlitePool,
+        hash: &str,
+        file_size: i64,
+        file_count: i32,
+        wasted_space: i64,
+        scan_session_id: Option<i64>,
+    ) -> Result<i64, sqlx::Error> {
+        let result = sqlx::query(
+            "INSERT INTO duplicate_groups (hash, file_size, file_count, wasted_space, scan_session_id)
+             VALUES (?, ?, ?, ?, ?) RETURNING id",
+        )
+        .bind(hash)
+        .bind(file_size)
+        .bind(file_count)
+        .bind(wasted_space)
+        .bind(scan_session_id)
+        .fetch_one(pool)
+        .await?;
+
+        Ok(sqlx::Row::get(&result, 0))
+    }
+
+    /// Get all duplicate groups for a scan session
+    pub async fn get_by_session(
+        pool: &SqlitePool,
+        session_id: i64,
+    ) -> Result<Vec<DuplicateGroup>, sqlx::Error> {
+        let results: Vec<(i64, String, i64, i32, i64, i64)> = sqlx::query_as(
+            "SELECT id, hash, file_size, file_count, wasted_space, created_at
+             FROM duplicate_groups
+             WHERE scan_session_id = ?
+             ORDER BY wasted_space DESC",
+        )
+        .bind(session_id)
+        .fetch_all(pool)
+        .await?;
+
+        Ok(results
+            .into_iter()
+            .map(
+                |(id, hash, file_size, file_count, wasted_space, created_at)| DuplicateGroup {
+                    id,
+                    hash,
+                    file_size,
+                    file_count,
+                    wasted_space,
+                    created_at,
+                },
+            )
+            .collect())
+    }
+
+    /// Get total wasted space for a session
+    pub async fn get_total_wasted_space(
+        pool: &SqlitePool,
+        session_id: i64,
+    ) -> Result<i64, sqlx::Error> {
+        let result: (i64,) = sqlx::query_as(
+            "SELECT COALESCE(SUM(wasted_space), 0) FROM duplicate_groups WHERE scan_session_id = ?",
+        )
+        .bind(session_id)
+        .fetch_one(pool)
+        .await?;
+
+        Ok(result.0)
+    }
+
+    /// Delete all groups for a session
+    pub async fn delete_by_session(
+        pool: &SqlitePool,
+        session_id: i64,
+    ) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query("DELETE FROM duplicate_groups WHERE scan_session_id = ?")
+            .bind(session_id)
+            .execute(pool)
+            .await?;
+
+        Ok(result.rows_affected())
+    }
+}
+
+/// Scanned files queries
+pub mod scanned_files {
+    use super::{ScannedFile, SqlitePool};
+
+    /// Insert a scanned file
+    #[allow(clippy::too_many_arguments)]
+    pub async fn insert(
+        pool: &SqlitePool,
+        path: &str,
+        size: i64,
+        partial_hash: Option<&str>,
+        full_hash: Option<&str>,
+        created_at: i64,
+        modified_at: i64,
+        group_id: Option<i64>,
+        scan_session_id: Option<i64>,
+    ) -> Result<i64, sqlx::Error> {
+        let result = sqlx::query(
+            "INSERT INTO scanned_files (path, size, partial_hash, full_hash, created_at, modified_at, group_id, scan_session_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(path) DO UPDATE SET
+                size = excluded.size,
+                partial_hash = excluded.partial_hash,
+                full_hash = excluded.full_hash,
+                created_at = excluded.created_at,
+                modified_at = excluded.modified_at,
+                group_id = excluded.group_id,
+                scan_session_id = excluded.scan_session_id,
+                scanned_at = strftime('%s', 'now')
+             RETURNING id",
+        )
+        .bind(path)
+        .bind(size)
+        .bind(partial_hash)
+        .bind(full_hash)
+        .bind(created_at)
+        .bind(modified_at)
+        .bind(group_id)
+        .bind(scan_session_id)
+        .fetch_one(pool)
+        .await?;
+
+        Ok(sqlx::Row::get(&result, 0))
+    }
+
+    /// Get files by group ID
+    pub async fn get_by_group(
+        pool: &SqlitePool,
+        group_id: i64,
+    ) -> Result<Vec<ScannedFile>, sqlx::Error> {
+        let results: Vec<(
+            i64,
+            String,
+            i64,
+            Option<String>,
+            Option<String>,
+            i64,
+            i64,
+            i64,
+            Option<i64>,
+        )> = sqlx::query_as(
+            "SELECT id, path, size, partial_hash, full_hash, created_at, modified_at, scanned_at, group_id
+             FROM scanned_files
+             WHERE group_id = ?
+             ORDER BY created_at ASC",
+        )
+        .bind(group_id)
+        .fetch_all(pool)
+        .await?;
+
+        Ok(results
+            .into_iter()
+            .map(
+                |(
+                    id,
+                    path,
+                    size,
+                    partial_hash,
+                    full_hash,
+                    created_at,
+                    modified_at,
+                    scanned_at,
+                    group_id,
+                )| ScannedFile {
+                    id,
+                    path,
+                    size,
+                    partial_hash,
+                    full_hash,
+                    created_at,
+                    modified_at,
+                    scanned_at,
+                    group_id,
+                },
+            )
+            .collect())
+    }
+
+    /// Get file by path
+    pub async fn get_by_path(
+        pool: &SqlitePool,
+        path: &str,
+    ) -> Result<Option<ScannedFile>, sqlx::Error> {
+        let result: Option<(
+            i64,
+            String,
+            i64,
+            Option<String>,
+            Option<String>,
+            i64,
+            i64,
+            i64,
+            Option<i64>,
+        )> = sqlx::query_as(
+            "SELECT id, path, size, partial_hash, full_hash, created_at, modified_at, scanned_at, group_id
+             FROM scanned_files
+             WHERE path = ?",
+        )
+        .bind(path)
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(result.map(
+            |(
+                id,
+                path,
+                size,
+                partial_hash,
+                full_hash,
+                created_at,
+                modified_at,
+                scanned_at,
+                group_id,
+            )| ScannedFile {
+                id,
+                path,
+                size,
+                partial_hash,
+                full_hash,
+                created_at,
+                modified_at,
+                scanned_at,
+                group_id,
+            },
+        ))
+    }
+
+    /// Update file's group assignment
+    pub async fn update_group(
+        pool: &SqlitePool,
+        file_id: i64,
+        group_id: Option<i64>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query("UPDATE scanned_files SET group_id = ? WHERE id = ?")
+            .bind(group_id)
+            .bind(file_id)
+            .execute(pool)
+            .await?;
+
+        Ok(())
+    }
+
+    /// Delete files by session
+    pub async fn delete_by_session(
+        pool: &SqlitePool,
+        session_id: i64,
+    ) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query("DELETE FROM scanned_files WHERE scan_session_id = ?")
+            .bind(session_id)
+            .execute(pool)
+            .await?;
+
+        Ok(result.rows_affected())
+    }
+
+    /// Count files in a session
+    pub async fn count_by_session(
+        pool: &SqlitePool,
+        session_id: i64,
+    ) -> Result<i64, sqlx::Error> {
+        let result: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM scanned_files WHERE scan_session_id = ?")
+                .bind(session_id)
+                .fetch_one(pool)
+                .await?;
+
+        Ok(result.0)
+    }
+}
+
+/// File cache queries (for incremental scanning)
+pub mod file_cache {
+    use super::{FileCache, SqlitePool};
+
+    /// Get cached file info
+    pub async fn get(
+        pool: &SqlitePool,
+        path: &str,
+        size: i64,
+        modified_at: i64,
+    ) -> Result<Option<FileCache>, sqlx::Error> {
+        let result: Option<(i64, String, i64, i64, String, Option<String>, i64)> = sqlx::query_as(
+            "SELECT id, path, size, modified_at, partial_hash, full_hash, cached_at
+             FROM file_cache
+             WHERE path = ? AND size = ? AND modified_at = ?",
+        )
+        .bind(path)
+        .bind(size)
+        .bind(modified_at)
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(result.map(
+            |(id, path, size, modified_at, partial_hash, full_hash, cached_at)| FileCache {
+                id,
+                path,
+                size,
+                modified_at,
+                partial_hash,
+                full_hash,
+                cached_at,
+            },
+        ))
+    }
+
+    /// Upsert file cache entry
+    pub async fn upsert(
+        pool: &SqlitePool,
+        path: &str,
+        size: i64,
+        modified_at: i64,
+        partial_hash: &str,
+        full_hash: Option<&str>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            "INSERT INTO file_cache (path, size, modified_at, partial_hash, full_hash)
+             VALUES (?, ?, ?, ?, ?)
+             ON CONFLICT(path) DO UPDATE SET
+                size = excluded.size,
+                modified_at = excluded.modified_at,
+                partial_hash = excluded.partial_hash,
+                full_hash = COALESCE(excluded.full_hash, file_cache.full_hash),
+                cached_at = strftime('%s', 'now')",
+        )
+        .bind(path)
+        .bind(size)
+        .bind(modified_at)
+        .bind(partial_hash)
+        .bind(full_hash)
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Clear old cache entries
+    pub async fn clear_old(pool: &SqlitePool, days: i32) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query(
+            "DELETE FROM file_cache WHERE cached_at < strftime('%s', 'now') - (? * 86400)",
+        )
+        .bind(days)
+        .execute(pool)
+        .await?;
+
+        Ok(result.rows_affected())
+    }
+
+    /// Remove cache entry for a specific path (for explicit invalidation)
+    pub async fn invalidate(pool: &SqlitePool, path: &str) -> Result<(), sqlx::Error> {
+        sqlx::query("DELETE FROM file_cache WHERE path = ?")
+            .bind(path)
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Remove cache entries for files that no longer exist
+    /// Call this after a scan to clean up stale entries
+    pub async fn cleanup_missing_files(
+        pool: &SqlitePool,
+        valid_paths: &[String],
+    ) -> Result<u64, sqlx::Error> {
+        if valid_paths.is_empty() {
+            return Ok(0);
+        }
+
+        // Build placeholders for the IN clause
+        let placeholders: Vec<&str> = valid_paths.iter().map(|_| "?").collect();
+        let query = format!(
+            "DELETE FROM file_cache WHERE path NOT IN ({})",
+            placeholders.join(", ")
+        );
+
+        let mut query_builder = sqlx::query(&query);
+        for path in valid_paths {
+            query_builder = query_builder.bind(path);
+        }
+
+        let result = query_builder.execute(pool).await?;
+        Ok(result.rows_affected())
     }
 }
 
