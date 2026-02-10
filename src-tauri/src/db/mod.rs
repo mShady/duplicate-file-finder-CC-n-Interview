@@ -1,6 +1,7 @@
 //! Database module for SQLite operations
 
 pub mod models;
+pub mod queries;
 mod schema;
 
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
