@@ -46,9 +46,9 @@ impl DuplicateGroup {
         self.files.len()
     }
 
-    /// Get the "original" file (oldest by creation date)
+    /// Get the "original" file (marked during detection)
     pub fn original(&self) -> Option<&DuplicateFile> {
-        self.files.iter().min_by_key(|f| f.created_at)
+        self.files.iter().find(|f| f.is_original)
     }
 }
 
@@ -140,6 +140,9 @@ impl DuplicateDetector {
     pub fn detect(&mut self, files: Vec<FileInfo>) -> Result<DetectionResult, ScanError> {
         let mut stats = DetectionStats::default();
 
+        // Track total non-symlink files for unique_files calculation
+        let total_files = files.iter().filter(|f| !f.is_symlink).count() as u64;
+
         // Stage 1: Group by size
         let start = std::time::Instant::now();
         let size_groups = self.group_by_size(files);
@@ -177,7 +180,7 @@ impl DuplicateDetector {
             .map(|g| (g.files.len() - 1) as u64)
             .sum();
         let total_wasted_space: u64 = duplicate_groups.iter().map(|g| g.wasted_space).sum();
-        let unique_files = stats.size_candidates - duplicate_count;
+        let unique_files = total_files.saturating_sub(duplicate_count);
 
         Ok(DetectionResult {
             groups: duplicate_groups,
@@ -301,14 +304,6 @@ impl DuplicateDetector {
         Ok(final_groups)
     }
 
-    /// Detect duplicates with streaming (processes files as they come in)
-    pub fn detect_streaming<I>(&mut self, files: I) -> Result<DetectionResult, ScanError>
-    where
-        I: Iterator<Item = FileInfo>,
-    {
-        let files: Vec<_> = files.collect();
-        self.detect(files)
-    }
 }
 
 impl Default for DuplicateDetector {
@@ -449,9 +444,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let content = b"Test content";
 
-        // Create files with small delays to ensure different timestamps
         let file1 = create_test_file(dir.path(), "newer.txt", content);
-        std::thread::sleep(std::time::Duration::from_millis(10));
         let mut file2 = create_test_file(dir.path(), "older.txt", content);
 
         // Manually set file2 as older
@@ -507,8 +500,8 @@ mod tests {
         let mut detector = DuplicateDetector::new();
         let result = detector.detect(files).unwrap();
 
-        // Should be sorted by wasted space descending
-        assert!(result.groups[0].wasted_space >= result.groups[1].wasted_space);
+        // Should be sorted by wasted space descending (1000 > 200)
+        assert!(result.groups[0].wasted_space > result.groups[1].wasted_space);
     }
 
     #[test]
@@ -531,30 +524,6 @@ mod tests {
         assert!(matches!(result, Err(ScanError::Cancelled)));
     }
 
-    fn create_large_test_file(dir: &std::path::Path, name: &str, content: &[u8]) -> FileInfo {
-        let path = dir.join(name);
-        let mut file = File::create(&path).unwrap();
-        file.write_all(content).unwrap();
-
-        let metadata = std::fs::metadata(&path).unwrap();
-        let created = metadata
-            .created()
-            .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64)
-            .unwrap_or(0);
-        let modified = metadata
-            .modified()
-            .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64)
-            .unwrap_or(0);
-
-        FileInfo {
-            path,
-            size: content.len() as u64,
-            created_at: created,
-            modified_at: modified,
-            is_symlink: false,
-        }
-    }
-
     #[test]
     fn test_large_file_detection() {
         let dir = tempdir().unwrap();
@@ -563,8 +532,8 @@ mod tests {
         let large_content: Vec<u8> = (0..16384).map(|i| (i % 256) as u8).collect();
 
         let files = vec![
-            create_large_test_file(dir.path(), "large1.bin", &large_content),
-            create_large_test_file(dir.path(), "large2.bin", &large_content),
+            create_test_file(dir.path(), "large1.bin", &large_content),
+            create_test_file(dir.path(), "large2.bin", &large_content),
         ];
 
         let mut detector = DuplicateDetector::new();
@@ -600,8 +569,8 @@ mod tests {
         }
 
         let files = vec![
-            create_large_test_file(dir.path(), "false_pos1.bin", &content1),
-            create_large_test_file(dir.path(), "false_pos2.bin", &content2),
+            create_test_file(dir.path(), "false_pos1.bin", &content1),
+            create_test_file(dir.path(), "false_pos2.bin", &content2),
         ];
 
         let mut detector = DuplicateDetector::new();

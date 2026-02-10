@@ -17,12 +17,6 @@ const MIN_SIZE_FOR_PARTIAL: u64 = PARTIAL_HASH_CHUNK_SIZE * 2;
 pub enum HashError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-
-    #[error("File not found: {0}")]
-    NotFound(String),
-
-    #[error("File changed during hashing")]
-    FileChanged,
 }
 
 /// Result of hashing a file
