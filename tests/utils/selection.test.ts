@@ -81,6 +81,21 @@ describe('selectAllExceptOldest', () => {
     const selected = selectAllExceptOldest([]);
     expect(selected.size).toBe(0);
   });
+
+  it('should handle files with identical timestamps', () => {
+    const groups = [
+      makeGroup(1, [
+        { path: '/a/file1.txt', created_at: 100 },
+        { path: '/a/file2.txt', created_at: 100 },
+        { path: '/a/file3.txt', created_at: 100 },
+      ]),
+    ];
+
+    const selected = selectAllExceptOldest(groups);
+
+    // All timestamps identical; exactly one file should be kept
+    expect(selected.size).toBe(2);
+  });
 });
 
 describe('selectByLocation', () => {
@@ -139,8 +154,28 @@ describe('selectByLocation', () => {
     // Both files are in /same/dir, so selectByLocation would select both
     const selected = selectByLocation(groups, '/same/dir', new Set());
 
-    // The safety guard should ensure at least one is kept
+    // The safety guard should ensure at least one is kept (oldest unselected)
     expect(selected.size).toBe(1);
+    expect(selected.has('/same/dir/file1.txt')).toBe(false); // oldest, kept by ensureOneKept
+    expect(selected.has('/same/dir/file2.txt')).toBe(true);
+  });
+
+  it('should match partial directory name prefixes (startsWith behavior)', () => {
+    const groups = [
+      makeGroup(1, [
+        { path: '/same/dir/file.txt', created_at: 100 },
+        { path: '/same/directory/file.txt', created_at: 200 },
+        { path: '/other/file.txt', created_at: 300 },
+      ]),
+    ];
+
+    // startsWith('/same/dir') matches both '/same/dir/...' and '/same/directory/...'
+    const selected = selectByLocation(groups, '/same/dir', new Set());
+
+    // Both /same/dir and /same/directory paths match the prefix
+    expect(selected.has('/same/dir/file.txt')).toBe(true);
+    expect(selected.has('/same/directory/file.txt')).toBe(true);
+    expect(selected.has('/other/file.txt')).toBe(false);
   });
 });
 
@@ -189,6 +224,23 @@ describe('selectByPathDepth', () => {
     expect(selected.has('/existing.txt')).toBe(true);
     expect(selected.has('/a/b/c/file.txt')).toBe(true);
   });
+
+  it('should ensure at least one file per group is kept (safety guard)', () => {
+    const groups = [
+      makeGroup(1, [
+        { path: '/a/b/c/file1.txt', created_at: 100 },   // depth 4
+        { path: '/a/b/c/file2.txt', created_at: 200 },   // depth 4
+      ]),
+    ];
+
+    // Both files match depth >= 3, so both would be selected
+    const selected = selectByPathDepth(groups, 3, null, new Set());
+
+    // Safety guard should keep at least one (oldest)
+    expect(selected.size).toBe(1);
+    expect(selected.has('/a/b/c/file1.txt')).toBe(false); // oldest, kept
+    expect(selected.has('/a/b/c/file2.txt')).toBe(true);
+  });
 });
 
 describe('selectDeepestInGroup', () => {
@@ -206,6 +258,23 @@ describe('selectDeepestInGroup', () => {
     expect(selected.has('/a/file.txt')).toBe(false);
     expect(selected.has('/a/b/file.txt')).toBe(false);
     expect(selected.has('/a/b/c/file.txt')).toBe(true);
+  });
+
+  it('should select multiple files at the deepest level', () => {
+    const groups = [
+      makeGroup(1, [
+        { path: '/a/file.txt', created_at: 100 },             // depth 2 (shallower)
+        { path: '/a/b/c/file1.txt', created_at: 200 },        // depth 4 (deepest)
+        { path: '/x/y/z/file2.txt', created_at: 300 },        // depth 4 (deepest)
+      ]),
+    ];
+
+    const selected = selectDeepestInGroup(groups);
+
+    // Both deepest files selected; shallower file kept
+    expect(selected.has('/a/file.txt')).toBe(false);
+    expect(selected.has('/a/b/c/file1.txt')).toBe(true);
+    expect(selected.has('/x/y/z/file2.txt')).toBe(true);
   });
 
   it('should keep oldest when all files at same depth', () => {
