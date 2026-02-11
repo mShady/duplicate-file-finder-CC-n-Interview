@@ -23,14 +23,16 @@
   let selectedFiles = $state<Set<string>>(new Set());
   let showSmartSelection = $state(false);
 
-  // Keep selectedGroup and selectedFiles in sync when result changes (e.g. after deletion)
-  // Use untrack for reads to only react to result.groups changes
+  // Keep selectedGroup and selectedFiles in sync when result changes (e.g. after deletion).
+  // Tracks `result` (not just result.groups) so any parent re-assignment triggers this,
+  // even if groups array identity hasn't changed.
   $effect(() => {
-    const groups = result.groups;
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions -- track result identity
+    result;
     untrack(() => {
       // Build set of all valid paths
       const validPaths = new Set<string>();
-      for (const group of groups) {
+      for (const group of result.groups) {
         for (const file of group.files) {
           validPaths.add(file.path);
         }
@@ -49,7 +51,7 @@
 
       // Update selectedGroup reference
       if (selectedGroup) {
-        const updated = groups.find(g => g.id === selectedGroup!.id);
+        const updated = result.groups.find(g => g.id === selectedGroup!.id);
         if (updated) {
           selectedGroup = updated;
         } else {
