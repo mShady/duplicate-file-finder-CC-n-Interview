@@ -16,6 +16,7 @@
   let page = $state(0);
   let hasMore = $state(true);
   const pageSize = 50;
+  const PATH_SEP = /[\/\\]/;
 
   onMount(() => {
     loadHistory();
@@ -55,17 +56,29 @@
   }
 
   function formatDate(timestamp: number): string {
-    return new Date(timestamp * 1000).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    if (!timestamp || timestamp < 0) {
+      return 'Unknown';
+    }
+
+    try {
+      return new Date(timestamp * 1000).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return 'Invalid date';
+    }
   }
 
   function getFileName(path: string): string {
-    return path.split('/').pop() || path;
+    if (!path) return '';
+
+    const parts = path.split(PATH_SEP);
+    const fileName = parts[parts.length - 1];
+    return fileName || path;
   }
 
   let totalFreed = $derived(history.reduce((sum, r) => sum + r.file_size, 0));
