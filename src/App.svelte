@@ -5,7 +5,10 @@
   import type { UnlistenFn } from '@tauri-apps/api/event';
   import ResultsView from './lib/components/ResultsView.svelte';
   import FolderPicker from './lib/components/FolderPicker.svelte';
-  import type { DetectionResult, ScanProgress, ScanComplete, ScanPhaseEvent, ScanErrorEvent } from '$lib/types';
+  import DeleteConfirmDialog from './lib/components/DeleteConfirmDialog.svelte';
+  import DeleteSummaryDialog from './lib/components/DeleteSummaryDialog.svelte';
+  import type { DetectionResult, ScanProgress, ScanComplete, ScanPhaseEvent, ScanErrorEvent, DeleteFilesResponse, BatchDeletionResult, DeletionRequest } from '$lib/types';
+  import { formatBytes as sharedFormatBytes } from '$lib/utils/format';
 
   type AppView = 'home' | 'scanning' | 'results';
 
@@ -17,6 +20,12 @@
   let error = $state<string | null>(null);
   let phase = $state<ScanPhaseEvent['phase'] | 'idle'>('idle');
   let selectedPaths = $state<string[]>([]);
+
+  // Deletion dialog state
+  let showDeleteConfirm = $state(false);
+  let showDeleteSummary = $state(false);
+  let pendingDeletionFiles = $state<string[]>([]);
+  let deletionResult = $state<BatchDeletionResult | null>(null);
 
   let unlisteners: UnlistenFn[] = [];
 
@@ -134,16 +143,118 @@
   }
 
   function handleDeleteSelected(files: string[]) {
-    // TODO: Implement in deletion phase (Phase 6)
-    console.log('Delete selected:', files);
+    pendingDeletionFiles = files;
+    showDeleteConfirm = true;
+  }
+
+  // Check if the selected files include ALL copies in any group
+  let deletingAllInGroup = $derived(() => {
+    if (!detectionResult || pendingDeletionFiles.length === 0) return false;
+    const selectedSet = new Set(pendingDeletionFiles);
+    return detectionResult.groups.some(group =>
+      group.files.every(file => selectedSet.has(file.path))
+    );
+  });
+
+  // Get total size of files pending deletion
+  let pendingDeletionSize = $derived(() => {
+    if (!detectionResult) return 0;
+    const fileMap = new Map<string, number>();
+    for (const group of detectionResult.groups) {
+      for (const file of group.files) {
+        fileMap.set(file.path, file.size);
+      }
+    }
+    let total = 0;
+    for (const path of pendingDeletionFiles) {
+      total += fileMap.get(path) || 0;
+    }
+    return total;
+  });
+
+  async function handleConfirmDelete() {
+    if (!detectionResult) return;
+    showDeleteConfirm = false;
+    error = null;
+
+    // Build DeletionRequests from the detection result data
+    const fileMap = new Map<string, { hash: string; size: number }>();
+    for (const group of detectionResult.groups) {
+      for (const file of group.files) {
+        fileMap.set(file.path, { hash: group.hash, size: file.size });
+      }
+    }
+
+    const requests: DeletionRequest[] = pendingDeletionFiles
+      .filter(path => fileMap.has(path))
+      .map(path => {
+        const info = fileMap.get(path)!;
+        return {
+          path,
+          expected_hash: info.hash,
+          size: info.size,
+        };
+      });
+
+    try {
+      const response = await invoke<DeleteFilesResponse>('delete_files', {
+        request: { files: requests },
+      });
+
+      deletionResult = response.result;
+      showDeleteSummary = true;
+
+      // Remove successfully deleted files from the detection result
+      if (response.result.successful.length > 0) {
+        const deletedPaths = new Set(response.result.successful.map(r => r.path));
+        updateResultsAfterDeletion(deletedPaths);
+      }
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    } finally {
+      pendingDeletionFiles = [];
+    }
+  }
+
+  function handleCancelDelete() {
+    showDeleteConfirm = false;
+    pendingDeletionFiles = [];
+  }
+
+  function handleCloseSummary() {
+    showDeleteSummary = false;
+    deletionResult = null;
+  }
+
+  function updateResultsAfterDeletion(deletedPaths: Set<string>) {
+    if (!detectionResult) return;
+
+    const updatedGroups = detectionResult.groups
+      .map(group => {
+        const remainingFiles = group.files.filter(f => !deletedPaths.has(f.path));
+        if (remainingFiles.length <= 1) return null; // No longer a duplicate group
+        const wastedSpace = group.file_size * (remainingFiles.length - 1);
+        return {
+          ...group,
+          files: remainingFiles,
+          wasted_space: wastedSpace,
+        };
+      })
+      .filter((g): g is NonNullable<typeof g> => g !== null);
+
+    const duplicateCount = updatedGroups.reduce((sum, g) => sum + g.files.length - 1, 0);
+    const totalWastedSpace = updatedGroups.reduce((sum, g) => sum + g.wasted_space, 0);
+
+    detectionResult = {
+      ...detectionResult,
+      groups: updatedGroups,
+      duplicate_count: duplicateCount,
+      total_wasted_space: totalWastedSpace,
+    };
   }
 
   function formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    return sharedFormatBytes(bytes);
   }
 
   function getPhaseLabel(currentPhase: typeof phase): string {
@@ -252,6 +363,24 @@
     {/if}
   </div>
 </main>
+
+{#if showDeleteConfirm}
+  <DeleteConfirmDialog
+    fileCount={pendingDeletionFiles.length}
+    totalSize={pendingDeletionSize()}
+    sampleFiles={pendingDeletionFiles}
+    allInGroup={deletingAllInGroup()}
+    onConfirm={handleConfirmDelete}
+    onCancel={handleCancelDelete}
+  />
+{/if}
+
+{#if showDeleteSummary && deletionResult}
+  <DeleteSummaryDialog
+    result={deletionResult}
+    onClose={handleCloseSummary}
+  />
+{/if}
 
 <style>
   .app {
