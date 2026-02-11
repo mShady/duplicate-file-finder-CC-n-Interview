@@ -1,5 +1,6 @@
 //! File deletion service with verification and trash support
 
+use crate::scanner::hasher::HashError;
 use crate::scanner::FileHasher;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -10,14 +11,8 @@ pub enum DeletionError {
     #[error("File not found: {0}")]
     NotFound(String),
 
-    #[error("File changed since scan: {0}")]
-    FileChanged(String),
-
-    #[error("Protected path: {0}")]
-    ProtectedPath(String),
-
-    #[error("Trash error: {0}")]
-    Trash(String),
+    #[error("Hash error: {0}")]
+    Hash(#[from] HashError),
 
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
@@ -62,13 +57,7 @@ impl DeletionService {
             return Err(DeletionError::NotFound(path.display().to_string()));
         }
 
-        match self.hasher.full_hash(path) {
-            Ok(current_hash) => Ok(current_hash == expected_hash),
-            Err(e) => Err(DeletionError::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))),
-        }
+        Ok(self.hasher.verify_hash(path, expected_hash)?)
     }
 
     /// Delete a single file to trash
@@ -124,13 +113,13 @@ impl DeletionService {
     }
 
     /// Delete multiple files to trash
-    pub fn delete_batch(&mut self, requests: Vec<DeletionRequest>) -> BatchDeletionResult {
+    pub fn delete_batch(&mut self, requests: &[DeletionRequest]) -> BatchDeletionResult {
         let mut successful = Vec::new();
         let mut failed = Vec::new();
         let mut total_freed: u64 = 0;
 
         for request in requests {
-            let result = self.delete_to_trash(&request);
+            let result = self.delete_to_trash(request);
             if result.success {
                 total_freed += result.size;
                 successful.push(result);
@@ -161,7 +150,7 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn test_verify_file() {
+    fn test_verify_file_matching_hash() {
         let dir = tempdir().unwrap();
         let path = dir.path().join("test.txt");
         let mut file = File::create(&path).unwrap();
@@ -172,6 +161,125 @@ mod tests {
         let hash = hasher.full_hash(&path).unwrap();
 
         assert!(service.verify_file(&path, &hash).unwrap());
+    }
+
+    #[test]
+    fn test_verify_file_wrong_hash() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("test.txt");
+        let mut file = File::create(&path).unwrap();
+        file.write_all(b"test content").unwrap();
+
+        let mut service = DeletionService::new();
+
         assert!(!service.verify_file(&path, "wrong_hash").unwrap());
+    }
+
+    #[test]
+    fn test_verify_file_not_found() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("nonexistent.txt");
+
+        let mut service = DeletionService::new();
+        let result = service.verify_file(&path, "any_hash");
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, DeletionError::NotFound(_)));
+    }
+
+    #[test]
+    fn test_delete_to_trash_missing_file() {
+        let dir = tempdir().unwrap();
+        let request = DeletionRequest {
+            path: dir.path().join("nonexistent.txt").display().to_string(),
+            expected_hash: "any_hash".to_string(),
+            size: 100,
+        };
+
+        let mut service = DeletionService::new();
+        let result = service.delete_to_trash(&request);
+
+        assert!(!result.success);
+        assert_eq!(result.error.as_deref(), Some("File not found"));
+    }
+
+    #[test]
+    fn test_delete_to_trash_hash_mismatch() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("test.txt");
+        let mut file = File::create(&path).unwrap();
+        file.write_all(b"test content").unwrap();
+
+        let request = DeletionRequest {
+            path: path.display().to_string(),
+            expected_hash: "wrong_hash".to_string(),
+            size: 12,
+        };
+
+        let mut service = DeletionService::new();
+        let result = service.delete_to_trash(&request);
+
+        assert!(!result.success);
+        assert_eq!(result.error.as_deref(), Some("File changed since scan"));
+        // File should still exist after failed deletion
+        assert!(path.exists());
+    }
+
+    #[test]
+    fn test_delete_to_trash_success() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("to_delete.txt");
+        let mut file = File::create(&path).unwrap();
+        file.write_all(b"delete me").unwrap();
+
+        let mut hasher = FileHasher::new();
+        let hash = hasher.full_hash(&path).unwrap();
+
+        let request = DeletionRequest {
+            path: path.display().to_string(),
+            expected_hash: hash,
+            size: 9,
+        };
+
+        let mut service = DeletionService::new();
+        let result = service.delete_to_trash(&request);
+
+        assert!(result.success);
+        assert!(result.error.is_none());
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn test_delete_batch_mixed_results() {
+        let dir = tempdir().unwrap();
+
+        // Create a file that will succeed
+        let good_path = dir.path().join("good.txt");
+        let mut file = File::create(&good_path).unwrap();
+        file.write_all(b"good content").unwrap();
+
+        let mut hasher = FileHasher::new();
+        let good_hash = hasher.full_hash(&good_path).unwrap();
+
+        let requests = vec![
+            DeletionRequest {
+                path: good_path.display().to_string(),
+                expected_hash: good_hash,
+                size: 12,
+            },
+            DeletionRequest {
+                path: dir.path().join("missing.txt").display().to_string(),
+                expected_hash: "any".to_string(),
+                size: 50,
+            },
+        ];
+
+        let mut service = DeletionService::new();
+        let batch_result = service.delete_batch(&requests);
+
+        assert_eq!(batch_result.successful.len(), 1);
+        assert_eq!(batch_result.failed.len(), 1);
+        assert_eq!(batch_result.total_freed, 12);
     }
 }
