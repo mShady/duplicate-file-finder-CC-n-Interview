@@ -18,8 +18,12 @@
   }
 
   function getFileExtension(group: DuplicateGroup): string {
+    // Defensive: check if files array exists and has items
+    if (!group.files || group.files.length === 0) return '';
+    
     const firstFile = group.files[0];
-    if (!firstFile) return '';
+    if (!firstFile || !firstFile.path) return '';
+    
     const path = firstFile.path;
     const ext = path.split('.').pop()?.toLowerCase() || '';
     return ext;
@@ -37,9 +41,16 @@
     if (docExts.includes(ext)) return '\u{1F4C4}';
     return '\u{1F4C1}';
   }
+
+  function getGroupLabel(group: DuplicateGroup): string {
+    const ext = getFileExtension(group);
+    const size = formatBytes(group.file_size);
+    const count = group.files?.length || 0;
+    return `${count} duplicate ${ext || 'files'}, ${size} each, ${formatBytes(group.wasted_space)} wasted`;
+  }
 </script>
 
-<div class="groups-list">
+<div class="groups-list" role="listbox" aria-label="Duplicate file groups">
   <div class="list-header">
     <span class="header-title">Duplicate Groups</span>
     <span class="header-count">{groups.length}</span>
@@ -51,12 +62,15 @@
         class="group-item"
         class:selected={selectedGroupId === group.id}
         onclick={() => onSelect(group)}
+        role="option"
+        aria-selected={selectedGroupId === group.id}
+        aria-label={getGroupLabel(group)}
       >
-        <span class="group-icon">{getFileTypeIcon(getFileExtension(group))}</span>
+        <span class="group-icon" aria-hidden="true">{getFileTypeIcon(getFileExtension(group))}</span>
         <div class="group-info">
           <div class="group-size">{formatBytes(group.file_size)}</div>
           <div class="group-meta">
-            <span class="file-count">{group.files.length} files</span>
+            <span class="file-count">{group.files?.length || 0} files</span>
             <span class="wasted">{formatBytes(group.wasted_space)} wasted</span>
           </div>
         </div>
@@ -64,7 +78,7 @@
     {/each}
 
     {#if groups.length === 0}
-      <div class="empty-state">
+      <div class="empty-state" role="status">
         No duplicate groups found
       </div>
     {/if}
@@ -120,6 +134,12 @@
 
   .group-item:hover {
     background: var(--background);
+  }
+
+  .group-item:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+    z-index: 1;
   }
 
   .group-item.selected {

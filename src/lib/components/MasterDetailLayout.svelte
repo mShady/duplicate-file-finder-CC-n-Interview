@@ -11,16 +11,22 @@
 
   let { masterWidth = 400, minMasterWidth = 300, minDetailWidth = 400, master, detail }: Props = $props();
 
-  let containerRef: HTMLElement;
+  let containerRef: HTMLElement | undefined;
   let isDragging = $state(false);
-  let currentWidth = $state(masterWidth);
+  let currentWidth = $state(400);
 
-  // Keep currentWidth in sync if prop changes externally
+  // Keep currentWidth in sync with masterWidth prop changes
   $effect(() => {
     currentWidth = masterWidth;
   });
 
+  // Computed max width based on container
+  let maxWidth = $derived(
+    containerRef ? containerRef.getBoundingClientRect().width - minDetailWidth : 1000
+  );
+
   function startDrag(e: MouseEvent) {
+    if (!containerRef) return;
     isDragging = true;
     e.preventDefault();
   }
@@ -31,8 +37,8 @@
     const containerRect = containerRef.getBoundingClientRect();
     const newWidth = e.clientX - containerRect.left;
 
-    const maxWidth = containerRect.width - minDetailWidth;
-    currentWidth = Math.max(minMasterWidth, Math.min(maxWidth, newWidth));
+    const max = containerRect.width - minDetailWidth;
+    currentWidth = Math.max(minMasterWidth, Math.min(max, newWidth));
   }
 
   function stopDrag() {
@@ -40,15 +46,22 @@
   }
 
   function onKeyDown(e: KeyboardEvent) {
+    if (!containerRef) return;
+    
     const step = 20;
+    const max = containerRef.getBoundingClientRect().width - minDetailWidth;
+    
     if (e.key === 'ArrowLeft') {
       currentWidth = Math.max(minMasterWidth, currentWidth - step);
       e.preventDefault();
     } else if (e.key === 'ArrowRight') {
-      if (containerRef) {
-        const maxWidth = containerRef.getBoundingClientRect().width - minDetailWidth;
-        currentWidth = Math.min(maxWidth, currentWidth + step);
-      }
+      currentWidth = Math.min(max, currentWidth + step);
+      e.preventDefault();
+    } else if (e.key === 'Home') {
+      currentWidth = minMasterWidth;
+      e.preventDefault();
+    } else if (e.key === 'End') {
+      currentWidth = max;
       e.preventDefault();
     }
   }
@@ -61,7 +74,13 @@
     {@render master()}
   </div>
 
-  <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
+  <!-- 
+    Using role="separator" makes this interactive per ARIA spec, but Svelte doesn't 
+    recognize it, so we need to suppress the warnings. The tabindex and event handlers
+    are semantically correct for an ARIA separator widget.
+  -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <div
     class="divider"
     class:dragging={isDragging}
@@ -69,8 +88,10 @@
     onkeydown={onKeyDown}
     role="separator"
     aria-orientation="vertical"
+    aria-label="Resize panels"
     aria-valuenow={currentWidth}
     aria-valuemin={minMasterWidth}
+    aria-valuemax={maxWidth}
     tabindex="0"
   ></div>
 
@@ -99,11 +120,30 @@
     cursor: col-resize;
     flex-shrink: 0;
     transition: background 0.2s;
+    position: relative;
   }
 
   .divider:hover,
   .divider.dragging {
     background: var(--primary);
+  }
+
+  .divider:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  /* Visual indicator when focused (but not dragging) */
+  .divider:focus-visible::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 40px;
+    background: var(--primary);
+    border-radius: 1px;
   }
 
   .detail-panel {

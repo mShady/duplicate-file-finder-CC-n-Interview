@@ -10,6 +10,9 @@
 
   let { group, selectedFiles, onToggleFile, onSelectAllExceptOriginal }: Props = $props();
 
+  // Detect path separator (cross-platform)
+  const PATH_SEP = /[/\\]/;
+
   function formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -19,23 +22,40 @@
   }
 
   function formatDate(timestamp: number): string {
-    return new Date(timestamp * 1000).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    // Validate timestamp (should be Unix timestamp in seconds)
+    if (!timestamp || timestamp < 0) {
+      return 'Unknown';
+    }
+    
+    try {
+      return new Date(timestamp * 1000).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return 'Invalid date';
+    }
   }
 
   function getFileName(path: string): string {
-    return path.split('/').pop() || path;
+    if (!path) return '';
+    
+    const parts = path.split(PATH_SEP);
+    const fileName = parts[parts.length - 1];
+    return fileName || path; // Fallback to full path if no filename
   }
 
   function getDirectory(path: string, maxLength: number = 50): string {
-    const parts = path.split('/');
+    if (!path) return '';
+    
+    const parts = path.split(PATH_SEP);
+    if (parts.length <= 1) return ''; // No directory, just filename
+    
     parts.pop(); // Remove filename
-    const dir = parts.join('/');
+    const dir = parts.join('/'); // Use forward slash for display consistency
 
     if (dir.length <= maxLength) {
       return dir;
@@ -44,6 +64,12 @@
     // Middle ellipsis truncation: show start and end
     const ellipsis = '/...';
     const availableLength = maxLength - ellipsis.length;
+    
+    // Handle edge case of very small maxLength
+    if (availableLength < 10) {
+      return ellipsis + dir.slice(-availableLength);
+    }
+    
     const startLength = Math.ceil(availableLength * 0.4); // 40% for start
     const endLength = Math.floor(availableLength * 0.6);  // 60% for end (more useful info)
 
@@ -51,6 +77,10 @@
     const end = dir.slice(-endLength);
 
     return `${start}${ellipsis}${end}`;
+  }
+
+  function getFileLabel(fileName: string, isOriginal: boolean): string {
+    return isOriginal ? `${fileName} (Original, cannot be deleted)` : fileName;
   }
 </script>
 
@@ -63,13 +93,18 @@
           {formatBytes(group.file_size)} each &bull; {formatBytes(group.wasted_space)} wasted
         </span>
       </div>
-      <button class="action-button" onclick={onSelectAllExceptOriginal}>
+      <button 
+        class="action-button" 
+        onclick={onSelectAllExceptOriginal}
+        aria-label="Select all duplicate files except the original for deletion"
+      >
         Select All Except Original
       </button>
     </div>
 
     <div class="files-list">
       {#each group.files as file (file.path)}
+        {@const fileName = getFileName(file.path)}
         <div class="file-item" class:original={file.is_original}>
           <label class="file-checkbox">
             <input
@@ -77,24 +112,24 @@
               checked={selectedFiles.has(file.path)}
               disabled={file.is_original}
               onchange={() => onToggleFile(file.path)}
+              aria-label={getFileLabel(fileName, file.is_original)}
             />
           </label>
 
           <div class="file-info">
             <div class="file-name">
               {#if file.is_original}
-                <span class="original-badge">Original</span>
+                <span class="original-badge" aria-label="Original file">Original</span>
               {/if}
-              {getFileName(file.path)}
+              {fileName}
             </div>
             <div class="file-path" title={file.path}>
               {getDirectory(file.path)}
-              <span class="full-path-tooltip">{file.path}</span>
             </div>
             <div class="file-dates">
               <span class="date-label">Created:</span>
               <span class="date-value">{formatDate(file.created_at)}</span>
-              <span class="date-separator">|</span>
+              <span class="date-separator" aria-hidden="true">|</span>
               <span class="date-label">Modified:</span>
               <span class="date-value">{formatDate(file.modified_at)}</span>
             </div>
@@ -103,7 +138,7 @@
       {/each}
     </div>
   {:else}
-    <div class="empty-state">
+    <div class="empty-state" role="status">
       <p>Select a duplicate group to view files</p>
     </div>
   {/if}
@@ -144,10 +179,16 @@
     color: white;
     cursor: pointer;
     font-size: 0.875rem;
+    transition: opacity 0.15s;
   }
 
   .action-button:hover {
     opacity: 0.9;
+  }
+
+  .action-button:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
   }
 
   .files-list {
@@ -175,6 +216,7 @@
     display: flex;
     align-items: flex-start;
     padding-top: 0.25rem;
+    cursor: pointer;
   }
 
   .file-checkbox input {
@@ -188,6 +230,11 @@
     opacity: 0.5;
   }
 
+  .file-checkbox input:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
   .file-info {
     flex: 1;
     min-width: 0;
@@ -198,7 +245,7 @@
     align-items: center;
     gap: 0.5rem;
     font-weight: 500;
-    word-break: break-all;
+    word-break: break-word;
   }
 
   .original-badge {
@@ -215,32 +262,7 @@
     color: var(--text-secondary);
     font-family: var(--font-mono);
     margin-top: 0.25rem;
-    word-break: break-all;
-    position: relative;
-    cursor: help;
-  }
-
-  /* Full path tooltip on hover */
-  .full-path-tooltip {
-    display: none;
-    position: absolute;
-    left: 0;
-    top: 100%;
-    margin-top: 4px;
-    padding: 0.5rem 0.75rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    font-size: 0.75rem;
-    white-space: nowrap;
-    max-width: 500px;
-    overflow-x: auto;
-    z-index: 100;
-  }
-
-  .file-path:hover .full-path-tooltip {
-    display: block;
+    word-break: break-word;
   }
 
   .file-dates {

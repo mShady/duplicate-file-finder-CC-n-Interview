@@ -38,75 +38,89 @@ function createScanStore() {
   });
 
   let unlisteners: UnlistenFn[] = [];
+  let isInitialized = false;
 
   return {
     subscribe,
 
-    // Initialize event listeners
+    // Initialize event listeners (call once on app mount)
     async init() {
+      // Prevent double initialization
+      if (isInitialized) {
+        console.warn('scanStore already initialized');
+        return;
+      }
+
       // Clean up any existing listeners
       this.cleanup();
 
-      unlisteners = [
-        // File discovery progress
-        await listen<ScanProgress>('scan-progress', (e) => {
-          update((state) => ({ ...state, progress: e.payload }));
-        }),
+      try {
+        unlisteners = [
+          // File discovery progress
+          await listen<ScanProgress>('scan-progress', (e) => {
+            update((state) => ({ ...state, progress: e.payload }));
+          }),
 
-        // Phase transitions
-        await listen<ScanPhaseEvent>('scan-phase', (e) => {
-          update((state) => ({
-            ...state,
-            phase: e.payload.phase,
-            phaseMessage: e.payload.message,
-          }));
-        }),
+          // Phase transitions
+          await listen<ScanPhaseEvent>('scan-phase', (e) => {
+            update((state) => ({
+              ...state,
+              phase: e.payload.phase,
+              phaseMessage: e.payload.message,
+            }));
+          }),
 
-        // Live duplicate streaming
-        await listen<DuplicateGroup>('duplicate-found', (e) => {
-          update((state) => ({
-            ...state,
-            liveGroups: [...state.liveGroups, e.payload].sort(
-              (a, b) => b.wasted_space - a.wasted_space,
-            ),
-          }));
-        }),
+          // Live duplicate streaming
+          await listen<DuplicateGroup>('duplicate-found', (e) => {
+            update((state) => ({
+              ...state,
+              liveGroups: [...state.liveGroups, e.payload].sort(
+                (a, b) => b.wasted_space - a.wasted_space,
+              ),
+            }));
+          }),
 
-        // Detection progress (hashing stats)
-        await listen<DetectionProgressEvent>('detection-progress', (e) => {
-          update((state) => ({ ...state, detectionProgress: e.payload }));
-        }),
+          // Detection progress (hashing stats)
+          await listen<DetectionProgressEvent>('detection-progress', (e) => {
+            update((state) => ({ ...state, detectionProgress: e.payload }));
+          }),
 
-        // Final results
-        await listen<DetectionResult>('scan-results', (e) => {
-          update((state) => ({
-            ...state,
-            finalResult: e.payload,
-            // Replace live groups with final sorted results
-            liveGroups: e.payload.groups,
-          }));
-        }),
+          // Final results
+          await listen<DetectionResult>('scan-results', (e) => {
+            update((state) => ({
+              ...state,
+              finalResult: e.payload,
+              // Replace live groups with final sorted results
+              liveGroups: e.payload.groups || [],
+            }));
+          }),
 
-        // Scan completion
-        await listen<ScanComplete>('scan-complete', (e) => {
-          update((state) => ({
-            ...state,
-            isScanning: false,
-            phase: 'complete',
-            scanComplete: e.payload,
-          }));
-        }),
+          // Scan completion
+          await listen<ScanComplete>('scan-complete', (e) => {
+            update((state) => ({
+              ...state,
+              isScanning: false,
+              phase: 'complete',
+              scanComplete: e.payload,
+            }));
+          }),
 
-        // Error handling
-        await listen<ScanErrorEvent>('scan-error', (e) => {
-          update((state) => ({
-            ...state,
-            isScanning: false,
-            phase: 'error',
-            error: e.payload.error,
-          }));
-        }),
-      ];
+          // Error handling
+          await listen<ScanErrorEvent>('scan-error', (e) => {
+            update((state) => ({
+              ...state,
+              isScanning: false,
+              phase: 'error',
+              error: e.payload.error,
+            }));
+          }),
+        ];
+
+        isInitialized = true;
+      } catch (error) {
+        console.error('Failed to initialize scanStore listeners:', error);
+        throw error;
+      }
     },
 
     // Start a new scan
@@ -139,10 +153,13 @@ function createScanStore() {
       });
     },
 
-    // Cleanup listeners
+    // Cleanup listeners (call on app unmount)
     cleanup() {
-      unlisteners.forEach((fn) => fn());
-      unlisteners = [];
+      if (unlisteners.length > 0) {
+        unlisteners.forEach((fn) => fn());
+        unlisteners = [];
+        isInitialized = false;
+      }
     },
   };
 }
@@ -152,13 +169,29 @@ export const scanStore = createScanStore();
 // Derived stores for convenience
 export const isScanning = derived(scanStore, ($s) => $s.isScanning);
 export const currentPhase = derived(scanStore, ($s) => $s.phase);
+
+// Safe access to groups with fallback
 export const duplicateGroups = derived(
   scanStore,
-  ($s) => $s.finalResult?.groups ?? $s.liveGroups,
+  ($s) => {
+    // Prefer final results if available and valid
+    if ($s.finalResult?.groups && Array.isArray($s.finalResult.groups)) {
+      return $s.finalResult.groups;
+    }
+    // Fall back to live groups (already sorted)
+    return $s.liveGroups || [];
+  }
 );
+
+// Safe calculation of total wasted space
 export const totalWastedSpace = derived(
   scanStore,
-  ($s) =>
-    $s.finalResult?.total_wasted_space ??
-    $s.liveGroups.reduce((sum, g) => sum + g.wasted_space, 0),
+  ($s) => {
+    // Prefer final calculation if available
+    if ($s.finalResult?.total_wasted_space !== undefined) {
+      return $s.finalResult.total_wasted_space;
+    }
+    // Calculate from live groups
+    return ($s.liveGroups || []).reduce((sum, g) => sum + (g.wasted_space || 0), 0);
+  }
 );
