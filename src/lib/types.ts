@@ -82,6 +82,40 @@ export interface ProtectedFolder {
   added_at: number;
 }
 
+// Deletion types
+export interface DeletionRequest {
+  path: string;
+  expected_hash: string;
+  size: number;
+}
+
+export interface DeletionResult {
+  path: string;
+  success: boolean;
+  error: string | null;
+  size: number;
+}
+
+export interface BatchDeletionResult {
+  successful: DeletionResult[];
+  failed: DeletionResult[];
+  total_freed: number;
+}
+
+export interface DeleteFilesResponse {
+  result: BatchDeletionResult;
+  message: string;
+}
+
+export interface DeletionRecord {
+  id: number;
+  file_path: string;
+  file_size: number;
+  file_hash: string;
+  deleted_at: number;
+  group_id: number | null;
+}
+
 export type FileType = 'images' | 'videos' | 'documents' | 'audio' | 'other' | 'all';
 
 export interface FilterState {
