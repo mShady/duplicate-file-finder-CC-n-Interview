@@ -11,6 +11,11 @@
 
   let { result, onDeleteSelected }: Props = $props();
 
+  // Sort groups by wasted space descending (spec: "Default Sort: By total wasted space")
+  let sortedGroups = $derived(
+    [...result.groups].sort((a, b) => b.wasted_space - a.wasted_space),
+  );
+
   let selectedGroup = $state<DuplicateGroup | null>(null);
   let selectedFiles = $state<Set<string>>(new Set());
 
@@ -105,7 +110,7 @@
     <MasterDetailLayout>
       {#snippet master()}
         <DuplicateGroupsList
-          groups={result.groups}
+          groups={sortedGroups}
           selectedGroupId={selectedGroup?.id ?? null}
           onSelect={handleGroupSelect}
         />
