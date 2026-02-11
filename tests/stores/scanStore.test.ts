@@ -165,6 +165,22 @@ describe('scanStore', () => {
       expect(state.progress).toEqual(progress);
     });
 
+    it('should update detection progress on detection-progress event', async () => {
+      const mockListeners = createMockListeners();
+      await scanStore.init();
+
+      const detectionProgress = {
+        partial_hashes: 50,
+        full_hashes: 20,
+        groups_found: 5,
+      };
+
+      mockListeners.emit('detection-progress', detectionProgress);
+
+      const state = get(scanStore);
+      expect(state.detectionProgress).toEqual(detectionProgress);
+    });
+
     it('should update phase on scan-phase event', async () => {
       const mockListeners = createMockListeners();
       await scanStore.init();
