@@ -284,11 +284,12 @@ pub mod deletion_history {
         group_id: Option<i64>,
         original_created_at: Option<i64>,
         original_modified_at: Option<i64>,
+        kept_path: Option<&str>,
     ) -> Result<i64, sqlx::Error> {
         let result = sqlx::query(
             "INSERT INTO deletion_history
-             (file_path, file_size, file_hash, group_id, original_created_at, original_modified_at)
-             VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
+             (file_path, file_size, file_hash, group_id, original_created_at, original_modified_at, kept_path)
+             VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id",
         )
         .bind(file_path)
         .bind(file_size)
@@ -296,6 +297,7 @@ pub mod deletion_history {
         .bind(group_id)
         .bind(original_created_at)
         .bind(original_modified_at)
+        .bind(kept_path)
         .fetch_one(pool)
         .await?;
 
@@ -308,27 +310,31 @@ pub mod deletion_history {
         limit: i32,
         offset: i32,
     ) -> Result<Vec<DeletionRecord>, sqlx::Error> {
-        let results: Vec<(i64, String, i64, String, i64, Option<i64>)> = sqlx::query_as(
-            "SELECT id, file_path, file_size, file_hash, deleted_at, group_id
+        let results: Vec<(i64, String, i64, String, i64, Option<i64>, Option<String>)> =
+            sqlx::query_as(
+                "SELECT id, file_path, file_size, file_hash, deleted_at, group_id, kept_path
              FROM deletion_history
              ORDER BY deleted_at DESC
              LIMIT ? OFFSET ?",
-        )
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(pool)
-        .await?;
+            )
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(pool)
+            .await?;
 
         Ok(results
             .into_iter()
             .map(
-                |(id, file_path, file_size, file_hash, deleted_at, group_id)| DeletionRecord {
-                    id,
-                    file_path,
-                    file_size,
-                    file_hash,
-                    deleted_at,
-                    group_id,
+                |(id, file_path, file_size, file_hash, deleted_at, group_id, kept_path)| {
+                    DeletionRecord {
+                        id,
+                        file_path,
+                        file_size,
+                        file_hash,
+                        deleted_at,
+                        group_id,
+                        kept_path,
+                    }
                 },
             )
             .collect())

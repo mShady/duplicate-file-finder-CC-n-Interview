@@ -116,6 +116,12 @@
             <span class="file-path" title={record.file_path}>{record.file_path}</span>
             <span class="delete-time">Deleted: {formatDate(record.deleted_at)}</span>
           </div>
+          {#if record.kept_path}
+            <div class="kept-info">
+              <span class="kept-label">Kept:</span>
+              <span class="kept-path" title={record.kept_path}>{record.kept_path}</span>
+            </div>
+          {/if}
         </div>
       {/each}
 
@@ -229,6 +235,28 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     max-width: 70%;
+  }
+
+  .kept-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--success);
+  }
+
+  .kept-label {
+    flex-shrink: 0;
+    font-weight: 500;
+  }
+
+  .kept-path {
+    font-family: var(--font-mono);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-secondary);
   }
 
   .load-more-btn {

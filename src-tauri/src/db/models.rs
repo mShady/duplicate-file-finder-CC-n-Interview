@@ -112,6 +112,7 @@ pub struct DeletionRecord {
     pub file_hash: String,
     pub deleted_at: i64,
     pub group_id: Option<i64>,
+    pub kept_path: Option<String>,
 }
 
 /// Represents a file in the hash cache (for incremental scanning)

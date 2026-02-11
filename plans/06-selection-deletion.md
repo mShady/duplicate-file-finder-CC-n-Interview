@@ -273,6 +273,9 @@ use tauri::State;
 #[derive(Debug, Deserialize)]
 pub struct DeleteFilesRequest {
     pub files: Vec<DeletionRequest>,
+    /// Maps deleted file path -> path of the retained duplicate copy (if any)
+    #[serde(default)]
+    pub kept_paths: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -315,10 +318,11 @@ pub async fn delete_files(
     let mut service = DeletionService::new();
     let result = service.delete_batch(request.files);
 
-    // Record deletions in history
+    // Record deletions in history (with kept_path for retained duplicate tracking)
     {
         let db = db.blocking_lock();
         for deleted in &result.successful {
+            let kept = request.kept_paths.get(&deleted.path).map(String::as_str);
             let _ = tauri::async_runtime::block_on(async {
                 queries::deletion_history::record(
                     db.pool(),
@@ -328,6 +332,7 @@ pub async fn delete_files(
                     None,
                     None,
                     None,
+                    kept,
                 )
                 .await
             });
@@ -1212,6 +1217,7 @@ Create a UI component for viewing deletion history. The backend `get_deletion_hi
     duplicate_group_id: number | null;
     session_id: number | null;
     deleted_at: number;
+    kept_path: string | null; // Path of the retained duplicate copy
   }
 
   interface Props {
@@ -1466,6 +1472,8 @@ Create a UI component for viewing deletion history. The backend `get_deletion_hi
 #### Manual Verification
 - [ ] Deletion history panel shows list of deleted files
 - [ ] Each entry shows filename, size, full path, and deletion timestamp
+- [ ] Each entry shows the path of the retained duplicate copy (when applicable)
+- [ ] Entries where all copies were deleted show no kept path
 - [ ] "Load More" pagination works correctly
 - [ ] Total freed space is calculated and displayed
 - [ ] Empty state is shown when no history exists
@@ -1498,7 +1506,7 @@ After completing all phases:
 - Post-deletion summary dialog
 - Smart selection options (including select by path depth)
 - Protected path enforcement
-- Deletion history recording
-- **Deletion history viewing UI** with pagination
+- Deletion history recording (including path of retained duplicate copy)
+- **Deletion history viewing UI** with pagination and retained copy path display
 
 **Next**: Proceed to [07-scan-progress.md](./07-scan-progress.md)

@@ -114,6 +114,7 @@ export interface DeletionRecord {
   file_hash: string;
   deleted_at: number;
   group_id: number | null;
+  kept_path: string | null;
 }
 
 export type FileType = 'images' | 'videos' | 'documents' | 'audio' | 'other' | 'all';

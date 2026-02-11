@@ -11,6 +11,9 @@ use tauri::State;
 #[derive(Debug, Deserialize)]
 pub struct DeleteFilesRequest {
     pub files: Vec<DeletionRequest>,
+    /// Maps deleted file path -> path of the retained duplicate copy (if any)
+    #[serde(default)]
+    pub kept_paths: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -57,6 +60,8 @@ pub async fn delete_files(
         .map(|f| (f.path.clone(), f.expected_hash.clone()))
         .collect();
 
+    let kept_paths = request.kept_paths;
+
     // Perform deletion (blocking I/O, run on blocking thread)
     let files = request.files;
     let result = tokio::task::spawn_blocking(move || {
@@ -71,6 +76,7 @@ pub async fn delete_files(
         let db = db.lock().await;
         for deleted in &result.successful {
             let hash = hash_lookup.get(&deleted.path).map_or("", String::as_str);
+            let kept = kept_paths.get(&deleted.path).map(String::as_str);
             if let Err(e) = queries::deletion_history::record(
                 db.pool(),
                 &deleted.path,
@@ -80,6 +86,7 @@ pub async fn delete_files(
                 None,
                 None,
                 None,
+                kept,
             )
             .await
             {

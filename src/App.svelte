@@ -198,9 +198,23 @@
         };
       });
 
+    // Build kept_paths: for each deleted file, find a file in the same group that is NOT being deleted
+    const deletingSet = new Set(pendingDeletionFiles);
+    const keptPaths: Record<string, string> = {};
+    for (const group of detectionResult.groups) {
+      const keptFile = group.files.find(f => !deletingSet.has(f.path));
+      if (keptFile) {
+        for (const file of group.files) {
+          if (deletingSet.has(file.path)) {
+            keptPaths[file.path] = keptFile.path;
+          }
+        }
+      }
+    }
+
     try {
       const response = await invoke<DeleteFilesResponse>('delete_files', {
-        request: { files: requests },
+        request: { files: requests, kept_paths: keptPaths },
       });
 
       deletionResult = response.result;

@@ -188,7 +188,7 @@ All data in local SQLite database:
 1. **Scan Results**: Duplicate groups, file paths, hashes, sizes, dates
 2. **File Index Cache**: For incremental scanning (path, size, mtime, hash)
 3. **User Settings**: Last scan configuration, protected folders, theme preference, parallelism setting
-4. **Deletion History**: Persistent log of all deletions with timestamps, viewable across sessions
+4. **Deletion History**: Persistent log of all deletions with timestamps, viewable across sessions. Each record includes the path of the retained duplicate copy (if any) so users can locate the remaining file
 
 ---
 
