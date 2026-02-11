@@ -14,6 +14,9 @@ pub struct DeleteFilesRequest {
     /// Maps deleted file path -> path of the retained duplicate copy (if any)
     #[serde(default)]
     pub kept_paths: HashMap<String, String>,
+    /// Maps deleted file path -> duplicate_groups.id for deletion history
+    #[serde(default)]
+    pub group_ids: HashMap<String, i64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -61,6 +64,7 @@ pub async fn delete_files(
         .collect();
 
     let kept_paths = request.kept_paths;
+    let group_ids = request.group_ids;
 
     // Perform deletion (blocking I/O, run on blocking thread)
     let files = request.files;
@@ -77,13 +81,14 @@ pub async fn delete_files(
         for deleted in &result.successful {
             let hash = hash_lookup.get(&deleted.path).map_or("", String::as_str);
             let kept = kept_paths.get(&deleted.path).map(String::as_str);
+            let group_id = group_ids.get(&deleted.path).copied();
             let size_i64 = i64::try_from(deleted.size).unwrap_or(i64::MAX);
             if let Err(e) = queries::deletion_history::record(
                 db.pool(),
                 &deleted.path,
                 size_i64,
                 hash,
-                None,
+                group_id,
                 None,
                 None,
                 kept,

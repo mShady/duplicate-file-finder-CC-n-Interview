@@ -206,26 +206,30 @@
         };
       });
 
-    // Build kept_paths: maps deleted file -> ONE representative retained copy from the same group.
+    // Build kept_paths and group_ids for each deleted file.
+    // kept_paths: maps deleted file -> ONE representative retained copy from the same group.
     // When multiple copies are retained (e.g. deleting 1 of 3), only the first non-deleted
     // file is recorded. This is a representative path for the history UI, not an exhaustive
     // list. When all copies are deleted, no kept_path is recorded (null in DB).
+    // group_ids: maps deleted file -> duplicate_groups.id for deletion history linkage.
     const deletingSet = new Set(pendingDeletionFiles);
     const keptPaths: Record<string, string> = {};
+    const groupIds: Record<string, number> = {};
     for (const group of detectionResult.groups) {
       const keptFile = group.files.find(f => !deletingSet.has(f.path));
-      if (keptFile) {
-        for (const file of group.files) {
-          if (deletingSet.has(file.path)) {
+      for (const file of group.files) {
+        if (deletingSet.has(file.path)) {
+          if (keptFile) {
             keptPaths[file.path] = keptFile.path;
           }
+          groupIds[file.path] = group.id;
         }
       }
     }
 
     try {
       const response = await invoke<DeleteFilesResponse>('delete_files', {
-        request: { files: requests, kept_paths: keptPaths },
+        request: { files: requests, kept_paths: keptPaths, group_ids: groupIds },
       });
 
       deletionResult = response.result;
