@@ -4,6 +4,7 @@ use crate::db::queries;
 use crate::services::deletion::{BatchDeletionResult, DeletionRequest, DeletionService};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Mutex;
 use tauri::State;
 
@@ -48,6 +49,14 @@ pub async fn delete_files(
         }
     }
 
+    // Build a path-to-hash lookup so we can record the verified hash in history
+    // after spawn_blocking consumes the files vector.
+    let hash_lookup: HashMap<String, String> = request
+        .files
+        .iter()
+        .map(|f| (f.path.clone(), f.expected_hash.clone()))
+        .collect();
+
     // Perform deletion (blocking I/O, run on blocking thread)
     let files = request.files;
     let result = tokio::task::spawn_blocking(move || {
@@ -61,17 +70,21 @@ pub async fn delete_files(
     {
         let db = db.lock().await;
         for deleted in &result.successful {
-            let _ = queries::deletion_history::record(
+            let hash = hash_lookup.get(&deleted.path).map_or("", String::as_str);
+            if let Err(e) = queries::deletion_history::record(
                 db.pool(),
                 &deleted.path,
                 #[allow(clippy::cast_possible_wrap)]
                 (deleted.size as i64),
-                "", // Hash already verified during deletion
+                hash,
                 None,
                 None,
                 None,
             )
-            .await;
+            .await
+            {
+                log::warn!("Failed to record deletion history for {}: {}", deleted.path, e);
+            }
         }
     }
 
