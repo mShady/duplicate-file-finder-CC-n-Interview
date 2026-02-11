@@ -328,3 +328,51 @@ describe('clearSelection', () => {
     expect(selected instanceof Set).toBe(true);
   });
 });
+
+describe('edge cases', () => {
+  it('selectAllExceptOldest should handle single-file group by selecting nothing', () => {
+    const groups = [
+      makeGroup(1, [
+        { path: '/a/file.txt', created_at: 100 },
+      ]),
+    ];
+
+    const selected = selectAllExceptOldest(groups);
+    expect(selected.size).toBe(0);
+  });
+
+  it('selectDeepestInGroup should handle single-file group by selecting nothing', () => {
+    const groups = [
+      makeGroup(1, [
+        { path: '/a/b/c/file.txt', created_at: 100 },
+      ]),
+    ];
+
+    const selected = selectDeepestInGroup(groups);
+    expect(selected.size).toBe(0);
+  });
+
+  it('selectByLocation should handle single-file group without selecting it', () => {
+    const groups = [
+      makeGroup(1, [
+        { path: '/a/file.txt', created_at: 100 },
+      ]),
+    ];
+
+    const selected = selectByLocation(groups, '/a', new Set());
+    // ensureOneKept prevents selecting the only file
+    expect(selected.size).toBe(0);
+  });
+
+  it('selectByPathDepth should handle single-file group without selecting it', () => {
+    const groups = [
+      makeGroup(1, [
+        { path: '/a/b/file.txt', created_at: 100 },
+      ]),
+    ];
+
+    const selected = selectByPathDepth(groups, 1, null, new Set());
+    // ensureOneKept prevents selecting the only file
+    expect(selected.size).toBe(0);
+  });
+});

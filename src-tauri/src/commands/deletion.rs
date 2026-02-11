@@ -105,6 +105,10 @@ pub async fn get_deletion_history(
     offset: i32,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<Vec<crate::db::models::DeletionRecord>, String> {
+    // Validate pagination parameters
+    let limit = limit.clamp(0, 1000);
+    let offset = offset.max(0);
+
     let db = {
         let state = state.lock().map_err(|e| e.to_string())?;
         state.database().ok_or("Database not initialized")?

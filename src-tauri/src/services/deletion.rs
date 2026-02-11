@@ -64,17 +64,7 @@ impl DeletionService {
     pub fn delete_to_trash(&mut self, request: &DeletionRequest) -> DeletionResult {
         let path = Path::new(&request.path);
 
-        // Verify file exists
-        if !path.exists() {
-            return DeletionResult {
-                path: request.path.clone(),
-                success: false,
-                error: Some("File not found".to_string()),
-                size: request.size,
-            };
-        }
-
-        // Verify hash matches
+        // Verify file exists and hash matches (verify_file handles both checks)
         match self.verify_file(path, &request.expected_hash) {
             Ok(true) => {}
             Ok(false) => {
@@ -201,7 +191,11 @@ mod tests {
         let result = service.delete_to_trash(&request);
 
         assert!(!result.success);
-        assert_eq!(result.error.as_deref(), Some("File not found"));
+        assert!(result
+            .error
+            .as_deref()
+            .unwrap()
+            .contains("File not found"));
     }
 
     #[test]
