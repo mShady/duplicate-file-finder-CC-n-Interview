@@ -63,7 +63,10 @@
 
   function handleGroupSelect(group: DuplicateGroup) {
     selectedGroup = group;
-    selectedFiles = new Set();
+    // Only clear selection when not in smart selection mode (smart selection is cross-group)
+    if (!showSmartSelection) {
+      selectedFiles = new Set();
+    }
   }
 
   function handleToggleFile(path: string) {
