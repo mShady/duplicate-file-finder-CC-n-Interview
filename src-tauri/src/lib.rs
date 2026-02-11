@@ -4,6 +4,7 @@
 mod commands;
 mod db;
 mod scanner;
+mod services;
 mod state;
 
 use commands::scan::ScanState;
