@@ -5,7 +5,7 @@
   import type { UnlistenFn } from '@tauri-apps/api/event';
   import ResultsView from './lib/components/ResultsView.svelte';
   import FolderPicker from './lib/components/FolderPicker.svelte';
-  import type { DetectionResult, ScanProgress, ScanComplete } from '$lib/types';
+  import type { DetectionResult, ScanProgress, ScanComplete, ScanPhaseEvent, ScanErrorEvent } from '$lib/types';
 
   type AppView = 'home' | 'scanning' | 'results';
 
@@ -15,7 +15,7 @@
   let scanResult = $state<ScanComplete | null>(null);
   let detectionResult = $state<DetectionResult | null>(null);
   let error = $state<string | null>(null);
-  let phase = $state<string>('idle');
+  let phase = $state<ScanPhaseEvent['phase'] | 'idle'>('idle');
   let selectedPaths = $state<string[]>([]);
 
   let unlisteners: UnlistenFn[] = [];
@@ -31,17 +31,19 @@
       await listen<ScanComplete>('scan-complete', (e) => {
         scanResult = e.payload;
         isScanning = false;
+        phase = 'complete';
         currentView = 'results';
       }),
       await listen<DetectionResult>('scan-results', (e) => {
         detectionResult = e.payload;
       }),
-      await listen<{ phase: string; message: string }>('scan-phase', (e) => {
+      await listen<ScanPhaseEvent>('scan-phase', (e) => {
         phase = e.payload.phase;
       }),
-      await listen<{ error: string }>('scan-error', (e) => {
+      await listen<ScanErrorEvent>('scan-error', (e) => {
         error = e.payload.error;
         isScanning = false;
+        phase = 'idle';
         currentView = 'home';
       }),
     );
@@ -54,6 +56,7 @@
       }
     } catch (e) {
       console.error('Failed to load existing results:', e);
+      // Don't show error to user for background load failure
     }
   });
 
@@ -69,6 +72,7 @@
       }
     } catch (e) {
       console.error('Failed to load last scan paths:', e);
+      // Don't show error to user for background load failure
     }
   }
 
@@ -80,6 +84,7 @@
       });
     } catch (e) {
       console.error('Failed to save scan paths:', e);
+      // Non-critical failure, don't interrupt user flow
     }
   }
 
@@ -99,7 +104,7 @@
     detectionResult = null;
     scanResult = null;
     progress = null;
-    phase = 'scanning';
+    phase = 'collecting';
 
     try {
       await saveLastScanPaths();
@@ -110,8 +115,9 @@
         },
       });
     } catch (e) {
-      error = String(e);
+      error = e instanceof Error ? e.message : String(e);
       isScanning = false;
+      phase = 'idle';
       currentView = 'home';
     }
   }
@@ -120,9 +126,10 @@
     try {
       await invoke('cancel_scan');
       isScanning = false;
+      phase = 'idle';
       currentView = 'home';
     } catch (e) {
-      error = String(e);
+      error = e instanceof Error ? e.message : String(e);
     }
   }
 
@@ -138,6 +145,30 @@
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
+
+  function getPhaseLabel(currentPhase: typeof phase): string {
+    switch (currentPhase) {
+      case 'collecting':
+        return 'Scanning files...';
+      case 'partial_hashing':
+        return 'Computing partial hashes...';
+      case 'full_hashing':
+        return 'Computing full hashes...';
+      case 'storing':
+        return 'Analyzing duplicates...';
+      case 'complete':
+        return 'Complete';
+      default:
+        return 'Scanning...';
+    }
+  }
+
+  function handleNewScan() {
+    currentView = 'home';
+    error = null;
+    progress = null;
+    phase = 'idle';
+  }
 </script>
 
 <main class="app">
@@ -145,7 +176,7 @@
     <h1>DupliFind</h1>
     <nav>
       {#if currentView === 'results' || detectionResult}
-        <button class="nav-button" onclick={() => (currentView = 'home')}>
+        <button class="nav-button" onclick={handleNewScan}>
           New Scan
         </button>
         {#if detectionResult}
@@ -169,7 +200,7 @@
           <p>Scan your drives to find and remove duplicate files.</p>
 
           {#if error}
-            <div class="error-banner">{error}</div>
+            <div class="error-banner" role="alert">{error}</div>
           {/if}
 
           <FolderPicker {selectedPaths} onPathsChange={handlePathsChange} />
@@ -193,13 +224,7 @@
       <div class="scanning-view">
         <div class="scanning-content">
           <div class="spinner"></div>
-          <h2>
-            {#if phase === 'detecting'}
-              Analyzing for duplicates...
-            {:else}
-              Scanning...
-            {/if}
-          </h2>
+          <h2>{getPhaseLabel(phase)}</h2>
           {#if progress}
             <p class="progress-info">
               {progress.total_files.toLocaleString()} files &bull;
@@ -209,14 +234,21 @@
               {/if}
             </p>
             {#if progress.current_path}
-              <p class="current-path">{progress.current_path}</p>
+              <p class="current-path" title={progress.current_path}>{progress.current_path}</p>
             {/if}
           {/if}
           <button class="cancel-button" onclick={cancelScan}>Cancel</button>
         </div>
       </div>
-    {:else if currentView === 'results' && detectionResult}
-      <ResultsView result={detectionResult} onDeleteSelected={handleDeleteSelected} />
+    {:else if currentView === 'results'}
+      {#if detectionResult}
+        <ResultsView result={detectionResult} onDeleteSelected={handleDeleteSelected} />
+      {:else}
+        <div class="empty-results">
+          <p>No results available</p>
+          <button class="nav-button" onclick={handleNewScan}>Start New Scan</button>
+        </div>
+      {/if}
     {/if}
   </div>
 </main>
@@ -278,6 +310,7 @@
     align-items: center;
     justify-content: center;
     height: 100%;
+    padding: 1rem;
   }
 
   .home-content,
@@ -285,7 +318,6 @@
     text-align: center;
     max-width: 500px;
     width: 100%;
-    padding: 1rem;
   }
 
   .home-content h2,
@@ -304,6 +336,7 @@
     color: var(--error);
     border-radius: 4px;
     margin-bottom: 1rem;
+    text-align: left;
   }
 
   .scan-button {
@@ -318,7 +351,7 @@
     margin-top: 1rem;
   }
 
-  .scan-button:hover {
+  .scan-button:hover:not(:disabled) {
     opacity: 0.9;
   }
 
@@ -364,7 +397,7 @@
     font-size: 0.8rem;
     font-family: var(--font-mono);
     color: var(--text-secondary);
-    max-width: 400px;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -385,5 +418,62 @@
     background: var(--error);
     color: white;
     border-color: var(--error);
+  }
+
+  .empty-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 1rem;
+  }
+
+  .empty-results p {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+  }
+
+  @media (max-width: 768px) {
+    .app-header h1 {
+      font-size: 1rem;
+    }
+
+    .nav-button {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    .home-content,
+    .scanning-content {
+      max-width: 100%;
+      padding: 0.5rem;
+    }
+
+    .scan-button {
+      font-size: 1rem;
+      padding: 0.875rem;
+    }
+
+    .current-path {
+      font-size: 0.7rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .app-header {
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+
+    .app-header nav {
+      width: 100%;
+      justify-content: flex-end;
+    }
+
+    .progress-info {
+      font-size: 0.85rem;
+    }
   }
 </style>
