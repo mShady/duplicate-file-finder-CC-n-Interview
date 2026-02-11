@@ -198,7 +198,10 @@
         };
       });
 
-    // Build kept_paths: for each deleted file, find a file in the same group that is NOT being deleted
+    // Build kept_paths: maps deleted file -> ONE representative retained copy from the same group.
+    // When multiple copies are retained (e.g. deleting 1 of 3), only the first non-deleted
+    // file is recorded. This is a representative path for the history UI, not an exhaustive
+    // list. When all copies are deleted, no kept_path is recorded (null in DB).
     const deletingSet = new Set(pendingDeletionFiles);
     const keptPaths: Record<string, string> = {};
     for (const group of detectionResult.groups) {
