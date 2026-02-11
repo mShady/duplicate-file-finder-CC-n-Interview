@@ -28,6 +28,14 @@
   let pendingDeletionFiles = $state<string[]>([]);
   let deletionResult = $state<BatchDeletionResult | null>(null);
   let showDeletionHistory = $state(false);
+  let historyDialogRef = $state<HTMLDivElement | null>(null);
+
+  // Auto-focus history dialog when opened for proper keyboard navigation
+  $effect(() => {
+    if (historyDialogRef) {
+      historyDialogRef.focus();
+    }
+  });
 
   let unlisteners: UnlistenFn[] = [];
 
@@ -390,7 +398,35 @@
 
 {#if showDeletionHistory}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="dialog-overlay" role="dialog" aria-modal="true" tabindex="-1" onclick={() => (showDeletionHistory = false)} onkeydown={(e) => { if (e.key === 'Escape') showDeletionHistory = false; }}>
+  <div
+    class="dialog-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Deletion History"
+    tabindex="-1"
+    bind:this={historyDialogRef}
+    onclick={() => (showDeletionHistory = false)}
+    onkeydown={(e) => {
+      if (e.key === 'Escape') showDeletionHistory = false;
+      // Trap focus within dialog
+      if (e.key === 'Tab') {
+        const focusable = historyDialogRef?.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable && focusable.length > 0) {
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    }}
+  >
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
     <div class="history-dialog" onclick={(e) => e.stopPropagation()}>
       <DeletionHistoryPanel onClose={() => (showDeletionHistory = false)} />
