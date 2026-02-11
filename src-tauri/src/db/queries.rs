@@ -348,6 +348,17 @@ pub mod deletion_history {
 
         Ok(result.0)
     }
+
+    /// Get summary stats: total count and total freed space across all deletions
+    pub async fn get_summary(pool: &SqlitePool) -> Result<(i64, i64), sqlx::Error> {
+        let result: (i64, i64) = sqlx::query_as(
+            "SELECT COUNT(*), COALESCE(SUM(file_size), 0) FROM deletion_history",
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(result)
+    }
 }
 
 /// Duplicate groups queries

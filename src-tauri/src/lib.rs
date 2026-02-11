@@ -73,6 +73,7 @@ pub fn run() {
             // Deletion commands
             commands::delete_files,
             commands::get_deletion_history,
+            commands::get_deletion_history_summary,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

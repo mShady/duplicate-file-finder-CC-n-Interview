@@ -15,12 +15,25 @@
   let error = $state<string | null>(null);
   let page = $state(0);
   let hasMore = $state(true);
+  let totalCount = $state(0);
+  let totalFreed = $state(0);
   const pageSize = 50;
   const PATH_SEP = /[\/\\]/;
 
   onMount(() => {
+    loadSummary();
     loadHistory();
   });
+
+  async function loadSummary() {
+    try {
+      const [count, freed] = await invoke<[number, number]>('get_deletion_history_summary');
+      totalCount = count;
+      totalFreed = freed;
+    } catch {
+      // Non-critical; the summary header will show 0 until records load
+    }
+  }
 
   async function loadHistory(reset: boolean = false) {
     if (reset) {
@@ -81,14 +94,14 @@
     return fileName || path;
   }
 
-  let totalFreed = $derived(history.reduce((sum, r) => sum + r.file_size, 0));
+
 </script>
 
 <div class="history-panel">
   <div class="header">
     <div class="header-info">
       <h2>Deletion History</h2>
-      <span class="summary">{history.length} files &bull; {formatBytes(totalFreed)} freed</span>
+      <span class="summary">{totalCount} files &bull; {formatBytes(totalFreed)} freed</span>
     </div>
     <button class="close-btn" onclick={onClose}>Close</button>
   </div>

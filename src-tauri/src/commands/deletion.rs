@@ -110,6 +110,22 @@ pub async fn delete_files(
     Ok(DeleteFilesResponse { result, message })
 }
 
+/// Get deletion history summary (total count and total freed space)
+#[tauri::command]
+pub async fn get_deletion_history_summary(
+    state: State<'_, Mutex<AppState>>,
+) -> Result<(i64, i64), String> {
+    let db = {
+        let state = state.lock().map_err(|e| e.to_string())?;
+        state.database().ok_or("Database not initialized")?
+    };
+
+    let db = db.lock().await;
+    queries::deletion_history::get_summary(db.pool())
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// Get deletion history
 #[tauri::command]
 pub async fn get_deletion_history(
