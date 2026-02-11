@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { BatchDeletionResult } from '$lib/types';
+  import { formatBytes } from '$lib/utils/format';
 
   interface Props {
     result: BatchDeletionResult;
@@ -8,19 +9,57 @@
 
   let { result, onClose }: Props = $props();
 
-  function formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  // Auto-focus the dialog on mount
+  let dialogRef: HTMLDivElement | undefined = $state();
+
+  $effect(() => {
+    if (dialogRef) {
+      dialogRef.focus();
+    }
+  });
+
+  function handleDialogKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      onClose();
+      return;
+    }
+    if (e.key === 'Tab') {
+      trapFocus(e);
+    }
+  }
+
+  function trapFocus(e: KeyboardEvent) {
+    if (!dialogRef) return;
+    const focusable = dialogRef.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
   }
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="dialog-overlay" onclick={onClose} onkeydown={(e) => { if (e.key === 'Escape') onClose(); }} role="dialog" aria-modal="true" aria-label="Deletion Complete" tabindex="-1">
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="dialog" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<div class="dialog-overlay" onclick={onClose}>
+  <div
+    class="dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Deletion Complete"
+    bind:this={dialogRef}
+    tabindex="-1"
+    onclick={(e) => e.stopPropagation()}
+    onkeydown={handleDialogKeydown}
+  >
     <h2>Deletion Complete</h2>
 
     <div class="summary">
@@ -47,7 +86,7 @@
           {#each result.failed as item}
             <li>
               <span class="path">{item.path}</span>
-              <span class="error">{item.error}</span>
+              <span class="error-msg">{item.error}</span>
             </li>
           {/each}
         </ul>
@@ -79,6 +118,10 @@
     padding: 1.5rem;
     max-width: 500px;
     width: 90%;
+  }
+
+  .dialog:focus {
+    outline: none;
   }
 
   h2 {
@@ -143,7 +186,7 @@
     font-family: var(--font-mono);
   }
 
-  .failed-section .error {
+  .failed-section .error-msg {
     color: var(--error);
     font-size: 0.8rem;
   }

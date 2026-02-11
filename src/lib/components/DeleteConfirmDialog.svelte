@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { formatBytes } from '$lib/utils/format';
+
   interface Props {
     fileCount: number;
     totalSize: number;
@@ -16,24 +18,62 @@
   // Determine if confirm button should be enabled
   let canConfirm = $derived(!allInGroup || confirmAllCopies);
 
-  function formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  // Auto-focus the dialog on mount
+  let dialogRef: HTMLDivElement | undefined = $state();
+
+  $effect(() => {
+    if (dialogRef) {
+      dialogRef.focus();
+    }
+  });
+
+  function handleDialogKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      onCancel();
+      return;
+    }
+    if (e.key === 'Tab') {
+      trapFocus(e);
+    }
+  }
+
+  function trapFocus(e: KeyboardEvent) {
+    if (!dialogRef) return;
+    const focusable = dialogRef.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
   }
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="dialog-overlay" onclick={onCancel} onkeydown={(e) => { if (e.key === 'Escape') onCancel(); }} role="dialog" aria-modal="true" aria-label="Confirm Deletion" tabindex="-1">
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="dialog" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<div class="dialog-overlay" onclick={onCancel}>
+  <div
+    class="dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Confirm Deletion"
+    bind:this={dialogRef}
+    tabindex="-1"
+    onclick={(e) => e.stopPropagation()}
+    onkeydown={handleDialogKeydown}
+  >
     <h2>Confirm Deletion</h2>
 
     {#if allInGroup}
-      <div class="danger-banner">
-        <div class="danger-icon">⚠️</div>
+      <div class="danger-banner" role="alert">
+        <div class="danger-icon" aria-hidden="true">&#9888;</div>
         <div class="danger-content">
           <strong>DANGER: You are deleting ALL copies!</strong>
           <p>This will permanently remove these files from your system. There will be NO remaining copies anywhere.</p>
@@ -102,6 +142,10 @@
     padding: 1.5rem;
     max-width: 500px;
     width: 90%;
+  }
+
+  .dialog:focus {
+    outline: none;
   }
 
   h2 {

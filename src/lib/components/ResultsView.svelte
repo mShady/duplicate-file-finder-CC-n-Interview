@@ -3,6 +3,7 @@
   import DuplicateGroupsList from './DuplicateGroupsList.svelte';
   import FileDetailsPanel from './FileDetailsPanel.svelte';
   import type { DuplicateGroup, DetectionResult } from '$lib/types';
+  import { formatBytes } from '$lib/utils/format';
 
   interface Props {
     result: DetectionResult;
@@ -49,14 +50,6 @@
     if (selectedFiles.size > 0) {
       onDeleteSelected(Array.from(selectedFiles));
     }
-  }
-
-  function formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
   // Optimized: Build a Map once instead of repeated find() calls

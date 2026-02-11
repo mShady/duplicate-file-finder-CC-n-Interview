@@ -1,6 +1,32 @@
 import type { DuplicateGroup } from '$lib/types';
 
 /**
+ * Count directory levels in a file path.
+ * Uses '/' or '\\' as separator depending on which appears in the path.
+ */
+function getPathDepth(path: string): number {
+  const separator = path.includes('/') ? '/' : '\\';
+  return path.split(separator).filter(Boolean).length;
+}
+
+/**
+ * Safety helper: given a group and a candidate set of paths to select,
+ * ensure at least one file in the group remains unselected.
+ * When all files would be selected, the oldest (by created_at) is excluded.
+ */
+function ensureOneKept(
+  group: DuplicateGroup,
+  selected: Set<string>
+): void {
+  const allSelected = group.files.every(f => selected.has(f.path));
+  if (allSelected && group.files.length > 0) {
+    // Remove the oldest file from selection to keep at least one copy
+    const oldest = [...group.files].sort((a, b) => a.created_at - b.created_at)[0];
+    selected.delete(oldest.path);
+  }
+}
+
+/**
  * Select all files except the oldest (original) in each group
  */
 export function selectAllExceptOldest(groups: DuplicateGroup[]): Set<string> {
@@ -20,7 +46,8 @@ export function selectAllExceptOldest(groups: DuplicateGroup[]): Set<string> {
 }
 
 /**
- * Select all files in a specific folder path
+ * Select all files in a specific folder path.
+ * Safety: ensures at least one copy per group is always kept.
  */
 export function selectByLocation(
   groups: DuplicateGroup[],
@@ -35,14 +62,16 @@ export function selectByLocation(
         selected.add(file.path);
       }
     }
+    ensureOneKept(group, selected);
   }
 
   return selected;
 }
 
 /**
- * Select files by path depth (number of directory levels)
- * Useful for selecting files in deeper nested directories
+ * Select files by path depth (number of directory levels).
+ * Useful for selecting files in deeper nested directories.
+ * Safety: ensures at least one copy per group is always kept.
  */
 export function selectByPathDepth(
   groups: DuplicateGroup[],
@@ -52,12 +81,6 @@ export function selectByPathDepth(
 ): Set<string> {
   const selected = new Set(currentSelection);
 
-  function getPathDepth(path: string): number {
-    // Count directory separators
-    const separator = path.includes('/') ? '/' : '\\';
-    return path.split(separator).filter(Boolean).length;
-  }
-
   for (const group of groups) {
     for (const file of group.files) {
       const depth = getPathDepth(file.path);
@@ -65,21 +88,18 @@ export function selectByPathDepth(
         selected.add(file.path);
       }
     }
+    ensureOneKept(group, selected);
   }
 
   return selected;
 }
 
 /**
- * Select deepest files in each group (files with longest path depth)
+ * Select deepest files in each group (files with longest path depth).
+ * When all files share the same depth, keeps the oldest and selects the rest.
  */
 export function selectDeepestInGroup(groups: DuplicateGroup[]): Set<string> {
   const selected = new Set<string>();
-
-  function getPathDepth(path: string): number {
-    const separator = path.includes('/') ? '/' : '\\';
-    return path.split(separator).filter(Boolean).length;
-  }
 
   for (const group of groups) {
     // Find max depth in this group
