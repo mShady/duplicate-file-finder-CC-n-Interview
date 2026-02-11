@@ -8,7 +8,7 @@
   import DeleteConfirmDialog from './lib/components/DeleteConfirmDialog.svelte';
   import DeleteSummaryDialog from './lib/components/DeleteSummaryDialog.svelte';
   import type { DetectionResult, ScanProgress, ScanComplete, ScanPhaseEvent, ScanErrorEvent, DeleteFilesResponse, BatchDeletionResult, DeletionRequest } from '$lib/types';
-  import { formatBytes as sharedFormatBytes } from '$lib/utils/format';
+  import { formatBytes } from '$lib/utils/format';
 
   type AppView = 'home' | 'scanning' | 'results';
 
@@ -148,7 +148,7 @@
   }
 
   // Check if the selected files include ALL copies in any group
-  let deletingAllInGroup = $derived(() => {
+  let deletingAllInGroup = $derived.by(() => {
     if (!detectionResult || pendingDeletionFiles.length === 0) return false;
     const selectedSet = new Set(pendingDeletionFiles);
     return detectionResult.groups.some(group =>
@@ -157,7 +157,7 @@
   });
 
   // Get total size of files pending deletion
-  let pendingDeletionSize = $derived(() => {
+  let pendingDeletionSize = $derived.by(() => {
     if (!detectionResult) return 0;
     const fileMap = new Map<string, number>();
     for (const group of detectionResult.groups) {
@@ -251,10 +251,6 @@
       duplicate_count: duplicateCount,
       total_wasted_space: totalWastedSpace,
     };
-  }
-
-  function formatBytes(bytes: number): string {
-    return sharedFormatBytes(bytes);
   }
 
   function getPhaseLabel(currentPhase: typeof phase): string {
@@ -352,6 +348,12 @@
         </div>
       </div>
     {:else if currentView === 'results'}
+      {#if error}
+        <div class="error-banner" role="alert">
+          {error}
+          <button class="error-dismiss" onclick={() => (error = null)} aria-label="Dismiss error">&times;</button>
+        </div>
+      {/if}
       {#if detectionResult}
         <ResultsView result={detectionResult} onDeleteSelected={handleDeleteSelected} />
       {:else}
@@ -367,9 +369,9 @@
 {#if showDeleteConfirm}
   <DeleteConfirmDialog
     fileCount={pendingDeletionFiles.length}
-    totalSize={pendingDeletionSize()}
+    totalSize={pendingDeletionSize}
     sampleFiles={pendingDeletionFiles}
-    allInGroup={deletingAllInGroup()}
+    allInGroup={deletingAllInGroup}
     onConfirm={handleConfirmDelete}
     onCancel={handleCancelDelete}
   />
@@ -466,6 +468,20 @@
     border-radius: 4px;
     margin-bottom: 1rem;
     text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .error-dismiss {
+    background: none;
+    border: none;
+    color: var(--error);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    line-height: 1;
+    flex-shrink: 0;
   }
 
   .scan-button {
