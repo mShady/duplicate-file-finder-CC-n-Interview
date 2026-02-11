@@ -70,6 +70,9 @@ pub fn run() {
             commands::get_scan_progress,
             commands::is_scanning,
             commands::get_scan_results,
+            // Deletion commands
+            commands::delete_files,
+            commands::get_deletion_history,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
