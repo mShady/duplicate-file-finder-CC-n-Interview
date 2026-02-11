@@ -30,7 +30,7 @@ trash = "5.2"
 ```
 
 ### Success Criteria
-- [ ] `cargo check` passes
+- [x] `cargo check` passes
 
 ### Commit
 Execute `/cl:commit`
@@ -238,8 +238,8 @@ mod tests {
 ```
 
 ### Success Criteria
-- [ ] `cargo check` passes
-- [ ] `cargo test deletion` passes
+- [x] `cargo check` passes
+- [x] `cargo test deletion` passes
 
 ### Commit
 Execute `/cl:commit`
@@ -378,7 +378,7 @@ pub use deletion::*;
 Register the new commands in the invoke handler.
 
 ### Success Criteria
-- [ ] `cargo check` passes
+- [x] `cargo check` passes
 
 ### Commit
 Execute `/cl:commit`
@@ -635,7 +635,7 @@ Create the frontend deletion confirmation dialog.
 ```
 
 ### Success Criteria
-- [ ] `npm run check` passes
+- [x] `npm run check` passes
 
 ### Commit
 Execute `/cl:commit`
@@ -825,7 +825,7 @@ Create the post-deletion summary dialog.
 ```
 
 ### Success Criteria
-- [ ] `npm run check` passes
+- [x] `npm run check` passes
 
 ### Commit
 Execute `/cl:commit`
@@ -1147,7 +1147,7 @@ export function clearSelection(): Set<string> {
 ### Success Criteria
 
 #### Automated Verification
-- [ ] `npm run check` passes
+- [x] `npm run check` passes
 
 #### Manual Verification
 - [ ] "Select all except oldest" works correctly
@@ -1178,7 +1178,7 @@ Update ResultsView.svelte to:
 4. Refresh results
 
 ### Success Criteria
-- [ ] Complete deletion flow works
+- [x] Complete deletion flow works
 
 ### Commit
 Execute `/cl:commit`
@@ -1461,7 +1461,7 @@ Create a UI component for viewing deletion history. The backend `get_deletion_hi
 ### Success Criteria
 
 #### Automated Verification
-- [ ] `npm run check` passes
+- [x] `npm run check` passes
 
 #### Manual Verification
 - [ ] Deletion history panel shows list of deleted files

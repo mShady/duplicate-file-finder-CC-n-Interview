@@ -7,6 +7,7 @@
   import FolderPicker from './lib/components/FolderPicker.svelte';
   import DeleteConfirmDialog from './lib/components/DeleteConfirmDialog.svelte';
   import DeleteSummaryDialog from './lib/components/DeleteSummaryDialog.svelte';
+  import DeletionHistoryPanel from './lib/components/DeletionHistoryPanel.svelte';
   import type { DetectionResult, ScanProgress, ScanComplete, ScanPhaseEvent, ScanErrorEvent, DeleteFilesResponse, BatchDeletionResult, DeletionRequest } from '$lib/types';
   import { formatBytes } from '$lib/utils/format';
 
@@ -26,6 +27,7 @@
   let showDeleteSummary = $state(false);
   let pendingDeletionFiles = $state<string[]>([]);
   let deletionResult = $state<BatchDeletionResult | null>(null);
+  let showDeletionHistory = $state(false);
 
   let unlisteners: UnlistenFn[] = [];
 
@@ -296,6 +298,9 @@
           </button>
         {/if}
       {/if}
+      <button class="nav-button" onclick={() => (showDeletionHistory = !showDeletionHistory)}>
+        History
+      </button>
     </nav>
   </header>
 
@@ -365,6 +370,16 @@
     {/if}
   </div>
 </main>
+
+{#if showDeletionHistory}
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="dialog-overlay" role="dialog" aria-modal="true" tabindex="-1" onclick={() => (showDeletionHistory = false)} onkeydown={(e) => { if (e.key === 'Escape') showDeletionHistory = false; }}>
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+    <div class="history-dialog" onclick={(e) => e.stopPropagation()}>
+      <DeletionHistoryPanel onClose={() => (showDeletionHistory = false)} />
+    </div>
+  </div>
+{/if}
 
 {#if showDeleteConfirm}
   <DeleteConfirmDialog
@@ -563,6 +578,21 @@
     background: var(--error);
     color: white;
     border-color: var(--error);
+  }
+
+  .dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .history-dialog {
+    max-width: 700px;
+    width: 90%;
   }
 
   .empty-results {

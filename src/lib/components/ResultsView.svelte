@@ -2,6 +2,8 @@
   import MasterDetailLayout from './MasterDetailLayout.svelte';
   import DuplicateGroupsList from './DuplicateGroupsList.svelte';
   import FileDetailsPanel from './FileDetailsPanel.svelte';
+  import SmartSelectionPanel from './SmartSelectionPanel.svelte';
+  import { untrack } from 'svelte';
   import type { DuplicateGroup, DetectionResult } from '$lib/types';
   import { formatBytes } from '$lib/utils/format';
 
@@ -19,6 +21,43 @@
 
   let selectedGroup = $state<DuplicateGroup | null>(null);
   let selectedFiles = $state<Set<string>>(new Set());
+  let showSmartSelection = $state(false);
+
+  // Keep selectedGroup and selectedFiles in sync when result changes (e.g. after deletion)
+  // Use untrack for reads to only react to result.groups changes
+  $effect(() => {
+    const groups = result.groups;
+    untrack(() => {
+      // Build set of all valid paths
+      const validPaths = new Set<string>();
+      for (const group of groups) {
+        for (const file of group.files) {
+          validPaths.add(file.path);
+        }
+      }
+
+      // Remove stale paths from selection
+      if (selectedFiles.size > 0) {
+        const cleaned = new Set<string>();
+        for (const path of selectedFiles) {
+          if (validPaths.has(path)) cleaned.add(path);
+        }
+        if (cleaned.size !== selectedFiles.size) {
+          selectedFiles = cleaned;
+        }
+      }
+
+      // Update selectedGroup reference
+      if (selectedGroup) {
+        const updated = groups.find(g => g.id === selectedGroup!.id);
+        if (updated) {
+          selectedGroup = updated;
+        } else {
+          selectedGroup = null;
+        }
+      }
+    });
+  });
 
   function handleGroupSelect(group: DuplicateGroup) {
     selectedGroup = group;
@@ -46,6 +85,10 @@
     selectedFiles = newSet;
   }
 
+  function handleSmartSelectionChange(selected: Set<string>) {
+    selectedFiles = selected;
+  }
+
   function handleDeleteSelected() {
     if (selectedFiles.size > 0) {
       onDeleteSelected(Array.from(selectedFiles));
@@ -53,18 +96,20 @@
   }
 
   // Optimized: Build a Map once instead of repeated find() calls
-  let selectedSize = $derived(
-    selectedGroup
-      ? (() => {
-          const fileMap = new Map(selectedGroup.files.map((f) => [f.path, f.size]));
-          let sum = 0;
-          for (const path of selectedFiles) {
-            sum += fileMap.get(path) || 0;
-          }
-          return sum;
-        })()
-      : 0,
-  );
+  let selectedSize = $derived.by(() => {
+    if (selectedFiles.size === 0) return 0;
+    const fileMap = new Map<string, number>();
+    for (const group of result.groups) {
+      for (const file of group.files) {
+        fileMap.set(file.path, file.size);
+      }
+    }
+    let sum = 0;
+    for (const path of selectedFiles) {
+      sum += fileMap.get(path) || 0;
+    }
+    return sum;
+  });
 </script>
 
 <div class="results-view">
@@ -84,20 +129,37 @@
       </div>
     </div>
 
-    {#if selectedFiles.size > 0}
-      <div class="selection-info">
-        <span id="selection-summary">{selectedFiles.size} files selected ({formatBytes(selectedSize)})</span>
-        <button 
-          class="delete-button" 
-          onclick={handleDeleteSelected}
-          aria-describedby="selection-summary"
-          aria-label="Delete {selectedFiles.size} selected files"
-        >
-          Delete Selected
-        </button>
-      </div>
-    {/if}
+    <div class="header-actions">
+      <button
+        class="smart-select-toggle"
+        class:active={showSmartSelection}
+        onclick={() => (showSmartSelection = !showSmartSelection)}
+      >
+        Smart Select
+      </button>
+      {#if selectedFiles.size > 0}
+        <div class="selection-info">
+          <span id="selection-summary">{selectedFiles.size} files selected ({formatBytes(selectedSize)})</span>
+          <button
+            class="delete-button"
+            onclick={handleDeleteSelected}
+            aria-describedby="selection-summary"
+            aria-label="Delete {selectedFiles.size} selected files"
+          >
+            Delete Selected
+          </button>
+        </div>
+      {/if}
+    </div>
   </div>
+
+  {#if showSmartSelection}
+    <SmartSelectionPanel
+      groups={result.groups}
+      {selectedFiles}
+      onSelectionChange={handleSmartSelectionChange}
+    />
+  {/if}
 
   <div class="results-content">
     <MasterDetailLayout>
@@ -162,6 +224,32 @@
 
   .stat.warning .stat-value {
     color: var(--warning);
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .smart-select-toggle {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .smart-select-toggle:hover {
+    background: var(--background);
+  }
+
+  .smart-select-toggle.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
   }
 
   .selection-info {
