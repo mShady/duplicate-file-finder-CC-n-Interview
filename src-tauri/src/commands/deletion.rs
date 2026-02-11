@@ -77,11 +77,11 @@ pub async fn delete_files(
         for deleted in &result.successful {
             let hash = hash_lookup.get(&deleted.path).map_or("", String::as_str);
             let kept = kept_paths.get(&deleted.path).map(String::as_str);
+            let size_i64 = i64::try_from(deleted.size).unwrap_or(i64::MAX);
             if let Err(e) = queries::deletion_history::record(
                 db.pool(),
                 &deleted.path,
-                #[allow(clippy::cast_possible_wrap)]
-                (deleted.size as i64),
+                size_i64,
                 hash,
                 None,
                 None,
