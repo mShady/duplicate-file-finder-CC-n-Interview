@@ -54,37 +54,47 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
+  // Optimized: Build a Map once instead of repeated find() calls
   let selectedSize = $derived(
     selectedGroup
-      ? Array.from(selectedFiles).reduce((sum, path) => {
-          const file = selectedGroup!.files.find((f) => f.path === path);
-          return sum + (file?.size || 0);
-        }, 0)
+      ? (() => {
+          const fileMap = new Map(selectedGroup.files.map((f) => [f.path, f.size]));
+          let sum = 0;
+          for (const path of selectedFiles) {
+            sum += fileMap.get(path) || 0;
+          }
+          return sum;
+        })()
       : 0,
   );
 </script>
 
 <div class="results-view">
   <div class="results-header">
-    <div class="header-stats">
+    <div class="header-stats" role="region" aria-label="Detection statistics">
       <div class="stat">
-        <span class="stat-value">{result.groups.length}</span>
+        <span class="stat-value" aria-label="{result.groups.length} duplicate groups">{result.groups.length}</span>
         <span class="stat-label">Groups</span>
       </div>
       <div class="stat">
-        <span class="stat-value">{result.duplicate_count}</span>
+        <span class="stat-value" aria-label="{result.duplicate_count} duplicate files">{result.duplicate_count}</span>
         <span class="stat-label">Duplicates</span>
       </div>
       <div class="stat warning">
-        <span class="stat-value">{formatBytes(result.total_wasted_space)}</span>
+        <span class="stat-value" aria-label="{formatBytes(result.total_wasted_space)} wasted space">{formatBytes(result.total_wasted_space)}</span>
         <span class="stat-label">Wasted</span>
       </div>
     </div>
 
     {#if selectedFiles.size > 0}
       <div class="selection-info">
-        <span>{selectedFiles.size} files selected ({formatBytes(selectedSize)})</span>
-        <button class="delete-button" onclick={handleDeleteSelected}>
+        <span id="selection-summary">{selectedFiles.size} files selected ({formatBytes(selectedSize)})</span>
+        <button 
+          class="delete-button" 
+          onclick={handleDeleteSelected}
+          aria-describedby="selection-summary"
+          aria-label="Delete {selectedFiles.size} selected files"
+        >
           Delete Selected
         </button>
       </div>
@@ -126,11 +136,14 @@
     padding: 1rem;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 1rem;
   }
 
   .header-stats {
     display: flex;
     gap: 2rem;
+    flex-wrap: wrap;
   }
 
   .stat {
@@ -171,14 +184,30 @@
     color: white;
     cursor: pointer;
     font-weight: 500;
+    transition: opacity 0.2s ease;
   }
 
   .delete-button:hover {
     opacity: 0.9;
   }
 
+  .delete-button:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
+  }
+
   .results-content {
     flex: 1;
     overflow: hidden;
+  }
+
+  @media (max-width: 768px) {
+    .header-stats {
+      gap: 1rem;
+    }
+
+    .stat-value {
+      font-size: 1.2rem;
+    }
   }
 </style>
