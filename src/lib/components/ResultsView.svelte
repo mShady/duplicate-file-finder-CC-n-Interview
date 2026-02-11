@@ -23,6 +23,17 @@
   let selectedFiles = $state<Set<string>>(new Set());
   let showSmartSelection = $state(false);
 
+  // Cache file-size map: only recomputed when result.groups changes, not on every selection toggle
+  let fileSizeMap = $derived.by(() => {
+    const map = new Map<string, number>();
+    for (const group of result.groups) {
+      for (const file of group.files) {
+        map.set(file.path, file.size);
+      }
+    }
+    return map;
+  });
+
   // Keep selectedGroup and selectedFiles in sync when result changes (e.g. after deletion).
   // Tracks `result` (not just result.groups) so any parent re-assignment triggers this,
   // even if groups array identity hasn't changed.
@@ -100,18 +111,12 @@
     }
   }
 
-  // Optimized: Build a Map once instead of repeated find() calls
+  // Uses cached fileSizeMap so only selection changes trigger the sum recomputation
   let selectedSize = $derived.by(() => {
     if (selectedFiles.size === 0) return 0;
-    const fileMap = new Map<string, number>();
-    for (const group of result.groups) {
-      for (const file of group.files) {
-        fileMap.set(file.path, file.size);
-      }
-    }
     let sum = 0;
     for (const path of selectedFiles) {
-      sum += fileMap.get(path) || 0;
+      sum += fileSizeMap.get(path) || 0;
     }
     return sum;
   });
