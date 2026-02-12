@@ -3,13 +3,21 @@
   import { listen } from '@tauri-apps/api/event';
   import { onMount, onDestroy } from 'svelte';
   import type { UnlistenFn } from '@tauri-apps/api/event';
+  import AppHeader from './lib/components/AppHeader.svelte';
+  import HomeView from './lib/components/HomeView.svelte';
+  import ScanningView from './lib/components/ScanningView.svelte';
   import ResultsView from './lib/components/ResultsView.svelte';
-  import FolderPicker from './lib/components/FolderPicker.svelte';
   import DeleteConfirmDialog from './lib/components/DeleteConfirmDialog.svelte';
   import DeleteSummaryDialog from './lib/components/DeleteSummaryDialog.svelte';
-  import DeletionHistoryPanel from './lib/components/DeletionHistoryPanel.svelte';
-  import type { DetectionResult, ScanProgress, ScanComplete, ScanPhaseEvent, ScanErrorEvent, DeleteFilesResponse, BatchDeletionResult, DeletionRequest } from '$lib/types';
-  import { formatBytes } from '$lib/utils/format';
+  import HistoryDialog from './lib/components/HistoryDialog.svelte';
+  import type { DetectionResult, ScanProgress, ScanComplete, ScanPhaseEvent, ScanErrorEvent, DeleteFilesResponse, BatchDeletionResult } from '$lib/types';
+  import {
+    buildDeletionRequests,
+    buildKeptPathsAndGroupIds,
+    updateResultsAfterDeletion as computeUpdatedResults,
+    computePendingDeletionSize,
+    isDeletingAllInGroup,
+  } from '$lib/utils/deletionOrchestrator';
 
   type AppView = 'home' | 'scanning' | 'results';
 
@@ -28,14 +36,6 @@
   let pendingDeletionFiles = $state<string[]>([]);
   let deletionResult = $state<BatchDeletionResult | null>(null);
   let showDeletionHistory = $state(false);
-  let historyDialogRef = $state<HTMLDivElement | null>(null);
-
-  // Auto-focus history dialog when opened for proper keyboard navigation
-  $effect(() => {
-    if (historyDialogRef) {
-      historyDialogRef.focus();
-    }
-  });
 
   let unlisteners: UnlistenFn[] = [];
 
@@ -157,75 +157,21 @@
     showDeleteConfirm = true;
   }
 
-  // Check if the selected files include ALL copies in any group
-  let deletingAllInGroup = $derived.by(() => {
-    if (!detectionResult || pendingDeletionFiles.length === 0) return false;
-    const selectedSet = new Set(pendingDeletionFiles);
-    return detectionResult.groups.some(group =>
-      group.files.every(file => selectedSet.has(file.path))
-    );
-  });
+  let deletingAllInGroup = $derived.by(() =>
+    detectionResult ? isDeletingAllInGroup(detectionResult, pendingDeletionFiles) : false
+  );
 
-  // Get total size of files pending deletion
-  let pendingDeletionSize = $derived.by(() => {
-    if (!detectionResult) return 0;
-    const fileMap = new Map<string, number>();
-    for (const group of detectionResult.groups) {
-      for (const file of group.files) {
-        fileMap.set(file.path, file.size);
-      }
-    }
-    let total = 0;
-    for (const path of pendingDeletionFiles) {
-      total += fileMap.get(path) || 0;
-    }
-    return total;
-  });
+  let pendingDeletionSize = $derived.by(() =>
+    detectionResult ? computePendingDeletionSize(detectionResult, pendingDeletionFiles) : 0
+  );
 
   async function handleConfirmDelete() {
     if (!detectionResult) return;
     showDeleteConfirm = false;
     error = null;
 
-    // Build DeletionRequests from the detection result data
-    const fileMap = new Map<string, { hash: string; size: number }>();
-    for (const group of detectionResult.groups) {
-      for (const file of group.files) {
-        fileMap.set(file.path, { hash: group.hash, size: file.size });
-      }
-    }
-
-    const requests: DeletionRequest[] = pendingDeletionFiles
-      .filter(path => fileMap.has(path))
-      .map(path => {
-        const info = fileMap.get(path)!;
-        return {
-          path,
-          expected_hash: info.hash,
-          size: info.size,
-        };
-      });
-
-    // Build kept_paths and group_ids for each deleted file.
-    // kept_paths: maps deleted file -> ONE representative retained copy from the same group.
-    // When multiple copies are retained (e.g. deleting 1 of 3), only the first non-deleted
-    // file is recorded. This is a representative path for the history UI, not an exhaustive
-    // list. When all copies are deleted, no kept_path is recorded (null in DB).
-    // group_ids: maps deleted file -> duplicate_groups.id for deletion history linkage.
-    const deletingSet = new Set(pendingDeletionFiles);
-    const keptPaths: Record<string, string> = {};
-    const groupIds: Record<string, number> = {};
-    for (const group of detectionResult.groups) {
-      const keptFile = group.files.find(f => !deletingSet.has(f.path));
-      for (const file of group.files) {
-        if (deletingSet.has(file.path)) {
-          if (keptFile) {
-            keptPaths[file.path] = keptFile.path;
-          }
-          groupIds[file.path] = group.id;
-        }
-      }
-    }
+    const requests = buildDeletionRequests(detectionResult, pendingDeletionFiles);
+    const { keptPaths, groupIds } = buildKeptPathsAndGroupIds(detectionResult, pendingDeletionFiles);
 
     try {
       const response = await invoke<DeleteFilesResponse>('delete_files', {
@@ -235,10 +181,9 @@
       deletionResult = response.result;
       showDeleteSummary = true;
 
-      // Remove successfully deleted files from the detection result
       if (response.result.successful.length > 0) {
         const deletedPaths = new Set(response.result.successful.map(r => r.path));
-        updateResultsAfterDeletion(deletedPaths);
+        detectionResult = computeUpdatedResults(detectionResult, deletedPaths);
       }
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -257,50 +202,6 @@
     deletionResult = null;
   }
 
-  function updateResultsAfterDeletion(deletedPaths: Set<string>) {
-    if (!detectionResult) return;
-
-    const updatedGroups = detectionResult.groups
-      .map(group => {
-        const remainingFiles = group.files.filter(f => !deletedPaths.has(f.path));
-        if (remainingFiles.length <= 1) return null; // No longer a duplicate group
-        const wastedSpace = group.file_size * (remainingFiles.length - 1);
-        return {
-          ...group,
-          files: remainingFiles,
-          wasted_space: wastedSpace,
-        };
-      })
-      .filter((g): g is NonNullable<typeof g> => g !== null);
-
-    const duplicateCount = updatedGroups.reduce((sum, g) => sum + g.files.length - 1, 0);
-    const totalWastedSpace = updatedGroups.reduce((sum, g) => sum + g.wasted_space, 0);
-
-    detectionResult = {
-      ...detectionResult,
-      groups: updatedGroups,
-      duplicate_count: duplicateCount,
-      total_wasted_space: totalWastedSpace,
-    };
-  }
-
-  function getPhaseLabel(currentPhase: typeof phase): string {
-    switch (currentPhase) {
-      case 'collecting':
-        return 'Scanning files...';
-      case 'partial_hashing':
-        return 'Computing partial hashes...';
-      case 'full_hashing':
-        return 'Computing full hashes...';
-      case 'storing':
-        return 'Analyzing duplicates...';
-      case 'complete':
-        return 'Complete';
-      default:
-        return 'Scanning...';
-    }
-  }
-
   function handleNewScan() {
     currentView = 'home';
     error = null;
@@ -310,77 +211,27 @@
 </script>
 
 <main class="app">
-  <header class="app-header">
-    <h1>DupliFind</h1>
-    <nav>
-      {#if currentView === 'results' || detectionResult}
-        <button class="nav-button" onclick={handleNewScan}>
-          New Scan
-        </button>
-        {#if detectionResult}
-          <button
-            class="nav-button"
-            class:active={currentView === 'results'}
-            onclick={() => (currentView = 'results')}
-          >
-            Results ({detectionResult.groups.length})
-          </button>
-        {/if}
-      {/if}
-      <button class="nav-button" onclick={() => (showDeletionHistory = !showDeletionHistory)}>
-        History
-      </button>
-    </nav>
-  </header>
+  <AppHeader
+    {currentView}
+    {detectionResult}
+    onNewScan={handleNewScan}
+    onViewResults={() => (currentView = 'results')}
+    onToggleHistory={() => (showDeletionHistory = !showDeletionHistory)}
+  />
 
   <div class="app-content">
     {#if currentView === 'home'}
-      <div class="home-view">
-        <div class="home-content">
-          <h2>Find Duplicate Files</h2>
-          <p>Scan your drives to find and remove duplicate files.</p>
-
-          {#if error}
-            <div class="error-banner" role="alert">{error}</div>
-          {/if}
-
-          <FolderPicker {selectedPaths} onPathsChange={handlePathsChange} />
-
-          <button
-            class="scan-button"
-            onclick={startScan}
-            disabled={selectedPaths.length === 0 || isScanning}
-          >
-            Start Scan
-          </button>
-
-          {#if detectionResult}
-            <button class="results-link" onclick={() => (currentView = 'results')}>
-              View Previous Results ({detectionResult.groups.length} groups)
-            </button>
-          {/if}
-        </div>
-      </div>
+      <HomeView
+        {selectedPaths}
+        {isScanning}
+        {error}
+        {detectionResult}
+        onPathsChange={handlePathsChange}
+        onStartScan={startScan}
+        onViewResults={() => (currentView = 'results')}
+      />
     {:else if currentView === 'scanning'}
-      <div class="scanning-view">
-        <div class="scanning-content">
-          <div class="spinner"></div>
-          <h2>{getPhaseLabel(phase)}</h2>
-          {#if progress}
-            <p class="progress-info">
-              {progress.total_files.toLocaleString()} files &bull;
-              {formatBytes(progress.total_bytes)}
-              {#if scanResult}
-                &bull; completed in {(scanResult.duration_ms / 1000).toFixed(1)}s
-              {/if}
-            </p>
-            {#if progress.current_path}
-              <p class="current-path" title={progress.current_path}>{progress.current_path}</p>
-            {/if}
-          {/if}
-          <button class="cancel-button" onclick={cancelScan}>Cancel</button>
-        </div>
-      </div>
+      <ScanningView {phase} {progress} {scanResult} onCancel={cancelScan} />
     {:else if currentView === 'results'}
       {#if error}
         <div class="error-banner" role="alert">
@@ -401,41 +252,7 @@
 </main>
 
 {#if showDeletionHistory}
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div
-    class="dialog-overlay"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Deletion History"
-    tabindex="-1"
-    bind:this={historyDialogRef}
-    onclick={() => (showDeletionHistory = false)}
-    onkeydown={(e) => {
-      if (e.key === 'Escape') showDeletionHistory = false;
-      // Trap focus within dialog
-      if (e.key === 'Tab') {
-        const focusable = historyDialogRef?.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusable && focusable.length > 0) {
-          const first = focusable[0];
-          const last = focusable[focusable.length - 1];
-          if (e.shiftKey && document.activeElement === first) {
-            e.preventDefault();
-            last.focus();
-          } else if (!e.shiftKey && document.activeElement === last) {
-            e.preventDefault();
-            first.focus();
-          }
-        }
-      }
-    }}
-  >
-    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-    <div class="history-dialog" onclick={(e) => e.stopPropagation()}>
-      <DeletionHistoryPanel onClose={() => (showDeletionHistory = false)} />
-    </div>
-  </div>
+  <HistoryDialog onClose={() => (showDeletionHistory = false)} />
 {/if}
 
 {#if showDeleteConfirm}
@@ -463,74 +280,9 @@
     height: 100vh;
   }
 
-  .app-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .app-header h1 {
-    font-size: 1.25rem;
-    margin: 0;
-  }
-
-  .app-header nav {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  .nav-button {
-    padding: 0.5rem 1rem;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    background: transparent;
-    color: var(--text);
-    cursor: pointer;
-    font-size: 0.875rem;
-  }
-
-  .nav-button:hover {
-    background: var(--background);
-  }
-
-  .nav-button.active {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
-  }
-
   .app-content {
     flex: 1;
     overflow: hidden;
-  }
-
-  .home-view,
-  .scanning-view {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    padding: 1rem;
-  }
-
-  .home-content,
-  .scanning-content {
-    text-align: center;
-    max-width: 500px;
-    width: 100%;
-  }
-
-  .home-content h2,
-  .scanning-content h2 {
-    margin-bottom: 0.5rem;
-  }
-
-  .home-content p {
-    color: var(--text-secondary);
-    margin-bottom: 2rem;
   }
 
   .error-banner {
@@ -556,100 +308,18 @@
     flex-shrink: 0;
   }
 
-  .scan-button {
-    width: 100%;
-    padding: 1rem;
-    font-size: 1.1rem;
-    border: none;
-    border-radius: 8px;
-    background: var(--primary);
-    color: white;
-    cursor: pointer;
-    margin-top: 1rem;
-  }
-
-  .scan-button:hover:not(:disabled) {
-    opacity: 0.9;
-  }
-
-  .scan-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .results-link {
-    display: block;
-    margin-top: 1rem;
-    padding: 0.5rem;
-    border: none;
-    background: transparent;
-    color: var(--primary);
-    cursor: pointer;
-    text-decoration: underline;
-    font-size: 0.9rem;
-  }
-
-  .spinner {
-    width: 48px;
-    height: 48px;
-    border: 4px solid var(--border);
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    margin: 0 auto 1rem;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  .progress-info {
-    color: var(--text-secondary);
-    margin-bottom: 0.5rem;
-  }
-
-  .current-path {
-    font-size: 0.8rem;
-    font-family: var(--font-mono);
-    color: var(--text-secondary);
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    margin: 0 auto 1rem;
-  }
-
-  .cancel-button {
-    padding: 0.5rem 1.5rem;
+  .nav-button {
+    padding: 0.5rem 1rem;
     border: 1px solid var(--border);
     border-radius: 4px;
     background: transparent;
     color: var(--text);
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
   }
 
-  .cancel-button:hover {
-    background: var(--error);
-    color: white;
-    border-color: var(--error);
-  }
-
-  .dialog-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-
-  .history-dialog {
-    max-width: 700px;
-    width: 90%;
+  .nav-button:hover {
+    background: var(--background);
   }
 
   .empty-results {
@@ -664,48 +334,5 @@
   .empty-results p {
     color: var(--text-secondary);
     font-size: 1.1rem;
-  }
-
-  @media (max-width: 768px) {
-    .app-header h1 {
-      font-size: 1rem;
-    }
-
-    .nav-button {
-      padding: 0.4rem 0.75rem;
-      font-size: 0.8rem;
-    }
-
-    .home-content,
-    .scanning-content {
-      max-width: 100%;
-      padding: 0.5rem;
-    }
-
-    .scan-button {
-      font-size: 1rem;
-      padding: 0.875rem;
-    }
-
-    .current-path {
-      font-size: 0.7rem;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .app-header {
-      flex-direction: column;
-      gap: 0.5rem;
-      align-items: flex-start;
-    }
-
-    .app-header nav {
-      width: 100%;
-      justify-content: flex-end;
-    }
-
-    .progress-info {
-      font-size: 0.85rem;
-    }
   }
 </style>
