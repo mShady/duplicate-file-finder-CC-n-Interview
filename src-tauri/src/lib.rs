@@ -7,7 +7,7 @@ mod scanner;
 mod services;
 mod state;
 
-use commands::scan::ScanState;
+use services::scan::ScanState;
 use state::AppState;
 use std::sync::Mutex;
 use tauri::Manager;

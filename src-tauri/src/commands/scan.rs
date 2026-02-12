@@ -3,14 +3,14 @@
 use crate::db::models::ScanStatus;
 use crate::db::queries;
 use crate::scanner::{
-    DetectionResult, DirectoryWalker, DuplicateDetector, FileInfo, ParallelismMode, ScanConfig,
-    ScanProgress,
+    DetectionResult, ParallelismMode, ScanConfig, ScanProgress,
 };
+use crate::services::scan::{ScanComplete, ScanEventSink, ScanService, ScanState};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::Ordering;
+use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 /// Scan request from frontend
@@ -27,38 +27,47 @@ pub struct ScanResponse {
     pub message: String,
 }
 
-/// Scan completion data
-#[derive(Debug, Clone, Serialize)]
-pub struct ScanComplete {
-    pub session_id: i64,
-    pub total_files: u64,
-    pub total_bytes: u64,
-    pub duplicate_groups: usize,
-    pub duplicate_files: u64,
-    pub wasted_space: u64,
-    pub duration_ms: u64,
+/// Bridges [`ScanEventSink`] to Tauri frontend events via [`AppHandle`].
+struct TauriEventSink {
+    handle: AppHandle,
 }
 
-/// Global scan state (separate from `AppState` for cancellation)
-pub struct ScanState {
-    pub cancel_flag: Option<Arc<AtomicBool>>,
-}
-
-impl ScanState {
-    pub fn new() -> Self {
-        Self { cancel_flag: None }
+impl ScanEventSink for TauriEventSink {
+    fn on_progress(&self, progress: &ScanProgress) {
+        let _ = self.handle.emit("scan-progress", progress);
     }
-}
 
-impl Default for ScanState {
-    fn default() -> Self {
-        Self::new()
+    fn on_phase(&self, phase: &str, message: &str) {
+        let _ = self.handle.emit(
+            "scan-phase",
+            serde_json::json!({
+                "phase": phase,
+                "message": message,
+            }),
+        );
+    }
+
+    fn on_error(&self, session_id: i64, error: &str) {
+        let _ = self.handle.emit(
+            "scan-error",
+            serde_json::json!({
+                "session_id": session_id,
+                "error": error,
+            }),
+        );
+    }
+
+    fn on_complete(&self, completion: &ScanComplete) {
+        let _ = self.handle.emit("scan-complete", completion);
+    }
+
+    fn on_results(&self, results: &DetectionResult) {
+        let _ = self.handle.emit("scan-results", results);
     }
 }
 
 /// Start a new scan
 #[tauri::command]
-#[allow(clippy::too_many_lines)]
 pub async fn start_scan(
     request: ScanRequest,
     app_handle: AppHandle,
@@ -110,13 +119,13 @@ pub async fn start_scan(
         }
     };
 
-    // Store session ID now that we have it
+    // Store session ID
     {
         let mut state = state.lock().map_err(|e| e.to_string())?;
         state.current_scan_id = Some(session_id);
     }
 
-    // Create scan configuration
+    // Build scan configuration
     let config = ScanConfig {
         paths,
         follow_symlinks: false,
@@ -124,228 +133,33 @@ pub async fn start_scan(
         parallelism,
     };
 
-    // Create walker and get cancel handle
-    let walker = DirectoryWalker::new(config);
-    let cancel_handle = walker.cancel_handle();
-
-    // Store cancel handle
+    // Store cancel flag so cancel_scan can reach it
+    let cancel_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     {
         let mut scan_state = scan_state.lock().map_err(|e| e.to_string())?;
-        scan_state.cancel_flag = Some(cancel_handle);
+        scan_state.cancel_flag = Some(std::sync::Arc::clone(&cancel_flag));
     }
 
-    // Clone the AppHandle for use in the spawned task
+    // Create event sink and spawn the scan task
     let handle = app_handle.clone();
+    let sink = TauriEventSink {
+        handle: app_handle.clone(),
+    };
 
-    // Spawn scan task
     tauri::async_runtime::spawn(async move {
-        let start_time = std::time::Instant::now();
+        ScanService::run(config, session_id, cancel_flag, db_arc, sink).await;
 
-        // Phase 1: Collect all files
-        log::info!("Starting file collection...");
-        let (receiver, walker_handle) = walker.walk_channel();
-
-        let mut files: Vec<FileInfo> = Vec::new();
-        let mut total_bytes: u64 = 0;
-
-        for result in receiver {
-            match result {
-                Ok(file_info) => {
-                    total_bytes += file_info.size;
-
-                    // Emit progress event every 100 files
-                    if (files.len() + 1) % 100 == 0 {
-                        let progress = ScanProgress {
-                            total_files: (files.len() + 1) as u64,
-                            processed_files: (files.len() + 1) as u64,
-                            total_bytes,
-                            current_path: Some(file_info.path.display().to_string()),
-                            skipped_files: 0,
-                            estimated_total: None,
-                        };
-                        let _ = handle.emit("scan-progress", &progress);
-                    }
-
-                    files.push(file_info);
-                }
-                Err((path, error)) => {
-                    log::debug!("Skipped file {}: {}", path.display(), error);
-                }
-            }
-        }
-
-        let walker_stats = walker_handle.join().unwrap_or_default();
-        log::info!(
-            "File collection complete: {} files, {} bytes",
-            walker_stats.total_files,
-            walker_stats.total_bytes
-        );
-
-        // Phase 2: Detect duplicates
-        log::info!("Starting duplicate detection...");
-        let _ = handle.emit(
-            "scan-phase",
-            serde_json::json!({
-                "phase": "detecting",
-                "message": "Analyzing files for duplicates..."
-            }),
-        );
-
-        let mut detector = DuplicateDetector::new();
-
-        // Wire the scan cancel flag to the detector so cancellation works during detection
-        let cancel_flag = handle
-            .state::<Mutex<ScanState>>()
-            .lock()
-            .ok()
-            .and_then(|ss| ss.cancel_flag.clone());
-        if let Some(flag) = cancel_flag {
-            detector.set_cancel_flag(flag);
-        }
-        let detection_result = match detector.detect(files) {
-            Ok(result) => result,
-            Err(e) => {
-                log::error!("Detection failed: {e}");
-
-                // Update status to failed
-                let app_state = handle.state::<Mutex<AppState>>();
-                let db_arc = app_state.lock().ok().and_then(|s| s.database());
-                if let Some(db_arc) = db_arc {
-                    let db = db_arc.lock().await;
-                    let _ = queries::scan_sessions::update_status(
-                        db.pool(),
-                        session_id,
-                        ScanStatus::Failed,
-                    )
-                    .await;
-                }
-
-                // Clear scanning state
-                let app_state = handle.state::<Mutex<AppState>>();
-                if let Ok(mut state) = app_state.lock() {
-                    state.is_scanning = false;
-                    state.current_scan_id = None;
-                }
-
-                let _ = handle.emit(
-                    "scan-error",
-                    serde_json::json!({
-                        "session_id": session_id,
-                        "error": e.to_string()
-                    }),
-                );
-                return;
-            }
-        };
-
-        log::info!(
-            "Detection complete: {} groups, {} duplicates, {} bytes wasted",
-            detection_result.groups.len(),
-            detection_result.duplicate_count,
-            detection_result.total_wasted_space
-        );
-
-        // Phase 3: Store results in database
-        let app_state = handle.state::<Mutex<AppState>>();
-        let db_arc = app_state.lock().ok().and_then(|s| s.database());
-
-        #[allow(clippy::cast_possible_wrap)]
-        if let Some(db_arc) = db_arc {
-            let db = db_arc.lock().await;
-
-            // Store duplicate groups and files
-            for group in &detection_result.groups {
-                match queries::duplicate_groups::create(
-                    db.pool(),
-                    &group.hash,
-                    group.file_size as i64,
-                    group.files.len() as i32,
-                    group.wasted_space as i64,
-                    Some(session_id),
-                )
-                .await
-                {
-                    Ok(group_id) => {
-                        for file in &group.files {
-                            if let Err(e) = queries::scanned_files::insert(
-                                db.pool(),
-                                &file.path.display().to_string(),
-                                file.size as i64,
-                                None, // partial_hash stored separately
-                                Some(&group.hash),
-                                file.created_at,
-                                file.modified_at,
-                                Some(group_id),
-                                Some(session_id),
-                            )
-                            .await
-                            {
-                                log::warn!("Failed to insert scanned file: {e}");
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        log::warn!("Failed to create duplicate group: {e}");
-                    }
-                }
-            }
-
-            // Update session stats
-            if let Err(e) = queries::scan_sessions::update_stats(
-                db.pool(),
-                session_id,
-                walker_stats.total_files as i64,
-                walker_stats.total_bytes as i64,
-                detection_result.groups.len() as i32,
-                detection_result.total_wasted_space as i64,
-            )
-            .await
-            {
-                log::warn!("Failed to update session stats: {e}");
-            }
-
-            if let Err(e) = queries::scan_sessions::update_status(
-                db.pool(),
-                session_id,
-                ScanStatus::Completed,
-            )
-            .await
-            {
-                log::warn!("Failed to update session status: {e}");
-            }
-        }
-
-        // Clear scanning state
+        // Cleanup state after the service completes (success, failure, or cancellation)
         let app_state = handle.state::<Mutex<AppState>>();
         if let Ok(mut state) = app_state.lock() {
             state.is_scanning = false;
             state.current_scan_id = None;
         }
 
-        // Clear cancel flag
-        let scan_state = handle.state::<Mutex<ScanState>>();
-        if let Ok(mut scan_state) = scan_state.lock() {
-            scan_state.cancel_flag = None;
-        }
-
-        let duration_ms = start_time.elapsed().as_millis() as u64;
-
-        // Emit completion event
-        let _ = handle.emit(
-            "scan-complete",
-            ScanComplete {
-                session_id,
-                total_files: walker_stats.total_files,
-                total_bytes: walker_stats.total_bytes,
-                duplicate_groups: detection_result.groups.len(),
-                duplicate_files: detection_result.duplicate_count,
-                wasted_space: detection_result.total_wasted_space,
-                duration_ms,
-            },
-        );
-
-        // Also emit the full detection result for the UI
-        let _ = handle.emit("scan-results", &detection_result);
+        let scan_state_ref = handle.state::<Mutex<ScanState>>();
+        if let Ok(mut ss) = scan_state_ref.lock() {
+            ss.cancel_flag = None;
+        };
     });
 
     Ok(ScanResponse {
@@ -417,6 +231,7 @@ pub async fn is_scanning(state: State<'_, Mutex<AppState>>) -> Result<bool, Stri
 
 /// Get the latest scan results
 #[tauri::command]
+#[allow(clippy::cast_sign_loss)]
 pub async fn get_scan_results(
     state: State<'_, Mutex<AppState>>,
 ) -> Result<Option<DetectionResult>, String> {
@@ -482,21 +297,4 @@ pub async fn get_scan_results(
         unique_files: (session.total_files as u64).saturating_sub(total_duplicate_count),
         stats: crate::scanner::DetectionStats::default(),
     }))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_scan_state_new() {
-        let state = ScanState::new();
-        assert!(state.cancel_flag.is_none());
-    }
-
-    #[test]
-    fn test_scan_state_default() {
-        let state = ScanState::default();
-        assert!(state.cancel_flag.is_none());
-    }
 }

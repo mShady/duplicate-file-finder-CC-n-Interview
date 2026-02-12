@@ -1,0 +1,459 @@
+//! Scan orchestration service
+//!
+//! Extracts the 3-phase scan pipeline (file collection, duplicate detection,
+//! DB persistence) out of the Tauri command layer so it can be tested and
+//! reused independently.
+
+use crate::db::models::ScanStatus;
+use crate::db::queries;
+use crate::db::Database;
+use crate::scanner::{
+    DetectionResult, DirectoryWalker, DuplicateDetector, FileInfo, ScanConfig, ScanProgress,
+};
+use serde::Serialize;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use tokio::sync::Mutex as AsyncMutex;
+
+/// Abstraction for scan event reporting.
+///
+/// The command layer provides a Tauri-based implementation;
+/// tests can use a no-op or collecting implementation.
+pub trait ScanEventSink: Send + 'static {
+    fn on_progress(&self, progress: &ScanProgress);
+    fn on_phase(&self, phase: &str, message: &str);
+    fn on_error(&self, session_id: i64, error: &str);
+    fn on_complete(&self, completion: &ScanComplete);
+    fn on_results(&self, results: &DetectionResult);
+}
+
+/// Scan cancellation state (separate from `AppState`)
+pub struct ScanState {
+    pub cancel_flag: Option<Arc<AtomicBool>>,
+}
+
+impl ScanState {
+    pub fn new() -> Self {
+        Self { cancel_flag: None }
+    }
+}
+
+impl Default for ScanState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Scan completion data emitted to the frontend
+#[derive(Debug, Clone, Serialize)]
+pub struct ScanComplete {
+    pub session_id: i64,
+    pub total_files: u64,
+    pub total_bytes: u64,
+    pub duplicate_groups: usize,
+    pub duplicate_files: u64,
+    pub wasted_space: u64,
+    pub duration_ms: u64,
+}
+
+/// Stateless scan orchestrator.
+///
+/// Runs the full pipeline: walk directories → detect duplicates → persist to DB,
+/// reporting progress through the provided [`ScanEventSink`].
+pub struct ScanService;
+
+impl ScanService {
+    /// Execute the full scan pipeline.
+    ///
+    /// Designed to run inside `tauri::async_runtime::spawn`.  The caller is
+    /// responsible for state cleanup (`is_scanning`, `cancel_flag`) after this
+    /// method returns.
+    #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation, clippy::too_many_lines)]
+    pub async fn run(
+        config: ScanConfig,
+        session_id: i64,
+        cancel_flag: Arc<AtomicBool>,
+        db: Arc<AsyncMutex<Database>>,
+        sink: impl ScanEventSink,
+    ) {
+        let start_time = std::time::Instant::now();
+
+        // Phase 1: Collect all files
+        log::info!("Starting file collection...");
+        let walker = DirectoryWalker::new(config);
+
+        // Share the cancel flag with the walker
+        let walker_cancel = walker.cancel_handle();
+        if cancel_flag.load(Ordering::Relaxed) {
+            walker_cancel.store(true, Ordering::Relaxed);
+        }
+        // Link the external cancel flag to the walker's cancel handle
+        // by spawning a tiny watcher task
+        let external_flag = Arc::clone(&cancel_flag);
+        let walker_flag = Arc::clone(&walker_cancel);
+        let cancel_linker = tokio::spawn(async move {
+            loop {
+                if external_flag.load(Ordering::Relaxed) {
+                    walker_flag.store(true, Ordering::Relaxed);
+                    break;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            }
+        });
+
+        let (receiver, walker_handle) = walker.walk_channel();
+
+        let mut files: Vec<FileInfo> = Vec::new();
+        let mut total_bytes: u64 = 0;
+
+        for result in receiver {
+            match result {
+                Ok(file_info) => {
+                    total_bytes += file_info.size;
+
+                    // Emit progress event every 100 files
+                    if (files.len() + 1).is_multiple_of(100) {
+                        let progress = ScanProgress {
+                            total_files: (files.len() + 1) as u64,
+                            processed_files: (files.len() + 1) as u64,
+                            total_bytes,
+                            current_path: Some(file_info.path.display().to_string()),
+                            skipped_files: 0,
+                            estimated_total: None,
+                        };
+                        sink.on_progress(&progress);
+                    }
+
+                    files.push(file_info);
+                }
+                Err((path, error)) => {
+                    log::debug!("Skipped file {}: {}", path.display(), error);
+                }
+            }
+        }
+
+        cancel_linker.abort();
+
+        let walker_stats = walker_handle.join().unwrap_or_default();
+        log::info!(
+            "File collection complete: {} files, {} bytes",
+            walker_stats.total_files,
+            walker_stats.total_bytes
+        );
+
+        // Phase 2: Detect duplicates
+        log::info!("Starting duplicate detection...");
+        sink.on_phase("detecting", "Analyzing files for duplicates...");
+
+        let mut detector = DuplicateDetector::new();
+        detector.set_cancel_flag(Arc::clone(&cancel_flag));
+
+        let detection_result = match detector.detect(files) {
+            Ok(result) => result,
+            Err(e) => {
+                log::error!("Detection failed: {e}");
+
+                // Update status to failed
+                let db_guard = db.lock().await;
+                let _ = queries::scan_sessions::update_status(
+                    db_guard.pool(),
+                    session_id,
+                    ScanStatus::Failed,
+                )
+                .await;
+                drop(db_guard);
+
+                sink.on_error(session_id, &e.to_string());
+                return;
+            }
+        };
+
+        log::info!(
+            "Detection complete: {} groups, {} duplicates, {} bytes wasted",
+            detection_result.groups.len(),
+            detection_result.duplicate_count,
+            detection_result.total_wasted_space
+        );
+
+        // Phase 3: Store results in database
+        {
+            let db_guard = db.lock().await;
+
+            // Store duplicate groups and files
+            for group in &detection_result.groups {
+                match queries::duplicate_groups::create(
+                    db_guard.pool(),
+                    &group.hash,
+                    group.file_size as i64,
+                    group.files.len() as i32,
+                    group.wasted_space as i64,
+                    Some(session_id),
+                )
+                .await
+                {
+                    Ok(group_id) => {
+                        for file in &group.files {
+                            if let Err(e) = queries::scanned_files::insert(
+                                db_guard.pool(),
+                                &file.path.display().to_string(),
+                                file.size as i64,
+                                None,
+                                Some(&group.hash),
+                                file.created_at,
+                                file.modified_at,
+                                Some(group_id),
+                                Some(session_id),
+                            )
+                            .await
+                            {
+                                log::warn!("Failed to insert scanned file: {e}");
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        log::warn!("Failed to create duplicate group: {e}");
+                    }
+                }
+            }
+
+            // Update session stats
+            if let Err(e) = queries::scan_sessions::update_stats(
+                db_guard.pool(),
+                session_id,
+                walker_stats.total_files as i64,
+                walker_stats.total_bytes as i64,
+                detection_result.groups.len() as i32,
+                detection_result.total_wasted_space as i64,
+            )
+            .await
+            {
+                log::warn!("Failed to update session stats: {e}");
+            }
+
+            if let Err(e) = queries::scan_sessions::update_status(
+                db_guard.pool(),
+                session_id,
+                ScanStatus::Completed,
+            )
+            .await
+            {
+                log::warn!("Failed to update session status: {e}");
+            }
+        }
+
+        let duration_ms = start_time.elapsed().as_millis() as u64;
+
+        // Emit completion event
+        sink.on_complete(&ScanComplete {
+            session_id,
+            total_files: walker_stats.total_files,
+            total_bytes: walker_stats.total_bytes,
+            duplicate_groups: detection_result.groups.len(),
+            duplicate_files: detection_result.duplicate_count,
+            wasted_space: detection_result.total_wasted_space,
+            duration_ms,
+        });
+
+        // Also emit the full detection result for the UI
+        sink.on_results(&detection_result);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+
+    #[test]
+    fn test_scan_state_new() {
+        let state = ScanState::new();
+        assert!(state.cancel_flag.is_none());
+    }
+
+    #[test]
+    fn test_scan_state_default() {
+        let state = ScanState::default();
+        assert!(state.cancel_flag.is_none());
+    }
+
+    /// Collects event names for assertion in tests.
+    struct MockEventSink {
+        events: Arc<Mutex<Vec<String>>>,
+    }
+
+    impl MockEventSink {
+        fn new() -> (Self, Arc<Mutex<Vec<String>>>) {
+            let events = Arc::new(Mutex::new(Vec::new()));
+            (
+                Self {
+                    events: Arc::clone(&events),
+                },
+                events,
+            )
+        }
+    }
+
+    impl ScanEventSink for MockEventSink {
+        fn on_progress(&self, _progress: &ScanProgress) {
+            self.events.lock().unwrap().push("progress".into());
+        }
+        fn on_phase(&self, _phase: &str, _message: &str) {
+            self.events.lock().unwrap().push("phase".into());
+        }
+        fn on_error(&self, _session_id: i64, _error: &str) {
+            self.events.lock().unwrap().push("error".into());
+        }
+        fn on_complete(&self, _completion: &ScanComplete) {
+            self.events.lock().unwrap().push("complete".into());
+        }
+        fn on_results(&self, _results: &DetectionResult) {
+            self.events.lock().unwrap().push("results".into());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_scan_service_empty_directory() {
+        let temp_dir = tempfile::tempdir().unwrap();
+
+        let config = ScanConfig {
+            paths: vec![temp_dir.path().to_path_buf()],
+            follow_symlinks: false,
+            max_depth: None,
+            parallelism: crate::scanner::ParallelismMode::Light,
+        };
+
+        // Set up a real database
+        let db_dir = tempfile::tempdir().unwrap();
+        let db = crate::db::Database::new(db_dir.path().join("test.db"))
+            .await
+            .unwrap();
+        let db = Arc::new(AsyncMutex::new(db));
+
+        // Create a scan session
+        let session_id = {
+            let db_guard = db.lock().await;
+            let paths: Vec<String> = config.paths.iter().map(|p| p.display().to_string()).collect();
+            queries::scan_sessions::create(db_guard.pool(), &paths)
+                .await
+                .unwrap()
+        };
+
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let (sink, events) = MockEventSink::new();
+
+        ScanService::run(config, session_id, cancel_flag, db, sink).await;
+
+        let events = events.lock().unwrap();
+        assert!(events.contains(&"phase".to_string()));
+        assert!(events.contains(&"complete".to_string()));
+        assert!(events.contains(&"results".to_string()));
+        assert!(!events.contains(&"error".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_scan_service_with_duplicates() {
+        let temp_dir = tempfile::tempdir().unwrap();
+
+        // Create duplicate files
+        let content = b"duplicate content for service test";
+        std::fs::write(temp_dir.path().join("file1.txt"), content).unwrap();
+        std::fs::write(temp_dir.path().join("file2.txt"), content).unwrap();
+        std::fs::write(temp_dir.path().join("unique.txt"), b"unique").unwrap();
+
+        let config = ScanConfig {
+            paths: vec![temp_dir.path().to_path_buf()],
+            follow_symlinks: false,
+            max_depth: None,
+            parallelism: crate::scanner::ParallelismMode::Light,
+        };
+
+        let db_dir = tempfile::tempdir().unwrap();
+        let db = crate::db::Database::new(db_dir.path().join("test.db"))
+            .await
+            .unwrap();
+        let db = Arc::new(AsyncMutex::new(db));
+
+        let session_id = {
+            let db_guard = db.lock().await;
+            let paths: Vec<String> = config.paths.iter().map(|p| p.display().to_string()).collect();
+            queries::scan_sessions::create(db_guard.pool(), &paths)
+                .await
+                .unwrap()
+        };
+
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let (sink, events) = MockEventSink::new();
+
+        ScanService::run(config, session_id, cancel_flag, db, sink).await;
+
+        let events = events.lock().unwrap();
+        assert!(events.contains(&"complete".to_string()));
+        assert!(events.contains(&"results".to_string()));
+        assert!(!events.contains(&"error".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_scan_service_cancellation() {
+        let temp_dir = tempfile::tempdir().unwrap();
+
+        // Create enough files so the scan doesn't finish instantly
+        for i in 0..10 {
+            std::fs::write(
+                temp_dir.path().join(format!("file{i}.txt")),
+                format!("content {i}"),
+            )
+            .unwrap();
+        }
+
+        let config = ScanConfig {
+            paths: vec![temp_dir.path().to_path_buf()],
+            follow_symlinks: false,
+            max_depth: None,
+            parallelism: crate::scanner::ParallelismMode::Light,
+        };
+
+        let db_dir = tempfile::tempdir().unwrap();
+        let db = crate::db::Database::new(db_dir.path().join("test.db"))
+            .await
+            .unwrap();
+        let db = Arc::new(AsyncMutex::new(db));
+
+        let session_id = {
+            let db_guard = db.lock().await;
+            let paths: Vec<String> = config.paths.iter().map(|p| p.display().to_string()).collect();
+            queries::scan_sessions::create(db_guard.pool(), &paths)
+                .await
+                .unwrap()
+        };
+
+        // Cancel immediately
+        let cancel_flag = Arc::new(AtomicBool::new(true));
+        let (sink, events) = MockEventSink::new();
+
+        ScanService::run(config, session_id, cancel_flag, db, sink).await;
+
+        let events = events.lock().unwrap();
+        // Cancellation may fire error (if detection gets to run) or complete
+        // with 0 files (if walker aborts before any files). Either way, no panic.
+        assert!(!events.is_empty());
+    }
+
+    #[test]
+    fn test_scan_complete_serialization() {
+        let complete = ScanComplete {
+            session_id: 1,
+            total_files: 100,
+            total_bytes: 5000,
+            duplicate_groups: 3,
+            duplicate_files: 10,
+            wasted_space: 2000,
+            duration_ms: 450,
+        };
+
+        let json = serde_json::to_value(&complete).unwrap();
+        assert_eq!(json["session_id"], 1);
+        assert_eq!(json["total_files"], 100);
+        assert_eq!(json["duplicate_groups"], 3);
+        assert_eq!(json["wasted_space"], 2000);
+    }
+}
