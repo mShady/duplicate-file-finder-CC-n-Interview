@@ -66,8 +66,6 @@
     page += 1;
     loadHistory();
   }
-
-
 </script>
 
 <div class="history-panel">
@@ -166,7 +164,8 @@
     margin-bottom: 1rem;
   }
 
-  .loading, .empty-state {
+  .loading,
+  .empty-state {
     text-align: center;
     padding: 2rem;
     color: var(--text-secondary);

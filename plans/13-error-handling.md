@@ -13,6 +13,7 @@ This file covers implementing comprehensive error handling, skip/retry for unrea
 ## Phase 13.1: Create Error Types and Handling
 
 ### Overview
+
 Create comprehensive error types and standardized error handling.
 
 ### Changes Required
@@ -170,9 +171,11 @@ impl From<std::io::Error> for AppError {
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -180,6 +183,7 @@ Run code-review-fix-loop agent.
 ## Phase 13.2: Create Skipped Files Manager
 
 ### Overview
+
 Track and manage skipped files during scanning.
 
 ### Changes Required
@@ -268,9 +272,11 @@ impl Default for SkippedFilesManager {
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -278,6 +284,7 @@ Run code-review-fix-loop agent.
 ## Phase 13.3: Create Skipped Files UI
 
 ### Overview
+
 Create UI for viewing and retrying skipped files.
 
 ### Changes Required
@@ -335,9 +342,7 @@ Create UI for viewing and retrying skipped files.
         <div class="file-path">{file.path}</div>
         <div class="file-reason">{file.reason}</div>
         {#if file.retryable}
-          <button class="retry-btn" onclick={() => onRetry([file.path])}>
-            Retry
-          </button>
+          <button class="retry-btn" onclick={() => onRetry([file.path])}> Retry </button>
         {/if}
       </div>
     {/each}
@@ -432,9 +437,11 @@ Create UI for viewing and retrying skipped files.
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -442,6 +449,7 @@ Run code-review-fix-loop agent.
 ## Phase 13.4: Add Disk Full Detection and Handling
 
 ### Overview
+
 Detect disk full conditions during scan and automatically pause with user notification.
 
 ### Changes Required
@@ -592,9 +600,7 @@ if self.progress.total_files.load(Ordering::Relaxed) % 1000 == 0 {
     <div class="alert-icon">⚠️</div>
     <h2>Disk Space Low</h2>
 
-    <p class="message">
-      The scan has been paused because disk space is critically low.
-    </p>
+    <p class="message">The scan has been paused because disk space is critically low.</p>
 
     <div class="space-info">
       <span class="label">Available space:</span>
@@ -602,8 +608,8 @@ if self.progress.total_files.load(Ordering::Relaxed) % 1000 == 0 {
     </div>
 
     <p class="suggestion">
-      Please free up some disk space before continuing. The scan needs space
-      to store temporary data and the database.
+      Please free up some disk space before continuing. The scan needs space to store temporary data
+      and the database.
     </p>
 
     <div class="actions">
@@ -718,19 +724,23 @@ if let Err(ScanError::DiskFull(msg)) = &result {
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check` passes
 - [ ] `cargo test disk_monitor` passes
 
 #### Manual Verification
+
 - [ ] Scan pauses when disk space is low
 - [ ] Alert dialog appears with available space info
 - [ ] "Check & Resume" verifies space before resuming
 - [ ] Scan can be cancelled from the alert
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent on disk monitoring code.
 
 ---
@@ -738,6 +748,7 @@ Run code-review-fix-loop agent on disk monitoring code.
 ## Phase 13.5: Add Disk I/O Throttling
 
 ### Overview
+
 Implement smart throttling that monitors disk queue depth, adapts to system load, and prevents disk saturation during scans.
 
 ### Key Throttling Strategies
@@ -987,19 +998,23 @@ for entry in walker {
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check` passes
 - [ ] `cargo test throttle` passes
 
 #### Manual Verification
+
 - [ ] Scan respects parallelism mode settings
 - [ ] System remains responsive during "Light" mode scan
 - [ ] Throttling adapts when disk becomes saturated
 - [ ] Queue depth is respected (pending operations don't exceed max)
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -1007,20 +1022,24 @@ Run code-review-fix-loop agent.
 ## Phase 13.6: Implement Incremental Scanning
 
 ### Overview
+
 Use cached hashes for quick scans, only rehash new/modified files.
 
 ### Changes Required
 
 Update scanner to:
+
 1. Check file cache for existing hashes
 2. Compare path + size + mtime to determine if rehash needed
 3. Store new hashes in cache
 4. Provide "quick scan" vs "full rescan" options
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -1028,15 +1047,18 @@ Run code-review-fix-loop agent.
 ## Phase 13.7: Tests
 
 Add tests for:
+
 - Error handling
 - Skipped files management
 - Throttling
 - Incremental scanning
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -1044,6 +1066,7 @@ Run code-review-fix-loop agent.
 ## End of File 13
 
 After completing all phases:
+
 - Comprehensive error types
 - Skip/retry for unreadable files
 - Skipped files UI

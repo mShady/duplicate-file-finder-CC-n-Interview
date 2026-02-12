@@ -12,7 +12,15 @@
     onViewResults: () => void;
   }
 
-  let { selectedPaths, isScanning, error, detectionResult, onPathsChange, onStartScan, onViewResults }: Props = $props();
+  let {
+    selectedPaths,
+    isScanning,
+    error,
+    detectionResult,
+    onPathsChange,
+    onStartScan,
+    onViewResults,
+  }: Props = $props();
 </script>
 
 <div class="home-view">

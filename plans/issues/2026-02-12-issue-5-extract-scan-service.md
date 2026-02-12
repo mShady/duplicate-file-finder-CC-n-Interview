@@ -7,11 +7,13 @@ The `start_scan` command in `commands/scan.rs` is a ~295-line monolith that mixe
 ## Current State Analysis
 
 **`commands/scan.rs`** (502 lines total):
+
 - `start_scan` (lines 62–355): validates input, creates DB session, builds config, spawns an async task that runs the full 3-phase pipeline (file collection, duplicate detection, DB persistence), manages state cleanup, and emits events.
 - `cancel_scan` (lines 358–394): sets cancel flag, updates DB status.
 - `get_scan_progress`, `is_scanning`, `get_scan_results`: thin read-only commands (already fine).
 
 **The spawned task** (lines 141–349) contains ~200 lines of pure business logic that directly accesses `AppHandle` to:
+
 1. Emit `scan-progress` events during file collection (every 100 files)
 2. Emit `scan-phase` event when entering detection phase
 3. Read `ScanState` from Tauri managed state to wire cancel flag to detector
@@ -22,14 +24,16 @@ The `start_scan` command in `commands/scan.rs` is a ~295-line monolith that mixe
 **Existing pattern to follow**: `DeletionService` (`services/deletion.rs`) — a struct with methods that perform business logic, called from the command via `tokio::task::spawn_blocking`. The command handles state access and response formatting.
 
 ### Key Discoveries:
+
 - `DeletionService` is synchronous (blocking I/O), invoked via `spawn_blocking` — `commands/deletion.rs:71`
 - `ScanService` needs to be async (DB writes, channel iteration) — will be invoked via `tauri::async_runtime::spawn`
-- The scan task needs to emit events *during* execution, requiring a callback mechanism
+- The scan task needs to emit events _during_ execution, requiring a callback mechanism
 - `ScanState` (cancel flag holder) currently lives in `commands/scan.rs` — it should move to `services/scan.rs` since it's scan business state
 
 ## Desired End State
 
 After this change:
+
 - `services/scan.rs` contains a `ScanService` struct that orchestrates the 3-phase scan pipeline, accepts a callback for progress/event reporting, and writes results to the database
 - `commands/scan.rs` becomes thin wrappers: validate input, lock state, create service, wire callback to `handle.emit()`, spawn task, return response
 - `ScanState` moves to `services/scan.rs` (or `state.rs`) since it's not command-specific
@@ -37,6 +41,7 @@ After this change:
 - Existing tests continue to pass; new unit tests cover `ScanService` methods
 
 ### How to Verify:
+
 - `cargo build` succeeds with no new warnings
 - `cargo test` passes (all existing + new tests)
 - `cargo clippy` is clean
@@ -57,6 +62,7 @@ Use a **callback trait** to decouple the service from Tauri. The service defines
 ## Phase 1: Create `ScanService` with Event Sink Trait
 
 ### Overview
+
 Create `services/scan.rs` with the `ScanEventSink` trait and `ScanService` struct. Move `ScanState` there. Wire everything together in the command layer.
 
 ### Changes Required:
@@ -135,7 +141,7 @@ The body of `run` is the code currently at `commands/scan.rs:141–349`, with ev
 
 Key difference from the current code: state cleanup (`is_scanning = false`, `cancel_flag = None`) is **not** done inside the service — it's the command layer's responsibility (done after the spawned task completes, or via the sink callbacks).
 
-Actually, looking at the current code more carefully: the spawned task *must* clean up state because `start_scan` returns immediately after spawning. The cleanup happens inside the task. So we have two options:
+Actually, looking at the current code more carefully: the spawned task _must_ clean up state because `start_scan` returns immediately after spawning. The cleanup happens inside the task. So we have two options:
 
 - **Option A**: Pass state handles into the service → couples it to Tauri state
 - **Option B**: Have the service return a result/status via a oneshot channel, and do cleanup in the spawn wrapper in the command
@@ -176,6 +182,7 @@ pub mod scan;
 **File**: `src-tauri/src/commands/scan.rs`
 
 Changes:
+
 - Remove `ScanState`, `ScanComplete` (now in `services/scan.rs`)
 - Import `ScanState`, `ScanComplete`, `ScanService`, `ScanEventSink` from `crate::services::scan`
 - Create a `TauriEventSink` struct that implements `ScanEventSink` using `AppHandle`:
@@ -223,6 +230,7 @@ The `start_scan` function shrinks from ~295 lines to ~80 lines.
 **File**: `src-tauri/src/lib.rs`
 
 Change import path for `ScanState`:
+
 ```rust
 // Before:
 use commands::scan::ScanState;
@@ -233,11 +241,13 @@ use services::scan::ScanState;
 ### Success Criteria:
 
 #### Automated Verification:
+
 - [x] `cargo build` succeeds with no new warnings
 - [x] `cargo test` passes (all existing tests + new `ScanService` tests)
 - [x] `cargo clippy -- -D warnings` is clean (no new warnings from our files)
 
 #### Manual Verification:
+
 - [x] Start a scan — progress events appear in UI, results display correctly
 - [x] Cancel a mid-scan — cancellation works, UI shows cancelled state
 - [x] Start another scan after completion — no "already in progress" errors
@@ -266,12 +276,14 @@ impl ScanEventSink for MockEventSink {
 ```
 
 Test cases:
+
 - `test_scan_service_empty_directory` — run against empty temp dir, verify completion event fired with 0 duplicates
 - `test_scan_service_with_duplicates` — create temp files with identical content, verify correct duplicate groups detected and completion stats
 - `test_scan_service_cancellation` — set cancel flag before/during run, verify error event with appropriate message
 - `test_scan_complete_serialization` — ensure `ScanComplete` serializes correctly for the frontend
 
 ### Existing Tests:
+
 - `commands/scan.rs` tests for `ScanState` move to `services/scan.rs`
 - All other existing tests remain unchanged
 

@@ -13,6 +13,7 @@ This file covers implementing the complete file selection system and batch delet
 ## Phase 6.1: Add Trash Dependencies
 
 ### Overview
+
 Add the trash crate for cross-platform trash/recycle bin support.
 
 ### Changes Required
@@ -30,12 +31,15 @@ trash = "5.2"
 ```
 
 ### Success Criteria
+
 - [x] `cargo check` passes
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -43,6 +47,7 @@ Run code-review-fix-loop agent.
 ## Phase 6.2: Create Deletion Service
 
 ### Overview
+
 Create the service that handles file deletion with pre-verification.
 
 ### Changes Required
@@ -238,13 +243,16 @@ mod tests {
 ```
 
 ### Success Criteria
+
 - [x] `cargo check` passes
 - [x] `cargo test deletion` passes
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -252,6 +260,7 @@ Run code-review-fix-loop agent.
 ## Phase 6.3: Create Deletion Commands
 
 ### Overview
+
 Create Tauri commands for file deletion.
 
 ### Changes Required
@@ -373,6 +382,7 @@ pub async fn get_deletion_history(
 **File**: `src-tauri/src/commands/mod.rs`
 
 Add:
+
 ```rust
 pub mod deletion;
 pub use deletion::*;
@@ -383,12 +393,15 @@ pub use deletion::*;
 Register the new commands in the invoke handler.
 
 ### Success Criteria
+
 - [x] `cargo check` passes
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -396,6 +409,7 @@ Run code-review-fix-loop agent.
 ## Phase 6.4: Create Deletion Confirmation Dialog
 
 ### Overview
+
 Create the frontend deletion confirmation dialog.
 
 ### Changes Required
@@ -441,7 +455,10 @@ Create the frontend deletion confirmation dialog.
         <div class="danger-icon">⚠️</div>
         <div class="danger-content">
           <strong>DANGER: You are deleting ALL copies!</strong>
-          <p>This will permanently remove these files from your system. There will be NO remaining copies anywhere.</p>
+          <p>
+            This will permanently remove these files from your system. There will be NO remaining
+            copies anywhere.
+          </p>
         </div>
       </div>
 
@@ -455,8 +472,7 @@ Create the frontend deletion confirmation dialog.
 
     <div class="summary">
       <p>
-        <strong>{fileCount}</strong> files will be moved to Trash
-        ({formatBytes(totalSize)})
+        <strong>{fileCount}</strong> files will be moved to Trash ({formatBytes(totalSize)})
       </p>
     </div>
 
@@ -567,7 +583,7 @@ Create the frontend deletion confirmation dialog.
     font-size: 0.9rem;
   }
 
-  .confirmation-checkbox input[type="checkbox"] {
+  .confirmation-checkbox input[type='checkbox'] {
     width: 1.25rem;
     height: 1.25rem;
     margin-top: 0.125rem;
@@ -640,12 +656,15 @@ Create the frontend deletion confirmation dialog.
 ```
 
 ### Success Criteria
+
 - [x] `npm run check` passes
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -653,6 +672,7 @@ Run code-review-fix-loop agent.
 ## Phase 6.5: Create Deletion Summary Dialog
 
 ### Overview
+
 Create the post-deletion summary dialog.
 
 ### Changes Required
@@ -830,12 +850,15 @@ Create the post-deletion summary dialog.
 ```
 
 ### Success Criteria
+
 - [x] `npm run check` passes
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -843,6 +866,7 @@ Run code-review-fix-loop agent.
 ## Phase 6.6: Add Smart Selection Options
 
 ### Overview
+
 Add selection helpers: select all except original, select by location, select by path depth, etc.
 
 ### Changes Required
@@ -944,8 +968,8 @@ export function selectDeepestInGroup(groups: DuplicateGroup[]): Set<string> {
     }
 
     // Select all files at max depth (except keep at least one)
-    const deepestFiles = group.files.filter(f => getPathDepth(f.path) === maxDepth);
-    const otherFiles = group.files.filter(f => getPathDepth(f.path) < maxDepth);
+    const deepestFiles = group.files.filter((f) => getPathDepth(f.path) === maxDepth);
+    const otherFiles = group.files.filter((f) => getPathDepth(f.path) < maxDepth);
 
     // If all files are at the same depth, keep the oldest
     if (otherFiles.length === 0) {
@@ -1026,16 +1050,12 @@ export function clearSelection(): Set<string> {
   <h3>Smart Selection</h3>
 
   <div class="selection-option">
-    <button onclick={handleSelectAllExceptOldest}>
-      Select All Except Oldest
-    </button>
+    <button onclick={handleSelectAllExceptOldest}> Select All Except Oldest </button>
     <p class="hint">Keep the original (oldest) file in each group</p>
   </div>
 
   <div class="selection-option">
-    <button onclick={handleSelectDeepest}>
-      Select Deepest Files
-    </button>
+    <button onclick={handleSelectDeepest}> Select Deepest Files </button>
     <p class="hint">Select files in the deepest directory levels</p>
   </div>
 
@@ -1054,11 +1074,7 @@ export function clearSelection(): Set<string> {
 
   <div class="selection-option">
     <div class="input-group">
-      <input
-        type="text"
-        bind:value={folderPath}
-        placeholder="Enter folder path..."
-      />
+      <input type="text" bind:value={folderPath} placeholder="Enter folder path..." />
       <button onclick={handleSelectByLocation} disabled={!folderPath.trim()}>
         Select by Location
       </button>
@@ -1067,9 +1083,7 @@ export function clearSelection(): Set<string> {
   </div>
 
   <div class="selection-option">
-    <button class="clear-btn" onclick={handleClearSelection}>
-      Clear Selection
-    </button>
+    <button class="clear-btn" onclick={handleClearSelection}> Clear Selection </button>
   </div>
 </div>
 
@@ -1129,8 +1143,8 @@ export function clearSelection(): Set<string> {
     flex-wrap: wrap;
   }
 
-  input[type="text"],
-  input[type="number"] {
+  input[type='text'],
+  input[type='number'] {
     padding: 0.5rem;
     border: 1px solid var(--border);
     border-radius: 4px;
@@ -1138,11 +1152,11 @@ export function clearSelection(): Set<string> {
     color: var(--text);
   }
 
-  input[type="number"] {
+  input[type='number'] {
     width: 80px;
   }
 
-  input[type="text"] {
+  input[type='text'] {
     flex: 1;
     min-width: 200px;
   }
@@ -1152,9 +1166,11 @@ export function clearSelection(): Set<string> {
 ### Success Criteria
 
 #### Automated Verification
+
 - [x] `npm run check` passes
 
 #### Manual Verification
+
 - [ ] "Select all except oldest" works correctly
 - [ ] "Select by location" filters by folder path
 - [ ] "Select by path depth" filters by directory depth
@@ -1162,9 +1178,11 @@ export function clearSelection(): Set<string> {
 - [ ] Clear selection removes all selections
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent on selection utilities and SmartSelectionPanel.
 
 ---
@@ -1172,23 +1190,28 @@ Run code-review-fix-loop agent on selection utilities and SmartSelectionPanel.
 ## Phase 6.7: Integrate Deletion in Results View
 
 ### Overview
+
 Connect deletion dialogs to the results view.
 
 ### Changes Required
 
 Update ResultsView.svelte to:
+
 1. Show confirmation dialog before deletion
 2. Call delete_files command
 3. Show summary dialog after completion
 4. Refresh results
 
 ### Success Criteria
+
 - [x] Complete deletion flow works
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -1196,6 +1219,7 @@ Run code-review-fix-loop agent.
 ## Phase 6.8: Create Deletion History Viewing UI
 
 ### Overview
+
 Create a UI component for viewing deletion history. The backend `get_deletion_history` command already exists; this phase adds the frontend UI to display and interact with deletion history.
 
 ### Changes Required
@@ -1385,7 +1409,8 @@ Create a UI component for viewing deletion history. The backend `get_deletion_hi
     margin-bottom: 1rem;
   }
 
-  .loading, .empty-state {
+  .loading,
+  .empty-state {
     text-align: center;
     padding: 2rem;
     color: var(--text-secondary);
@@ -1467,9 +1492,11 @@ Create a UI component for viewing deletion history. The backend `get_deletion_hi
 ### Success Criteria
 
 #### Automated Verification
+
 - [x] `npm run check` passes
 
 #### Manual Verification
+
 - [ ] Deletion history panel shows list of deleted files
 - [ ] Each entry shows filename, size, full path, and deletion timestamp
 - [ ] Each entry shows the path of the retained duplicate copy (when applicable)
@@ -1479,9 +1506,11 @@ Create a UI component for viewing deletion history. The backend `get_deletion_hi
 - [ ] Empty state is shown when no history exists
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent on DeletionHistoryPanel.svelte.
 
 ---
@@ -1489,6 +1518,7 @@ Run code-review-fix-loop agent on DeletionHistoryPanel.svelte.
 ## Phase 6.9-6.10: Tests and Edge Cases
 
 Add tests for:
+
 - Deletion service
 - Protected path blocking
 - File verification
@@ -1500,6 +1530,7 @@ Add tests for:
 ## End of File 06
 
 After completing all phases:
+
 - Trash integration working
 - Pre-deletion verification
 - Confirmation dialog with **stronger delete-all-copies warning** (requires checkbox confirmation)

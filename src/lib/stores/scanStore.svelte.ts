@@ -31,14 +31,30 @@ let callbacks: ScanCallbacks = {};
 
 export const scanStore = {
   // Reactive getters
-  get isScanning() { return _isScanning; },
-  get phase() { return _phase; },
-  get progress() { return _progress; },
-  get scanResult() { return _scanResult; },
-  get detectionResult() { return _detectionResult; },
-  set detectionResult(value: DetectionResult | null) { _detectionResult = value; },
-  get error() { return _error; },
-  set error(value: string | null) { _error = value; },
+  get isScanning() {
+    return _isScanning;
+  },
+  get phase() {
+    return _phase;
+  },
+  get progress() {
+    return _progress;
+  },
+  get scanResult() {
+    return _scanResult;
+  },
+  get detectionResult() {
+    return _detectionResult;
+  },
+  set detectionResult(value: DetectionResult | null) {
+    _detectionResult = value;
+  },
+  get error() {
+    return _error;
+  },
+  set error(value: string | null) {
+    _error = value;
+  },
 
   async init(cbs: ScanCallbacks = {}) {
     if (initialized) return;

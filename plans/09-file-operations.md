@@ -13,6 +13,7 @@ This file covers implementing file operations (open, reveal, copy path) and the 
 ## Phase 9.1: Add Shell Plugin
 
 ### Overview
+
 Add the Tauri shell plugin for opening files and revealing in Finder/Explorer.
 
 ### Changes Required
@@ -22,18 +23,19 @@ npm run tauri add shell
 ```
 
 Update capabilities:
+
 ```json
 {
-  "permissions": [
-    "shell:allow-open"
-  ]
+  "permissions": ["shell:allow-open"]
 }
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -41,6 +43,7 @@ Run code-review-fix-loop agent.
 ## Phase 9.2: Create File Operations Commands
 
 ### Overview
+
 Create Tauri commands for file operations.
 
 ### Changes Required
@@ -133,9 +136,11 @@ pub struct FileInfoResponse {
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -143,6 +148,7 @@ Run code-review-fix-loop agent.
 ## Phase 9.3: Create Context Menu Component
 
 ### Overview
+
 Create a reusable context menu component.
 
 ### Changes Required
@@ -259,9 +265,11 @@ Create a reusable context menu component.
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -269,6 +277,7 @@ Run code-review-fix-loop agent.
 ## Phase 9.4: Create File Context Menu
 
 ### Overview
+
 Create the specific context menu for files with all required actions.
 
 ### Changes Required
@@ -367,14 +376,22 @@ Create the specific context menu for files with all required actions.
 <ContextMenu {items} {x} {y} {onClose} />
 
 {#if showFileInfo && fileInfo}
-  <FileInfoDialog info={fileInfo} onClose={() => { showFileInfo = false; fileInfo = null; }} />
+  <FileInfoDialog
+    info={fileInfo}
+    onClose={() => {
+      showFileInfo = false;
+      fileInfo = null;
+    }}
+  />
 {/if}
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -382,6 +399,7 @@ Run code-review-fix-loop agent.
 ## Phase 9.5: Create File Info Dialog
 
 ### Overview
+
 Create a dialog component to display detailed file information.
 
 ### Changes Required
@@ -435,7 +453,12 @@ Create a dialog component to display detailed file information.
 <svelte:window onkeydown={handleKeydown} />
 
 <div class="dialog-overlay" onclick={onClose}>
-  <div class="dialog" onclick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="file-info-title">
+  <div
+    class="dialog"
+    onclick={(e) => e.stopPropagation()}
+    role="dialog"
+    aria-labelledby="file-info-title"
+  >
     <h2 id="file-info-title">File Information</h2>
 
     <div class="info-grid">
@@ -560,17 +583,21 @@ Create a dialog component to display detailed file information.
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run check` passes
 
 #### Manual Verification
+
 - [ ] File info dialog displays all metadata correctly
 - [ ] Dialog closes on Escape key or clicking outside
 - [ ] Dates are formatted in user's locale
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -578,6 +605,7 @@ Run code-review-fix-loop agent.
 ## Phase 9.6: Add Clipboard Plugin
 
 ### Overview
+
 Add clipboard plugin for copy path functionality.
 
 ### Changes Required
@@ -587,9 +615,11 @@ npm run tauri add clipboard-manager
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -597,6 +627,7 @@ Run code-review-fix-loop agent.
 ## Phase 9.7: Integrate Context Menu in Results
 
 ### Overview
+
 Add right-click context menu to file items in the results view.
 
 ### Changes Required
@@ -604,9 +635,11 @@ Add right-click context menu to file items in the results view.
 Update FileDetailsPanel to handle right-click and show FileContextMenu.
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -614,6 +647,7 @@ Run code-review-fix-loop agent.
 ## End of File 09
 
 After completing all phases:
+
 - Open file in default app
 - Reveal in Finder/Explorer
 - Open containing folder

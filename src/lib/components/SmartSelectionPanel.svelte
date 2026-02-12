@@ -36,23 +36,18 @@
   function handleSelectDeepest() {
     onSelectionChange(selectDeepestInGroup(groups));
   }
-
 </script>
 
 <div class="smart-selection">
   <h3>Smart Selection</h3>
 
   <div class="selection-option">
-    <button onclick={handleSelectAllExceptOldest}>
-      Select All Except Oldest
-    </button>
+    <button onclick={handleSelectAllExceptOldest}> Select All Except Oldest </button>
     <p class="hint">Keep the original (oldest) file in each group</p>
   </div>
 
   <div class="selection-option">
-    <button onclick={handleSelectDeepest}>
-      Select Deepest Files
-    </button>
+    <button onclick={handleSelectDeepest}> Select Deepest Files </button>
     <p class="hint">Select files in the deepest directory levels</p>
   </div>
 
@@ -71,18 +66,13 @@
 
   <div class="selection-option">
     <div class="input-group">
-      <input
-        type="text"
-        bind:value={folderPath}
-        placeholder="Enter folder path..."
-      />
+      <input type="text" bind:value={folderPath} placeholder="Enter folder path..." />
       <button onclick={handleSelectByLocation} disabled={!folderPath.trim()}>
         Select by Location
       </button>
     </div>
     <p class="hint">Select all duplicates in a specific folder</p>
   </div>
-
 </div>
 
 <style>
@@ -137,8 +127,8 @@
     flex-wrap: wrap;
   }
 
-  input[type="text"],
-  input[type="number"] {
+  input[type='text'],
+  input[type='number'] {
     padding: 0.5rem;
     border: 1px solid var(--border);
     border-radius: 4px;
@@ -146,11 +136,11 @@
     color: var(--text);
   }
 
-  input[type="number"] {
+  input[type='number'] {
     width: 80px;
   }
 
-  input[type="text"] {
+  input[type='text'] {
     flex: 1;
     min-width: 200px;
   }

@@ -13,6 +13,7 @@ This file covers implementing full keyboard navigation, shortcuts, focus managem
 ## Phase 11.1: Create Keyboard Shortcuts Manager
 
 ### Overview
+
 Create a centralized keyboard shortcuts manager.
 
 ### Changes Required
@@ -57,7 +58,7 @@ class ShortcutsManager {
     }
 
     for (const shortcut of this.shortcuts) {
-      const ctrlMatch = shortcut.ctrl ? (e.ctrlKey || e.metaKey) : !e.ctrlKey;
+      const ctrlMatch = shortcut.ctrl ? e.ctrlKey || e.metaKey : !e.ctrlKey;
       const metaMatch = shortcut.meta ? e.metaKey : true;
       const shiftMatch = shortcut.shift ? e.shiftKey : !e.shiftKey;
       const altMatch = shortcut.alt ? e.altKey : !e.altKey;
@@ -100,9 +101,11 @@ export const defaultShortcuts = {
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -110,6 +113,7 @@ Run code-review-fix-loop agent.
 ## Phase 11.2: Create Focus Management Hook
 
 ### Overview
+
 Create a hook for managing focus in lists.
 
 ### Changes Required
@@ -161,7 +165,9 @@ export function createFocusManager<T>(items: () => T[], onSelect: (item: T) => v
   }
 
   return {
-    get currentIndex() { return currentIndex; },
+    get currentIndex() {
+      return currentIndex;
+    },
     setFocus,
     handleKeydown,
   };
@@ -169,9 +175,11 @@ export function createFocusManager<T>(items: () => T[], onSelect: (item: T) => v
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -179,19 +187,23 @@ Run code-review-fix-loop agent.
 ## Phase 11.3: Add Keyboard Navigation to Groups List
 
 ### Overview
+
 Add keyboard navigation to the duplicate groups list.
 
 ### Changes Required
 
 Update DuplicateGroupsList.svelte:
+
 - Add tabindex for focusability
 - Handle arrow key navigation
 - Add visual focus indicator
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -199,20 +211,24 @@ Run code-review-fix-loop agent.
 ## Phase 11.4: Add Keyboard Navigation to Files List
 
 ### Overview
+
 Add keyboard navigation to the file details panel.
 
 ### Changes Required
 
 Update FileDetailsPanel.svelte:
+
 - Space to toggle selection
 - Enter to open file
 - Arrow keys to navigate
 - Delete to mark for deletion
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -220,6 +236,7 @@ Run code-review-fix-loop agent.
 ## Phase 11.5: Create Keyboard Shortcuts Help Dialog
 
 ### Overview
+
 Create a dialog showing all available keyboard shortcuts.
 
 ### Changes Required
@@ -385,9 +402,11 @@ Create a dialog showing all available keyboard shortcuts.
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -395,11 +414,13 @@ Run code-review-fix-loop agent.
 ## Phase 11.6: Add ARIA Labels and Accessibility
 
 ### Overview
+
 Add proper ARIA labels and roles for screen readers.
 
 ### Changes Required
 
 Update all interactive components with:
+
 - Proper role attributes
 - aria-label descriptions
 - aria-selected for selections
@@ -407,9 +428,11 @@ Update all interactive components with:
 - Focus visible styles
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -417,6 +440,7 @@ Run code-review-fix-loop agent.
 ## End of File 11
 
 After completing all phases:
+
 - Full keyboard navigation
 - Shortcuts for all major actions
 - Focus management in lists

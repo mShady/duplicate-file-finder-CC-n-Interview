@@ -13,6 +13,7 @@ This file covers implementing the optional "minimize to tray" feature, allowing 
 ## Phase 15.1: Add Tray Plugin
 
 ### Overview
+
 Add the Tauri tray plugin for system tray functionality.
 
 ### Changes Required
@@ -28,6 +29,7 @@ npm run tauri add tray-icon
 **File**: `src-tauri/capabilities/default.json`
 
 Add to permissions array:
+
 ```json
 "tray-icon:default",
 "tray-icon:allow-set-icon",
@@ -38,12 +40,15 @@ Add to permissions array:
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check` passes
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -51,6 +56,7 @@ Run code-review-fix-loop agent.
 ## Phase 15.2: Create Tray Icon Assets
 
 ### Overview
+
 Create tray icon assets for both macOS and Windows.
 
 ### Changes Required
@@ -60,11 +66,13 @@ Create tray icon assets for both macOS and Windows.
 Create tray icons in multiple sizes:
 
 **Files to create**:
+
 - `src-tauri/icons/tray-icon.png` (32x32)
 - `src-tauri/icons/tray-icon@2x.png` (64x64, for Retina)
 - `src-tauri/icons/tray-icon.ico` (Windows)
 
 The icon should be:
+
 - Simple and recognizable at small sizes
 - Works well in both light and dark system themes
 - Uses transparency appropriately for macOS menu bar
@@ -72,13 +80,16 @@ The icon should be:
 ### Success Criteria
 
 #### Manual Verification
+
 - [ ] Icon files exist in correct locations
 - [ ] Icons are visually clear at small sizes
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -86,6 +97,7 @@ Run code-review-fix-loop agent.
 ## Phase 15.3: Create Tray Settings
 
 ### Overview
+
 Add setting for "minimize to tray" preference and persist it.
 
 ### Changes Required
@@ -93,6 +105,7 @@ Add setting for "minimize to tray" preference and persist it.
 #### 15.3.1 Add Setting to Database
 
 The settings system already supports arbitrary key-value pairs. We'll use:
+
 - Key: `minimize_to_tray`
 - Value: `"true"` or `"false"`
 
@@ -101,6 +114,7 @@ The settings system already supports arbitrary key-value pairs. We'll use:
 **File**: `src/lib/stores/settings.ts`
 
 Add to AppSettings interface:
+
 ```typescript
 export interface AppSettings {
   theme: 'system' | 'light' | 'dark';
@@ -118,6 +132,7 @@ const defaultSettings: AppSettings = {
 ```
 
 Update the load method to handle the new setting:
+
 ```typescript
 async load() {
   try {
@@ -136,12 +151,15 @@ async load() {
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run check` passes
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -149,6 +167,7 @@ Run code-review-fix-loop agent.
 ## Phase 15.4: Implement Tray Service
 
 ### Overview
+
 Create the Rust service for managing the system tray.
 
 ### Changes Required
@@ -279,6 +298,7 @@ pub struct ScanProgress {
 **File**: `src-tauri/src/lib.rs`
 
 Add tray module and initialization:
+
 ```rust
 mod tray;
 
@@ -290,12 +310,15 @@ mod tray;
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check` passes
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -303,6 +326,7 @@ Run code-review-fix-loop agent.
 ## Phase 15.5: Implement Window Minimize to Tray
 
 ### Overview
+
 Intercept window close/minimize events and optionally minimize to tray instead.
 
 ### Changes Required
@@ -382,16 +406,20 @@ Update `lib.rs` to handle window close events:
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check` passes
 
 #### Manual Verification
+
 - [ ] With setting enabled, closing window hides to tray
 - [ ] With setting disabled, closing window quits app
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -399,6 +427,7 @@ Run code-review-fix-loop agent.
 ## Phase 15.6: Add Tray Settings UI
 
 ### Overview
+
 Add UI toggle for the minimize to tray setting.
 
 ### Changes Required
@@ -420,13 +449,14 @@ Add after parallelism setting:
     <span>Minimize to system tray</span>
   </label>
   <p class="hint">
-    When enabled, closing the window will minimize the app to the system tray
-    instead of quitting. Click the tray icon to restore the window.
+    When enabled, closing the window will minimize the app to the system tray instead of quitting.
+    Click the tray icon to restore the window.
   </p>
 </div>
 ```
 
 Add styles:
+
 ```css
 .checkbox-label {
   display: flex;
@@ -435,7 +465,7 @@ Add styles:
   cursor: pointer;
 }
 
-.checkbox-label input[type="checkbox"] {
+.checkbox-label input[type='checkbox'] {
   width: 1.25rem;
   height: 1.25rem;
   cursor: pointer;
@@ -449,16 +479,20 @@ Add styles:
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run check` passes
 
 #### Manual Verification
+
 - [ ] Toggle appears in settings
 - [ ] Setting persists across app restarts
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -466,6 +500,7 @@ Run code-review-fix-loop agent.
 ## Phase 15.7: Add Tray Commands
 
 ### Overview
+
 Add Tauri commands for controlling tray behavior from frontend.
 
 ### Changes Required
@@ -516,12 +551,15 @@ Add to commands module and register in lib.rs.
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check` passes
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -529,11 +567,13 @@ Run code-review-fix-loop agent.
 ## Phase 15.8: Tests
 
 ### Overview
+
 Add tests for tray functionality.
 
 ### Changes Required
 
 Add tests for:
+
 - Tray creation
 - Menu item handling
 - Window show/hide behavior
@@ -542,12 +582,15 @@ Add tests for:
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo test tray` passes
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -555,6 +598,7 @@ Run code-review-fix-loop agent.
 ## End of File 15
 
 After completing all phases:
+
 - System tray icon with menu
 - "Show DupliFind" and "Quit" menu items
 - Minimize to tray setting in UI

@@ -9,7 +9,13 @@
     detail: Snippet;
   }
 
-  let { masterWidth = 400, minMasterWidth = 300, minDetailWidth = 400, master, detail }: Props = $props();
+  let {
+    masterWidth = 400,
+    minMasterWidth = 300,
+    minDetailWidth = 400,
+    master,
+    detail,
+  }: Props = $props();
 
   let containerRef: HTMLElement | undefined;
   let isDragging = $state(false);
@@ -47,10 +53,10 @@
 
   function onKeyDown(e: KeyboardEvent) {
     if (!containerRef) return;
-    
+
     const step = 20;
     const max = containerRef.getBoundingClientRect().width - minDetailWidth;
-    
+
     if (e.key === 'ArrowLeft') {
       currentWidth = Math.max(minMasterWidth, currentWidth - step);
       e.preventDefault();

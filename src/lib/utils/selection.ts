@@ -14,11 +14,8 @@ function getPathDepth(path: string): number {
  * ensure at least one file in the group remains unselected.
  * When all files would be selected, the oldest (by created_at) is excluded.
  */
-function ensureOneKept(
-  group: DuplicateGroup,
-  selected: Set<string>
-): void {
-  const allSelected = group.files.every(f => selected.has(f.path));
+function ensureOneKept(group: DuplicateGroup, selected: Set<string>): void {
+  const allSelected = group.files.every((f) => selected.has(f.path));
   if (allSelected && group.files.length > 0) {
     // Remove the oldest file from selection to keep at least one copy
     const oldest = [...group.files].sort((a, b) => a.created_at - b.created_at)[0];
@@ -110,8 +107,8 @@ export function selectDeepestInGroup(groups: DuplicateGroup[]): Set<string> {
     }
 
     // Select all files at max depth (except keep at least one)
-    const deepestFiles = group.files.filter(f => getPathDepth(f.path) === maxDepth);
-    const otherFiles = group.files.filter(f => getPathDepth(f.path) < maxDepth);
+    const deepestFiles = group.files.filter((f) => getPathDepth(f.path) === maxDepth);
+    const otherFiles = group.files.filter((f) => getPathDepth(f.path) < maxDepth);
 
     // If all files are at the same depth, keep the oldest
     if (otherFiles.length === 0) {

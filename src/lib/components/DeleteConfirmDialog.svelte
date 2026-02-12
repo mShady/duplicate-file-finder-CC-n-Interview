@@ -76,7 +76,10 @@
         <div class="danger-icon" aria-hidden="true">&#9888;</div>
         <div class="danger-content">
           <strong>DANGER: You are deleting ALL copies!</strong>
-          <p>This will permanently remove these files from your system. There will be NO remaining copies anywhere.</p>
+          <p>
+            This will permanently remove these files from your system. There will be NO remaining
+            copies anywhere.
+          </p>
         </div>
       </div>
 
@@ -90,8 +93,7 @@
 
     <div class="summary">
       <p>
-        <strong>{fileCount}</strong> files will be moved to Trash
-        ({formatBytes(totalSize)})
+        <strong>{fileCount}</strong> files will be moved to Trash ({formatBytes(totalSize)})
       </p>
     </div>
 
@@ -197,7 +199,7 @@
     font-size: 0.9rem;
   }
 
-  .confirmation-checkbox input[type="checkbox"] {
+  .confirmation-checkbox input[type='checkbox'] {
     width: 1.25rem;
     height: 1.25rem;
     margin-top: 0.125rem;

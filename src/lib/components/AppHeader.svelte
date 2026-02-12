@@ -16,22 +16,14 @@
   <h1>DupliFind</h1>
   <nav>
     {#if currentView === 'results' || detectionResult}
-      <button class="nav-button" onclick={onNewScan}>
-        New Scan
-      </button>
+      <button class="nav-button" onclick={onNewScan}> New Scan </button>
       {#if detectionResult}
-        <button
-          class="nav-button"
-          class:active={currentView === 'results'}
-          onclick={onViewResults}
-        >
+        <button class="nav-button" class:active={currentView === 'results'} onclick={onViewResults}>
           Results ({detectionResult.groups.length})
         </button>
       {/if}
     {/if}
-    <button class="nav-button" onclick={onToggleHistory}>
-      History
-    </button>
+    <button class="nav-button" onclick={onToggleHistory}> History </button>
   </nav>
 </header>
 

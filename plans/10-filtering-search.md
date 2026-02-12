@@ -13,6 +13,7 @@ This file covers implementing file type filters, full-text search, size range fi
 ## Phase 10.1: Create Filter Types
 
 ### Overview
+
 Define filter types and filtering logic.
 
 ### Changes Required
@@ -71,9 +72,11 @@ function getExtension(path: string): string {
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -81,6 +84,7 @@ Run code-review-fix-loop agent.
 ## Phase 10.2: Create Filter Bar Component
 
 ### Overview
+
 Create the filter bar UI with file type buttons and search.
 
 ### Changes Required
@@ -236,9 +240,11 @@ Create the filter bar UI with file type buttons and search.
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -246,6 +252,7 @@ Run code-review-fix-loop agent.
 ## Phase 10.3: Add Thumbnail Generation Backend
 
 ### Overview
+
 Add Rust code for generating image thumbnails.
 
 ### Changes Required
@@ -253,6 +260,7 @@ Add Rust code for generating image thumbnails.
 **File**: `src-tauri/Cargo.toml`
 
 Add:
+
 ```toml
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
 ```
@@ -297,9 +305,11 @@ pub fn is_image_file(path: &Path) -> bool {
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -307,6 +317,7 @@ Run code-review-fix-loop agent.
 ## Phase 10.4: Create Thumbnail Commands
 
 ### Overview
+
 Create Tauri commands for thumbnail generation and caching.
 
 ### Changes Required
@@ -340,14 +351,17 @@ pub async fn get_thumbnail(path: String) -> Result<Option<String>, String> {
 ```
 
 Add to Cargo.toml:
+
 ```toml
 base64 = "0.22"
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -355,6 +369,7 @@ Run code-review-fix-loop agent.
 ## Phase 10.5: Create Thumbnail Component
 
 ### Overview
+
 Create a component that displays thumbnails with lazy loading.
 
 ### Changes Required
@@ -394,10 +409,22 @@ Create a component that displays thumbnails with lazy loading.
   function getFileIcon(path: string): string {
     const ext = path.split('.').pop()?.toLowerCase() || '';
     const icons: Record<string, string> = {
-      jpg: '🖼️', jpeg: '🖼️', png: '🖼️', gif: '🖼️', webp: '🖼️',
-      mp4: '🎬', mov: '🎬', avi: '🎬', mkv: '🎬',
-      mp3: '🎵', wav: '🎵', flac: '🎵',
-      pdf: '📄', doc: '📄', docx: '📄', txt: '📄',
+      jpg: '🖼️',
+      jpeg: '🖼️',
+      png: '🖼️',
+      gif: '🖼️',
+      webp: '🖼️',
+      mp4: '🎬',
+      mov: '🎬',
+      avi: '🎬',
+      mkv: '🎬',
+      mp3: '🎵',
+      wav: '🎵',
+      flac: '🎵',
+      pdf: '📄',
+      doc: '📄',
+      docx: '📄',
+      txt: '📄',
     };
     return icons[ext] || '📁';
   }
@@ -441,9 +468,11 @@ Create a component that displays thumbnails with lazy loading.
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -451,6 +480,7 @@ Run code-review-fix-loop agent.
 ## Phase 10.6: Integrate Filters in Results View
 
 ### Overview
+
 Add filter bar and filtering logic to the results view.
 
 ### Changes Required
@@ -458,9 +488,11 @@ Add filter bar and filtering logic to the results view.
 Update ResultsView.svelte to include FilterBar and apply filtering to groups.
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -468,6 +500,7 @@ Run code-review-fix-loop agent.
 ## Phase 10.7: Add Thumbnail Caching
 
 ### Overview
+
 Cache thumbnails to avoid regenerating on every view.
 
 ### Changes Required
@@ -475,9 +508,11 @@ Cache thumbnails to avoid regenerating on every view.
 Add thumbnail caching table and logic.
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -487,9 +522,11 @@ Run code-review-fix-loop agent.
 Add tests for filtering and thumbnail generation.
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -497,6 +534,7 @@ Run code-review-fix-loop agent.
 ## End of File 10
 
 After completing all phases:
+
 - File type filters (Images, Videos, Documents, Audio, Other)
 - Full-text search across file paths
 - Size range filters

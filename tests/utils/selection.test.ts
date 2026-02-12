@@ -13,7 +13,7 @@ function makeGroup(id: number, files: { path: string; created_at: number }[]): D
     id,
     hash: `hash_${id}`,
     file_size: 1000,
-    files: files.map(f => ({
+    files: files.map((f) => ({
       path: f.path,
       size: 1000,
       created_at: f.created_at,
@@ -183,17 +183,17 @@ describe('selectByPathDepth', () => {
   it('should select files within depth range', () => {
     const groups = [
       makeGroup(1, [
-        { path: '/a/file.txt', created_at: 100 },             // depth 2
-        { path: '/a/b/c/file.txt', created_at: 200 },         // depth 4
-        { path: '/a/b/c/d/e/file.txt', created_at: 300 },     // depth 6
+        { path: '/a/file.txt', created_at: 100 }, // depth 2
+        { path: '/a/b/c/file.txt', created_at: 200 }, // depth 4
+        { path: '/a/b/c/d/e/file.txt', created_at: 300 }, // depth 6
       ]),
     ];
 
     const selected = selectByPathDepth(groups, 4, 6, new Set());
 
-    expect(selected.has('/a/file.txt')).toBe(false);           // depth 2, out of range
-    expect(selected.has('/a/b/c/file.txt')).toBe(true);        // depth 4
-    expect(selected.has('/a/b/c/d/e/file.txt')).toBe(true);    // depth 6
+    expect(selected.has('/a/file.txt')).toBe(false); // depth 2, out of range
+    expect(selected.has('/a/b/c/file.txt')).toBe(true); // depth 4
+    expect(selected.has('/a/b/c/d/e/file.txt')).toBe(true); // depth 6
   });
 
   it('should handle null maxDepth', () => {
@@ -213,8 +213,8 @@ describe('selectByPathDepth', () => {
   it('should add to existing selection', () => {
     const groups = [
       makeGroup(1, [
-        { path: '/a/file.txt', created_at: 100 },        // depth 2 - kept by group
-        { path: '/a/b/c/file.txt', created_at: 200 },    // depth 4 - selected
+        { path: '/a/file.txt', created_at: 100 }, // depth 2 - kept by group
+        { path: '/a/b/c/file.txt', created_at: 200 }, // depth 4 - selected
       ]),
     ];
 
@@ -228,8 +228,8 @@ describe('selectByPathDepth', () => {
   it('should ensure at least one file per group is kept (safety guard)', () => {
     const groups = [
       makeGroup(1, [
-        { path: '/a/b/c/file1.txt', created_at: 100 },   // depth 4
-        { path: '/a/b/c/file2.txt', created_at: 200 },   // depth 4
+        { path: '/a/b/c/file1.txt', created_at: 100 }, // depth 4
+        { path: '/a/b/c/file2.txt', created_at: 200 }, // depth 4
       ]),
     ];
 
@@ -247,9 +247,9 @@ describe('selectDeepestInGroup', () => {
   it('should select files at the deepest level', () => {
     const groups = [
       makeGroup(1, [
-        { path: '/a/file.txt', created_at: 100 },             // depth 2
-        { path: '/a/b/file.txt', created_at: 200 },           // depth 3
-        { path: '/a/b/c/file.txt', created_at: 300 },         // depth 4 (deepest)
+        { path: '/a/file.txt', created_at: 100 }, // depth 2
+        { path: '/a/b/file.txt', created_at: 200 }, // depth 3
+        { path: '/a/b/c/file.txt', created_at: 300 }, // depth 4 (deepest)
       ]),
     ];
 
@@ -263,9 +263,9 @@ describe('selectDeepestInGroup', () => {
   it('should select multiple files at the deepest level', () => {
     const groups = [
       makeGroup(1, [
-        { path: '/a/file.txt', created_at: 100 },             // depth 2 (shallower)
-        { path: '/a/b/c/file1.txt', created_at: 200 },        // depth 4 (deepest)
-        { path: '/x/y/z/file2.txt', created_at: 300 },        // depth 4 (deepest)
+        { path: '/a/file.txt', created_at: 100 }, // depth 2 (shallower)
+        { path: '/a/b/c/file1.txt', created_at: 200 }, // depth 4 (deepest)
+        { path: '/x/y/z/file2.txt', created_at: 300 }, // depth 4 (deepest)
       ]),
     ];
 
@@ -290,7 +290,7 @@ describe('selectDeepestInGroup', () => {
 
     // All at depth 3, keep oldest (file1.txt)
     expect(selected.size).toBe(2);
-    expect(selected.has('/a/b/file1.txt')).toBe(false);  // oldest, kept
+    expect(selected.has('/a/b/file1.txt')).toBe(false); // oldest, kept
     expect(selected.has('/c/d/file2.txt')).toBe(true);
     expect(selected.has('/e/f/file3.txt')).toBe(true);
   });
@@ -331,33 +331,21 @@ describe('clearSelection', () => {
 
 describe('edge cases', () => {
   it('selectAllExceptOldest should handle single-file group by selecting nothing', () => {
-    const groups = [
-      makeGroup(1, [
-        { path: '/a/file.txt', created_at: 100 },
-      ]),
-    ];
+    const groups = [makeGroup(1, [{ path: '/a/file.txt', created_at: 100 }])];
 
     const selected = selectAllExceptOldest(groups);
     expect(selected.size).toBe(0);
   });
 
   it('selectDeepestInGroup should handle single-file group by selecting nothing', () => {
-    const groups = [
-      makeGroup(1, [
-        { path: '/a/b/c/file.txt', created_at: 100 },
-      ]),
-    ];
+    const groups = [makeGroup(1, [{ path: '/a/b/c/file.txt', created_at: 100 }])];
 
     const selected = selectDeepestInGroup(groups);
     expect(selected.size).toBe(0);
   });
 
   it('selectByLocation should handle single-file group without selecting it', () => {
-    const groups = [
-      makeGroup(1, [
-        { path: '/a/file.txt', created_at: 100 },
-      ]),
-    ];
+    const groups = [makeGroup(1, [{ path: '/a/file.txt', created_at: 100 }])];
 
     const selected = selectByLocation(groups, '/a', new Set());
     // ensureOneKept prevents selecting the only file
@@ -365,11 +353,7 @@ describe('edge cases', () => {
   });
 
   it('selectByPathDepth should handle single-file group without selecting it', () => {
-    const groups = [
-      makeGroup(1, [
-        { path: '/a/b/file.txt', created_at: 100 },
-      ]),
-    ];
+    const groups = [makeGroup(1, [{ path: '/a/b/file.txt', created_at: 100 }])];
 
     const selected = selectByPathDepth(groups, 1, null, new Set());
     // ensureOneKept prevents selecting the only file

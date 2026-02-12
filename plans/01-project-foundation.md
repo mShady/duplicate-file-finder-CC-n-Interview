@@ -7,6 +7,7 @@ This file covers the initial project scaffolding, developer tooling, and basic a
 ## Prerequisites
 
 Before starting, ensure you have:
+
 - Node.js 20+ installed
 - Rust toolchain installed (rustup)
 - Platform-specific dependencies (covered in Phase 1.1)
@@ -16,6 +17,7 @@ Before starting, ensure you have:
 ## Phase 1.1: Create Setup Scripts
 
 ### Overview
+
 Create developer setup scripts that check for and install prerequisites on Mac and Windows.
 
 ### Changes Required
@@ -320,23 +322,27 @@ if ($allGood) {
 ### Success Criteria
 
 #### Automated Verification
+
 - [x] `ls scripts/setup-mac.sh scripts/setup-windows.ps1` shows both files exist
 - [x] `bash -n scripts/setup-mac.sh` passes syntax check (no output = success)
 
 #### Manual Verification
+
 - [x] On Mac: `chmod +x scripts/setup-mac.sh && ./scripts/setup-mac.sh` runs without errors
 - [ ] On Windows: PowerShell script runs and shows all prerequisites
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on `scripts/setup-mac.sh` and `scripts/setup-windows.ps1`.
----
+
+## Run code-review-fix-loop agent on `scripts/setup-mac.sh` and `scripts/setup-windows.ps1`.
 
 ## Phase 1.2: Initialize Tauri Project
 
 ### Overview
+
 Create the base Tauri + Svelte project structure using the official Tauri create tool, then customize for our needs.
 
 ### Changes Required
@@ -350,6 +356,7 @@ npm create tauri-app@latest . -- --template svelte-ts --manager npm
 ```
 
 This will create:
+
 - `package.json` with Svelte and Tauri dependencies
 - `vite.config.ts` for Vite bundler
 - `svelte.config.js` for Svelte configuration
@@ -407,18 +414,22 @@ After scaffolding, update the package.json to include all required dependencies 
 ### Success Criteria
 
 #### Automated Verification
+
 - [x] `ls package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json` shows all files exist
 - [x] `npm install` completes without errors
 - [x] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 
 #### Manual Verification
+
 - [x] Project structure matches expected layout
 - [x] `npm run dev` starts the Vite dev server (Ctrl+C to exit)
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
+
 Run code-review-fix-loop agent on `package.json`.
 
 ---
@@ -426,6 +437,7 @@ Run code-review-fix-loop agent on `package.json`.
 ## Phase 1.3: Configure Tauri Application
 
 ### Overview
+
 Configure the Tauri application settings, window properties, and application metadata.
 
 ### Changes Required
@@ -497,10 +509,7 @@ Configure the Tauri application settings, window properties, and application met
   "identifier": "default",
   "description": "Default capabilities for the main window",
   "windows": ["main"],
-  "permissions": [
-    "core:default",
-    "shell:allow-open"
-  ]
+  "permissions": ["core:default", "shell:allow-open"]
 }
 ```
 
@@ -548,17 +557,21 @@ strip = true
 ### Success Criteria
 
 #### Automated Verification
+
 - [x] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 - [x] `cat src-tauri/tauri.conf.json | jq .productName` outputs "DupliFind"
 - [x] `ls src-tauri/capabilities/default.json` confirms capabilities file exists
 
 #### Manual Verification
+
 - [x] Configuration values match specification requirements
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
+
 Run code-review-fix-loop agent on `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and `src-tauri/capabilities/default.json`.
 
 ---
@@ -566,6 +579,7 @@ Run code-review-fix-loop agent on `src-tauri/tauri.conf.json`, `src-tauri/Cargo.
 ## Phase 1.4: Setup Rust Project Structure
 
 ### Overview
+
 Create the modular Rust backend structure with proper separation of concerns.
 
 ### Changes Required
@@ -697,17 +711,21 @@ fn main() {
 ### Success Criteria
 
 #### Automated Verification
+
 - [x] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 - [x] `cargo test --manifest-path src-tauri/Cargo.toml` passes (all tests pass)
 - [x] `cargo clippy --manifest-path src-tauri/Cargo.toml` shows no warnings
 
 #### Manual Verification
+
 - [x] Module structure is clean and follows Rust conventions
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
+
 Run code-review-fix-loop agent on all new Rust files.
 
 ---
@@ -715,6 +733,7 @@ Run code-review-fix-loop agent on all new Rust files.
 ## Phase 1.5: Setup Frontend Structure
 
 ### Overview
+
 Create the Svelte frontend structure with TypeScript configuration and basic components.
 
 ### Changes Required
@@ -832,22 +851,26 @@ export default defineConfig({
 ### Success Criteria
 
 #### Automated Verification
+
 - [x] `npm run check` passes (svelte-check)
 - [x] `ls vite.config.ts tsconfig.json tsconfig.node.json index.html` shows all files
 
 #### Manual Verification
+
 - [x] TypeScript configuration is strict and appropriate for the project
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on configuration files.
----
+
+## Run code-review-fix-loop agent on configuration files.
 
 ## Phase 1.6: Create Base Svelte Application
 
 ### Overview
+
 Create the main Svelte application entry point and base styles.
 
 ### Changes Required
@@ -889,12 +912,13 @@ export default app;
 
   <div class="test-section">
     <h2>Connection Test</h2>
-    <form onsubmit={(e) => { e.preventDefault(); greet(); }}>
-      <input
-        type="text"
-        bind:value={name}
-        placeholder="Enter your name"
-      />
+    <form
+      onsubmit={(e) => {
+        e.preventDefault();
+        greet();
+      }}
+    >
+      <input type="text" bind:value={name} placeholder="Enter your name" />
       <button type="submit">Test Backend</button>
     </form>
     {#if greeting}
@@ -1063,7 +1087,14 @@ body:not(input):not(textarea) {
 }
 
 /* Re-enable selection for text content */
-p, span, h1, h2, h3, h4, h5, h6 {
+p,
+span,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   user-select: text;
   -webkit-user-select: text;
 }
@@ -1120,24 +1151,28 @@ a:hover {
 ### Success Criteria
 
 #### Automated Verification
+
 - [x] `npm run check` passes
 - [x] `ls src/main.ts src/App.svelte src/app.css` shows all files
 
 #### Manual Verification
+
 - [x] `npm run tauri dev` launches the application
 - [x] Light/dark theme follows system preference
 - [x] Backend test (greet) works correctly
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on Svelte and CSS files.
----
+
+## Run code-review-fix-loop agent on Svelte and CSS files.
 
 ## Phase 1.7: Create README Documentation
 
 ### Overview
+
 Create comprehensive README with setup instructions for developers.
 
 ### Changes Required
@@ -1146,7 +1181,7 @@ Create comprehensive README with setup instructions for developers.
 
 **File**: `README.md`
 
-```markdown
+````markdown
 # DupliFind
 
 A cross-platform desktop application for finding and removing duplicate files on Mac and Windows systems.
@@ -1182,6 +1217,7 @@ Run the setup script to install prerequisites:
 chmod +x scripts/setup-mac.sh
 ./scripts/setup-mac.sh
 ```
+````
 
 ### Windows
 
@@ -1231,17 +1267,17 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ## Development Commands
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start Vite dev server (frontend only) |
-| `npm run tauri dev` | Start Tauri dev mode with hot reload |
-| `npm run build` | Build frontend for production |
-| `npm run tauri build` | Build complete application |
-| `npm run check` | Run Svelte type checking |
-| `npm run lint` | Run ESLint |
-| `npm run test` | Run frontend tests |
-| `cargo test` | Run Rust tests (from src-tauri/) |
-| `cargo clippy` | Run Rust linter (from src-tauri/) |
+| Command               | Description                           |
+| --------------------- | ------------------------------------- |
+| `npm run dev`         | Start Vite dev server (frontend only) |
+| `npm run tauri dev`   | Start Tauri dev mode with hot reload  |
+| `npm run build`       | Build frontend for production         |
+| `npm run tauri build` | Build complete application            |
+| `npm run check`       | Run Svelte type checking              |
+| `npm run lint`        | Run ESLint                            |
+| `npm run test`        | Run frontend tests                    |
+| `cargo test`          | Run Rust tests (from src-tauri/)      |
+| `cargo clippy`        | Run Rust linter (from src-tauri/)     |
 
 ## Project Structure
 
@@ -1266,7 +1302,8 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ## License
 
 MIT
-```
+
+````
 
 ### Success Criteria
 
@@ -1309,7 +1346,7 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
   },
 });
-```
+````
 
 #### 1.8.2 Create Test Setup File
 
@@ -1380,20 +1417,23 @@ Ensure package.json has the test scripts (already added in Phase 1.2, but verify
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run test` passes all tests
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml` passes all Rust tests
 - [ ] `ls vitest.config.ts tests/setup.ts tests/example.test.ts` shows all files
 
 #### Manual Verification
+
 - [ ] `npm run test:watch` works and shows passing tests
 - [ ] Test infrastructure is ready for component tests
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on test configuration files.
----
+
+## Run code-review-fix-loop agent on test configuration files.
 
 ## End of File 01
 

@@ -34,8 +34,12 @@
     await loadLastScanPaths();
 
     await scanStore.init({
-      onComplete: () => { currentView = 'results'; },
-      onError: () => { currentView = 'home'; },
+      onComplete: () => {
+        currentView = 'results';
+      },
+      onError: () => {
+        currentView = 'home';
+      },
     });
 
     // Check for existing results
@@ -118,11 +122,15 @@
   }
 
   let deletingAllInGroup = $derived.by(() =>
-    scanStore.detectionResult ? isDeletingAllInGroup(scanStore.detectionResult, pendingDeletionFiles) : false
+    scanStore.detectionResult
+      ? isDeletingAllInGroup(scanStore.detectionResult, pendingDeletionFiles)
+      : false
   );
 
   let pendingDeletionSize = $derived.by(() =>
-    scanStore.detectionResult ? computePendingDeletionSize(scanStore.detectionResult, pendingDeletionFiles) : 0
+    scanStore.detectionResult
+      ? computePendingDeletionSize(scanStore.detectionResult, pendingDeletionFiles)
+      : 0
   );
 
   async function handleConfirmDelete() {
@@ -131,7 +139,10 @@
     scanStore.error = null;
 
     const requests = buildDeletionRequests(scanStore.detectionResult, pendingDeletionFiles);
-    const { keptPaths, groupIds } = buildKeptPathsAndGroupIds(scanStore.detectionResult, pendingDeletionFiles);
+    const { keptPaths, groupIds } = buildKeptPathsAndGroupIds(
+      scanStore.detectionResult,
+      pendingDeletionFiles
+    );
 
     try {
       const response = await invoke<DeleteFilesResponse>('delete_files', {
@@ -142,7 +153,7 @@
       showDeleteSummary = true;
 
       if (response.result.successful.length > 0) {
-        const deletedPaths = new Set(response.result.successful.map(r => r.path));
+        const deletedPaths = new Set(response.result.successful.map((r) => r.path));
         scanStore.detectionResult = computeUpdatedResults(scanStore.detectionResult, deletedPaths);
       }
     } catch (e) {
@@ -190,12 +201,21 @@
         onViewResults={() => (currentView = 'results')}
       />
     {:else if currentView === 'scanning'}
-      <ScanningView phase={scanStore.phase} progress={scanStore.progress} scanResult={scanStore.scanResult} onCancel={cancelScan} />
+      <ScanningView
+        phase={scanStore.phase}
+        progress={scanStore.progress}
+        scanResult={scanStore.scanResult}
+        onCancel={cancelScan}
+      />
     {:else if currentView === 'results'}
       {#if scanStore.error}
         <div class="error-banner" role="alert">
           {scanStore.error}
-          <button class="error-dismiss" onclick={() => (scanStore.error = null)} aria-label="Dismiss error">&times;</button>
+          <button
+            class="error-dismiss"
+            onclick={() => (scanStore.error = null)}
+            aria-label="Dismiss error">&times;</button
+          >
         </div>
       {/if}
       {#if scanStore.detectionResult}
@@ -226,10 +246,7 @@
 {/if}
 
 {#if showDeleteSummary && deletionResult}
-  <DeleteSummaryDialog
-    result={deletionResult}
-    onClose={handleCloseSummary}
-  />
+  <DeleteSummaryDialog result={deletionResult} onClose={handleCloseSummary} />
 {/if}
 
 <style>

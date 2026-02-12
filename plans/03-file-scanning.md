@@ -14,6 +14,7 @@ This file covers the core file scanning functionality, including directory trave
 ## Phase 3.1: Add Scanning Dependencies
 
 ### Overview
+
 Add the required dependencies for file system operations and parallel processing.
 
 ### Changes Required
@@ -46,21 +47,25 @@ crossbeam-channel = "0.5"
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 
 #### Manual Verification
+
 - [ ] Dependencies are appropriate versions
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on `src-tauri/Cargo.toml`.
----
+
+## Run code-review-fix-loop agent on `src-tauri/Cargo.toml`.
 
 ## Phase 3.2: Create Scanner Module Structure
 
 ### Overview
+
 Create the scanner module with the basic directory walker.
 
 ### Changes Required
@@ -306,22 +311,26 @@ mod tests {
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml` passes
 
 #### Manual Verification
+
 - [ ] Types are comprehensive and well-documented
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on scanner type files.
----
+
+## Run code-review-fix-loop agent on scanner type files.
 
 ## Phase 3.3: Implement Directory Walker
 
 ### Overview
+
 Implement the core directory walking logic that traverses the file system.
 
 ### Changes Required
@@ -859,25 +868,29 @@ mod tests {
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml` passes (including new walker tests)
 - [ ] `cargo clippy --manifest-path src-tauri/Cargo.toml` shows no warnings
 
 #### Manual Verification
+
 - [ ] Walker correctly traverses directories
 - [ ] Symlinks are skipped per specification
 - [ ] Progress tracking is accurate
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/scanner/walker.rs`.
----
+
+## Run code-review-fix-loop agent on `src-tauri/src/scanner/walker.rs`.
 
 ## Phase 3.4: Update lib.rs to Include Scanner
 
 ### Overview
+
 Add the scanner module to the main library and ensure it compiles correctly.
 
 ### Changes Required
@@ -944,22 +957,26 @@ pub fn run() {
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml` passes
 
 #### Manual Verification
+
 - [ ] Application starts without errors
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/lib.rs`.
----
+
+## Run code-review-fix-loop agent on `src-tauri/src/lib.rs`.
 
 ## Phase 3.5: Create Scan Commands
 
 ### Overview
+
 Create Tauri commands to start, pause, resume, and cancel scans.
 
 ### Changes Required
@@ -1296,22 +1313,26 @@ mod tests {
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml` passes
 
 #### Manual Verification
+
 - [ ] Scan commands compile correctly
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/commands/scan.rs`.
----
+
+## Run code-review-fix-loop agent on `src-tauri/src/commands/scan.rs`.
 
 ## Phase 3.6: Register Scan Commands and State
 
 ### Overview
+
 Register the scan commands and scan state in the Tauri application.
 
 ### Changes Required
@@ -1388,23 +1409,27 @@ pub fn run() {
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml` passes
 - [ ] `cargo clippy --manifest-path src-tauri/Cargo.toml` shows no warnings
 
 #### Manual Verification
+
 - [ ] Application starts without errors
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/lib.rs`.
----
+
+## Run code-review-fix-loop agent on `src-tauri/src/lib.rs`.
 
 ## Phase 3.7: Add Rust Unit Tests for Scanner
 
 ### Overview
+
 Add comprehensive unit tests for the scanner module.
 
 ### Changes Required
@@ -1673,22 +1698,26 @@ pub use walker::DirectoryWalker;
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml` passes all tests
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml -- --nocapture scanner` shows scanner tests passing
 
 #### Manual Verification
+
 - [ ] Tests cover the main scanner functionality
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/scanner/tests.rs`.
----
+
+## Run code-review-fix-loop agent on `src-tauri/src/scanner/tests.rs`.
 
 ## Phase 3.8: Add Folder Picker UI for Scan Scope Selection
 
 ### Overview
+
 Add a folder picker UI that allows users to select drives/folders to scan, with persistence of last scan settings.
 
 ### Changes Required
@@ -1704,6 +1733,7 @@ Update capabilities to include dialog permissions:
 **File**: `src-tauri/capabilities/default.json`
 
 Add to permissions array:
+
 ```json
 "dialog:allow-open"
 ```
@@ -1891,18 +1921,22 @@ Add to permissions array:
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run check` passes
 
 #### Manual Verification
+
 - [ ] Folder picker opens native file dialog
 - [ ] Multiple folders can be selected
 - [ ] Folders can be removed individually
 - [ ] "Clear All" removes all selected folders
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent on `src/lib/components/FolderPicker.svelte`.
 
 ---
@@ -1910,10 +1944,13 @@ Run code-review-fix-loop agent on `src/lib/components/FolderPicker.svelte`.
 ## Phase 3.9: Create Scan Button with Folder Picker Integration
 
 ### Overview
+
 Create the scan button component that integrates with the folder picker, persists last scan settings, and **automatically restores them on app launch**.
 
 ### Key Behavior: App Launch Restoration
+
 When the app starts, the following scan settings MUST be automatically restored:
+
 1. **Last scanned paths** - The folders/drives selected in the previous scan session
 2. **Parallelism mode** - The CPU usage setting from the previous scan
 
@@ -1969,11 +2006,14 @@ This ensures users can quickly re-run their last scan without re-selecting folde
     });
 
     // Listen for completion events
-    unlistenComplete = await listen<{ session_id: number; stats: ScanStats }>('scan-complete', (event) => {
-      scanResult = event.payload;
-      isScanning = false;
-      progress = null;
-    });
+    unlistenComplete = await listen<{ session_id: number; stats: ScanStats }>(
+      'scan-complete',
+      (event) => {
+        scanResult = event.payload;
+        isScanning = false;
+        progress = null;
+      }
+    );
   });
 
   onDestroy(() => {
@@ -1983,7 +2023,9 @@ This ensures users can quickly re-run their last scan without re-selecting folde
 
   async function loadLastScanPaths() {
     try {
-      const setting = await invoke<{ value: string } | null>('get_setting', { key: 'last_scan_paths' });
+      const setting = await invoke<{ value: string } | null>('get_setting', {
+        key: 'last_scan_paths',
+      });
       if (setting?.value) {
         selectedPaths = JSON.parse(setting.value);
       }
@@ -2068,9 +2110,7 @@ This ensures users can quickly re-run their last scan without re-selecting folde
 
   <div class="scan-controls">
     {#if isScanning}
-      <button class="cancel-button" onclick={cancelScan}>
-        Cancel Scan
-      </button>
+      <button class="cancel-button" onclick={cancelScan}> Cancel Scan </button>
     {:else}
       <button class="scan-button" onclick={startScan} disabled={selectedPaths.length === 0}>
         Start Scan
@@ -2273,12 +2313,13 @@ This ensures users can quickly re-run their last scan without re-selecting folde
 
   <div class="test-section">
     <h2>Backend Connection Test</h2>
-    <form onsubmit={(e) => { e.preventDefault(); greet(); }}>
-      <input
-        type="text"
-        bind:value={name}
-        placeholder="Enter your name"
-      />
+    <form
+      onsubmit={(e) => {
+        e.preventDefault();
+        greet();
+      }}
+    >
+      <input type="text" bind:value={name} placeholder="Enter your name" />
       <button type="submit">Test</button>
     </form>
     {#if greeting}
@@ -2374,10 +2415,12 @@ mkdir -p src/lib/components
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run check` passes
 - [ ] `ls src/lib/components/ScanButton.svelte` shows component exists
 
 #### Manual Verification
+
 - [ ] `npm run tauri dev` starts without errors
 - [ ] Clicking "Start Test Scan" initiates a scan
 - [ ] Progress updates are displayed during scan
@@ -2387,11 +2430,12 @@ mkdir -p src/lib/components
 - [ ] **Persistence verification**: Close app, reopen, and verify paths are still shown
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on Svelte components.
----
+
+## Run code-review-fix-loop agent on Svelte components.
 
 ## End of File 03
 

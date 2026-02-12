@@ -2,7 +2,7 @@ import type { DetectionResult, DeletionRequest } from '$lib/types';
 
 export function buildDeletionRequests(
   detectionResult: DetectionResult,
-  pendingFiles: string[],
+  pendingFiles: string[]
 ): DeletionRequest[] {
   const fileMap = new Map<string, { hash: string; size: number }>();
   for (const group of detectionResult.groups) {
@@ -25,7 +25,7 @@ export function buildDeletionRequests(
 
 export function buildKeptPathsAndGroupIds(
   detectionResult: DetectionResult,
-  pendingFiles: string[],
+  pendingFiles: string[]
 ): { keptPaths: Record<string, string>; groupIds: Record<string, number> } {
   const deletingSet = new Set(pendingFiles);
   const keptPaths: Record<string, string> = {};
@@ -46,7 +46,7 @@ export function buildKeptPathsAndGroupIds(
 
 export function updateResultsAfterDeletion(
   detectionResult: DetectionResult,
-  deletedPaths: Set<string>,
+  deletedPaths: Set<string>
 ): DetectionResult {
   const updatedGroups = detectionResult.groups
     .map((group) => {
@@ -74,7 +74,7 @@ export function updateResultsAfterDeletion(
 
 export function computePendingDeletionSize(
   detectionResult: DetectionResult,
-  pendingFiles: string[],
+  pendingFiles: string[]
 ): number {
   const fileMap = new Map<string, number>();
   for (const group of detectionResult.groups) {
@@ -91,11 +91,11 @@ export function computePendingDeletionSize(
 
 export function isDeletingAllInGroup(
   detectionResult: DetectionResult,
-  pendingFiles: string[],
+  pendingFiles: string[]
 ): boolean {
   if (pendingFiles.length === 0) return false;
   const selectedSet = new Set(pendingFiles);
   return detectionResult.groups.some((group) =>
-    group.files.every((file) => selectedSet.has(file.path)),
+    group.files.every((file) => selectedSet.has(file.path))
   );
 }

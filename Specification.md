@@ -116,6 +116,7 @@ The project must be easy to set up for developers who don't have prerequisites i
 ### Progress Display
 
 During scans, show:
+
 - Progress percentage
 - Files scanned count (X of Y)
 - Estimated time remaining
@@ -133,6 +134,7 @@ During scans, show:
 ### Keyboard Support
 
 Full keyboard navigation and shortcuts for all major actions:
+
 - Start/pause/cancel scan
 - Navigate between groups and files
 - Select/deselect files
@@ -202,15 +204,15 @@ All data in local SQLite database:
 
 ## Error Handling
 
-| Scenario | Behavior |
-|----------|----------|
-| Permission denied | Skip file, increment skip counter, allow retry |
-| File corrupted/unreadable | Skip file, log error, allow retry |
-| File locked by another app | Skip file, increment skip counter, allow retry |
-| File changed since scan | Skip deletion, notify user, continue with others |
-| File moved/deleted since scan | Skip deletion, notify user, continue with others |
-| Disk full during scan | Pause scan, notify user |
-| Network drive disconnected | Skip remaining files on that drive, continue scan |
+| Scenario                      | Behavior                                          |
+| ----------------------------- | ------------------------------------------------- |
+| Permission denied             | Skip file, increment skip counter, allow retry    |
+| File corrupted/unreadable     | Skip file, log error, allow retry                 |
+| File locked by another app    | Skip file, increment skip counter, allow retry    |
+| File changed since scan       | Skip deletion, notify user, continue with others  |
+| File moved/deleted since scan | Skip deletion, notify user, continue with others  |
+| Disk full during scan         | Pause scan, notify user                           |
+| Network drive disconnected    | Skip remaining files on that drive, continue scan |
 
 ---
 
@@ -228,31 +230,31 @@ All data in local SQLite database:
 
 ## Summary of Key Decisions
 
-| Decision | Choice |
-|----------|--------|
-| Hash algorithm | BLAKE3 |
-| Detection approach | Multi-stage (size → partial hash → full hash) |
-| Framework | Tauri |
-| Frontend | Svelte + TypeScript |
-| Database | SQLite |
-| Symlinks | Skip entirely |
-| File size limits | None |
-| Default exclusions | None (scan everything) |
-| Original detection | Oldest by creation date/time |
-| Results sorting | By total wasted space |
-| Theme | System default + user override |
-| UI style | Fully native per-platform |
-| Preview | External only, thumbnails for images |
-| Layout | Master-detail (side panel) |
-| Pause/resume | Yes, persisted to disk |
-| Protected folders | User-defined only |
-| Delete confirmation | Summary + count |
-| Deletion safety | Verify hash before delete |
-| Delete-all-copies | Warn but allow |
-| Analytics | None |
-| Auto-update | None |
-| Code signing | None |
-| Tutorial | None |
-| Keyboard support | Full |
-| Commit size | ~5 files or fewer |
-| Developer setup | Automated scripts + README |
+| Decision            | Choice                                        |
+| ------------------- | --------------------------------------------- |
+| Hash algorithm      | BLAKE3                                        |
+| Detection approach  | Multi-stage (size → partial hash → full hash) |
+| Framework           | Tauri                                         |
+| Frontend            | Svelte + TypeScript                           |
+| Database            | SQLite                                        |
+| Symlinks            | Skip entirely                                 |
+| File size limits    | None                                          |
+| Default exclusions  | None (scan everything)                        |
+| Original detection  | Oldest by creation date/time                  |
+| Results sorting     | By total wasted space                         |
+| Theme               | System default + user override                |
+| UI style            | Fully native per-platform                     |
+| Preview             | External only, thumbnails for images          |
+| Layout              | Master-detail (side panel)                    |
+| Pause/resume        | Yes, persisted to disk                        |
+| Protected folders   | User-defined only                             |
+| Delete confirmation | Summary + count                               |
+| Deletion safety     | Verify hash before delete                     |
+| Delete-all-copies   | Warn but allow                                |
+| Analytics           | None                                          |
+| Auto-update         | None                                          |
+| Code signing        | None                                          |
+| Tutorial            | None                                          |
+| Keyboard support    | Full                                          |
+| Commit size         | ~5 files or fewer                             |
+| Developer setup     | Automated scripts + README                    |

@@ -13,10 +13,10 @@
   function getFileExtension(group: DuplicateGroup): string {
     // Defensive: check if files array exists and has items
     if (!group.files || group.files.length === 0) return '';
-    
+
     const firstFile = group.files[0];
     if (!firstFile || !firstFile.path) return '';
-    
+
     const path = firstFile.path;
     const ext = path.split('.').pop()?.toLowerCase() || '';
     return ext;
@@ -59,7 +59,8 @@
         aria-selected={selectedGroupId === group.id}
         aria-label={getGroupLabel(group)}
       >
-        <span class="group-icon" aria-hidden="true">{getFileTypeIcon(getFileExtension(group))}</span>
+        <span class="group-icon" aria-hidden="true">{getFileTypeIcon(getFileExtension(group))}</span
+        >
         <div class="group-info">
           <div class="group-size">{formatBytes(group.file_size)}</div>
           <div class="group-meta">
@@ -71,9 +72,7 @@
     {/each}
 
     {#if groups.length === 0}
-      <div class="empty-state" role="status">
-        No duplicate groups found
-      </div>
+      <div class="empty-state" role="status">No duplicate groups found</div>
     {/if}
   </div>
 </div>

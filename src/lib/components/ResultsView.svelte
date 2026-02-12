@@ -15,9 +15,7 @@
   let { result, onDeleteSelected }: Props = $props();
 
   // Sort groups by wasted space descending (spec: "Default Sort: By total wasted space")
-  let sortedGroups = $derived(
-    [...result.groups].sort((a, b) => b.wasted_space - a.wasted_space),
-  );
+  let sortedGroups = $derived([...result.groups].sort((a, b) => b.wasted_space - a.wasted_space));
 
   let selectedGroup = $state<DuplicateGroup | null>(null);
   let selectedFiles = $state<Set<string>>(new Set());
@@ -62,7 +60,7 @@
 
       // Update selectedGroup reference
       if (selectedGroup) {
-        const updated = result.groups.find(g => g.id === selectedGroup!.id);
+        const updated = result.groups.find((g) => g.id === selectedGroup!.id);
         if (updated) {
           selectedGroup = updated;
         } else {
@@ -126,15 +124,21 @@
   <div class="results-header">
     <div class="header-stats" role="region" aria-label="Detection statistics">
       <div class="stat">
-        <span class="stat-value" aria-label="{result.groups.length} duplicate groups">{result.groups.length}</span>
+        <span class="stat-value" aria-label="{result.groups.length} duplicate groups"
+          >{result.groups.length}</span
+        >
         <span class="stat-label">Groups</span>
       </div>
       <div class="stat">
-        <span class="stat-value" aria-label="{result.duplicate_count} duplicate files">{result.duplicate_count}</span>
+        <span class="stat-value" aria-label="{result.duplicate_count} duplicate files"
+          >{result.duplicate_count}</span
+        >
         <span class="stat-label">Duplicates</span>
       </div>
       <div class="stat warning">
-        <span class="stat-value" aria-label="{formatBytes(result.total_wasted_space)} wasted space">{formatBytes(result.total_wasted_space)}</span>
+        <span class="stat-value" aria-label="{formatBytes(result.total_wasted_space)} wasted space"
+          >{formatBytes(result.total_wasted_space)}</span
+        >
         <span class="stat-label">Wasted</span>
       </div>
     </div>
@@ -156,7 +160,9 @@
           Clear Selection
         </button>
         <div class="selection-info">
-          <span id="selection-summary">{selectedFiles.size} files selected ({formatBytes(selectedSize)})</span>
+          <span id="selection-summary"
+            >{selectedFiles.size} files selected ({formatBytes(selectedSize)})</span
+          >
           <button
             class="delete-button"
             onclick={handleDeleteSelected}

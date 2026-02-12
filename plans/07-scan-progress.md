@@ -13,6 +13,7 @@ This file covers implementing the scan progress display with pause/resume functi
 ## Phase 7.1: Create Progress State Model
 
 ### Overview
+
 Create the data model for tracking scan progress with persistence.
 
 ### Changes Required
@@ -38,6 +39,7 @@ Use a **rolling estimate** that improves over time without requiring a pre-scan.
 ###### Phase 1: Initial Estimate (First 5 seconds)
 
 During the first 5 seconds of scanning:
+
 1. Track files discovered per second
 2. Track directories discovered per second
 3. Calculate average files per directory
@@ -182,29 +184,29 @@ The frontend uses `estimated_total` when available:
 ```typescript
 // In progress display
 let progressText = $derived(() => {
-    if (progress?.estimated_total) {
-        return `${progress.processed_files.toLocaleString()} of ~${progress.estimated_total.toLocaleString()} files`;
-    }
-    return `${progress?.processed_files.toLocaleString() ?? 0} files processed`;
+  if (progress?.estimated_total) {
+    return `${progress.processed_files.toLocaleString()} of ~${progress.estimated_total.toLocaleString()} files`;
+  }
+  return `${progress?.processed_files.toLocaleString() ?? 0} files processed`;
 });
 
 let progressPercent = $derived(() => {
-    if (!progress?.estimated_total || progress.estimated_total === 0) {
-        return null;  // Show indeterminate progress bar
-    }
-    return Math.min(99, (progress.processed_files / progress.estimated_total) * 100);
+  if (!progress?.estimated_total || progress.estimated_total === 0) {
+    return null; // Show indeterminate progress bar
+  }
+  return Math.min(99, (progress.processed_files / progress.estimated_total) * 100);
 });
 ```
 
 ##### Edge Cases
 
-| Scenario | Handling |
-|----------|----------|
-| Empty directory tree | Show "0 files" immediately, no estimate needed |
-| Single large directory | Estimate may fluctuate; use high alpha (0.4) for quick stabilization |
-| Many nested empty dirs | `pending_directories` decreases faster than files increase; estimate converges quickly |
-| Network drives (slow) | Estimation still works; just takes longer to accumulate data |
-| Cancel during estimation | Return last known estimate in progress state |
+| Scenario                 | Handling                                                                               |
+| ------------------------ | -------------------------------------------------------------------------------------- |
+| Empty directory tree     | Show "0 files" immediately, no estimate needed                                         |
+| Single large directory   | Estimate may fluctuate; use high alpha (0.4) for quick stabilization                   |
+| Many nested empty dirs   | `pending_directories` decreases faster than files increase; estimate converges quickly |
+| Network drives (slow)    | Estimation still works; just takes longer to accumulate data                           |
+| Cancel during estimation | Return last known estimate in progress state                                           |
 
 ##### Success Criteria
 
@@ -280,12 +282,15 @@ pub mod scan_progress {
 ```
 
 ### Success Criteria
+
 - [ ] `cargo check` passes
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -293,6 +298,7 @@ Run code-review-fix-loop agent.
 ## Phase 7.2: Update Scanner for Pause/Resume
 
 ### Overview
+
 Add pause and resume capabilities to the directory walker.
 
 ### Changes Required
@@ -331,13 +337,16 @@ impl DirectoryWalker {
 ```
 
 ### Success Criteria
+
 - [ ] `cargo check` passes
 - [ ] Pause/resume works in tests
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -345,6 +354,7 @@ Run code-review-fix-loop agent.
 ## Phase 7.3: Create Pause/Resume Commands
 
 ### Overview
+
 Create Tauri commands for pausing and resuming scans.
 
 ### Changes Required
@@ -416,12 +426,15 @@ pub async fn get_paused_scan(
 ```
 
 ### Success Criteria
+
 - [ ] `cargo check` passes
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -429,6 +442,7 @@ Run code-review-fix-loop agent.
 ## Phase 7.4: Create Progress Display Component
 
 ### Overview
+
 Create a detailed progress display component with estimated time remaining.
 
 ### ETA Calculation Algorithm
@@ -438,6 +452,7 @@ The ETA (Estimated Time of Arrival) calculation uses an **Exponential Moving Ave
 #### Why EMA Over Simple Linear Calculation
 
 A simple linear approach (`remaining_files / files_per_second`) produces jumpy estimates because:
+
 - File sizes vary dramatically (1KB text file vs 1GB video)
 - Disk I/O speed fluctuates based on file location and system load
 - Hashing large files takes longer, causing sudden rate drops
@@ -449,10 +464,10 @@ EMA smooths these fluctuations while still adapting to sustained speed changes.
 ```typescript
 // ETA Calculator State (maintained across progress updates)
 interface ETAState {
-  emaRate: number;           // Exponential moving average of processing rate (bytes/ms)
-  lastUpdateTime: number;    // Timestamp of last update
+  emaRate: number; // Exponential moving average of processing rate (bytes/ms)
+  lastUpdateTime: number; // Timestamp of last update
   lastProcessedBytes: number; // Bytes processed at last update
-  alpha: number;             // EMA smoothing factor (0.1 = smooth, 0.3 = responsive)
+  alpha: number; // EMA smoothing factor (0.1 = smooth, 0.3 = responsive)
 }
 
 // Initialize when scan starts
@@ -461,7 +476,7 @@ function initETAState(): ETAState {
     emaRate: 0,
     lastUpdateTime: Date.now(),
     lastProcessedBytes: 0,
-    alpha: 0.2  // Balance between smoothness and responsiveness
+    alpha: 0.2, // Balance between smoothness and responsiveness
   };
 }
 
@@ -481,7 +496,7 @@ function calculateETA(
     const remainingBytes = totalBytes - currentProcessedBytes;
     return {
       etaMs: state.emaRate > 0 ? remainingBytes / state.emaRate : null,
-      state
+      state,
     };
   }
 
@@ -491,9 +506,10 @@ function calculateETA(
   // Update EMA rate
   // First update: use instantaneous rate directly
   // Subsequent updates: blend with previous rate
-  const newEmaRate = state.emaRate === 0
-    ? instantRate
-    : state.alpha * instantRate + (1 - state.alpha) * state.emaRate;
+  const newEmaRate =
+    state.emaRate === 0
+      ? instantRate
+      : state.alpha * instantRate + (1 - state.alpha) * state.emaRate;
 
   // Calculate remaining time
   const remainingBytes = totalBytes - currentProcessedBytes;
@@ -505,20 +521,20 @@ function calculateETA(
       ...state,
       emaRate: newEmaRate,
       lastUpdateTime: now,
-      lastProcessedBytes: currentProcessedBytes
-    }
+      lastProcessedBytes: currentProcessedBytes,
+    },
   };
 }
 ```
 
 #### Backend vs Frontend Calculation
 
-| Aspect | Backend (Rust) | Frontend (Svelte) |
-|--------|---------------|-------------------|
-| **Responsibility** | Primary ETA calculation | Fallback/display |
-| **Data available** | Precise byte counts, file queue | Progress events only |
-| **Update frequency** | Every 100 files or 1 second | On event receipt |
-| **Sent to frontend** | `estimated_time_remaining_ms` | Used directly if present |
+| Aspect               | Backend (Rust)                  | Frontend (Svelte)        |
+| -------------------- | ------------------------------- | ------------------------ |
+| **Responsibility**   | Primary ETA calculation         | Fallback/display         |
+| **Data available**   | Precise byte counts, file queue | Progress events only     |
+| **Update frequency** | Every 100 files or 1 second     | On event receipt         |
+| **Sent to frontend** | `estimated_time_remaining_ms`   | Used directly if present |
 
 **Backend implementation** (in `src-tauri/src/scanner/progress.rs`):
 
@@ -599,14 +615,14 @@ function fallbackETA(progress: ScanProgress): number | null {
 
 #### Edge Cases
 
-| Scenario | Handling |
-|----------|----------|
-| Scan just started (< 1 second) | Show "Calculating..." |
-| ETA > 24 hours | Show "More than a day" |
-| Scan paused | Freeze ETA display, don't update state |
-| Scan resumed | Reset `lastUpdateTime`, preserve `emaRate` |
-| Zero bytes processed | Return null (show "Calculating...") |
-| Negative remaining (overestimate) | Show "Almost done..." |
+| Scenario                          | Handling                                   |
+| --------------------------------- | ------------------------------------------ |
+| Scan just started (< 1 second)    | Show "Calculating..."                      |
+| ETA > 24 hours                    | Show "More than a day"                     |
+| Scan paused                       | Freeze ETA display, don't update state     |
+| Scan resumed                      | Reset `lastUpdateTime`, preserve `emaRate` |
+| Zero bytes processed              | Return null (show "Calculating...")        |
+| Negative remaining (overestimate) | Show "Almost done..."                      |
 
 #### Tuning the Alpha Parameter
 
@@ -882,12 +898,15 @@ For duplicate file scanning where file sizes vary dramatically, **α = 0.2** pro
 ```
 
 ### Success Criteria
+
 - [ ] `npm run check` passes
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -895,6 +914,7 @@ Run code-review-fix-loop agent.
 ## Phase 7.5: Integrate Progress in App
 
 ### Overview
+
 Update the main app to use the progress display with controls.
 
 ### Changes Required
@@ -902,13 +922,16 @@ Update the main app to use the progress display with controls.
 Update App.svelte to use ScanProgressDisplay with pause/resume.
 
 ### Success Criteria
+
 - [ ] Progress display works
 - [ ] Pause/resume buttons work
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -916,6 +939,7 @@ Run code-review-fix-loop agent.
 ## Phase 7.6: Add Progress Persistence
 
 ### Overview
+
 Save scan progress periodically and restore on app restart.
 
 ### Changes Required
@@ -925,13 +949,16 @@ Save scan progress periodically and restore on app restart.
 3. Offer to resume or discard
 
 ### Success Criteria
+
 - [ ] Progress is saved periodically
 - [ ] Paused scans can be resumed after restart
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -939,6 +966,7 @@ Run code-review-fix-loop agent.
 ## End of File 07
 
 After completing all phases:
+
 - Detailed progress display with estimated time remaining
 - Pause/resume functionality
 - Progress state persistence

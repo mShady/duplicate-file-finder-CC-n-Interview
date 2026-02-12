@@ -13,10 +13,13 @@ This file covers implementing the settings UI, theme switching, parallelism conf
 ## Phase 8.1: Create Settings Store
 
 ### Overview
+
 Create a frontend store for settings management with **automatic restoration on app launch**.
 
 ### Key Behavior: App Launch Restoration
+
 The settings store MUST:
+
 1. **Load all settings on app initialization** - Before the main UI renders
 2. **Restore last scan paths** - So users see their previous scan locations immediately
 3. **Apply theme preference** - Match user's saved theme choice
@@ -93,9 +96,11 @@ export const settingsStore = new SettingsStore();
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run check` passes
 
 #### Manual Verification
+
 - [ ] Settings load correctly on app startup
 - [ ] **Last scan paths are restored** when app opens (verify in FolderPicker component)
 - [ ] Theme is applied immediately on app launch
@@ -103,9 +108,11 @@ export const settingsStore = new SettingsStore();
 - [ ] Setting changes are saved immediately to database
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -113,6 +120,7 @@ Run code-review-fix-loop agent.
 ## Phase 8.2: Create Settings Panel
 
 ### Overview
+
 Create the settings UI panel.
 
 ### Changes Required
@@ -198,9 +206,11 @@ Create the settings UI panel.
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -208,6 +218,7 @@ Run code-review-fix-loop agent.
 ## Phase 8.3: Create Protected Folders Manager
 
 ### Overview
+
 Create UI for managing protected folders.
 
 ### Changes Required
@@ -268,9 +279,7 @@ Create UI for managing protected folders.
     <button class="add-btn" onclick={addFolder}>Add Folder</button>
   </div>
 
-  <p class="description">
-    Files in protected folders cannot be selected for deletion.
-  </p>
+  <p class="description">Files in protected folders cannot be selected for deletion.</p>
 
   {#if loading}
     <div class="loading">Loading...</div>
@@ -352,7 +361,8 @@ Create UI for managing protected folders.
     font-size: 0.8rem;
   }
 
-  .empty, .loading {
+  .empty,
+  .loading {
     text-align: center;
     color: var(--text-secondary);
     padding: 2rem;
@@ -361,9 +371,11 @@ Create UI for managing protected folders.
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -371,6 +383,7 @@ Run code-review-fix-loop agent.
 ## Phase 8.4: Add Dialog Plugin
 
 ### Overview
+
 Add Tauri dialog plugin for folder selection.
 
 ### Changes Required
@@ -382,9 +395,11 @@ npm run tauri add dialog
 Update capabilities to include dialog permissions.
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -392,6 +407,7 @@ Run code-review-fix-loop agent.
 ## Phase 8.5: Create Full Settings View
 
 ### Overview
+
 Combine settings and protected folders into settings view.
 
 ### Changes Required
@@ -401,9 +417,11 @@ Combine settings and protected folders into settings view.
 Combine SettingsPanel and ProtectedFolders.
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -413,9 +431,11 @@ Run code-review-fix-loop agent.
 Add tests for settings and protected folders.
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -423,6 +443,7 @@ Run code-review-fix-loop agent.
 ## End of File 08
 
 After completing all phases:
+
 - Theme switching (system/light/dark)
 - Parallelism configuration
 - Protected folders management

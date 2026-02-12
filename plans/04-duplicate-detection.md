@@ -3,6 +3,7 @@
 ## Overview
 
 This file covers the multi-stage duplicate detection algorithm using BLAKE3 hashing. The algorithm uses a three-stage approach for efficiency:
+
 1. Group files by size (files must have identical sizes to be duplicates)
 2. Partial hash comparison (first/last 4KB) for quick elimination
 3. Full content hash only when partial hashes match
@@ -20,6 +21,7 @@ By the end of this file, you'll have a working duplicate detection system that e
 ## Phase 4.1: Add BLAKE3 Dependency
 
 ### Overview
+
 Add the BLAKE3 crate for high-performance, secure hashing.
 
 ### Changes Required
@@ -41,21 +43,25 @@ blake3 = { version = "1.8", features = ["rayon"] }
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 
 #### Manual Verification
+
 - [ ] BLAKE3 version is 1.8.x or later
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on `src-tauri/Cargo.toml`.
----
+
+## Run code-review-fix-loop agent on `src-tauri/Cargo.toml`.
 
 ## Phase 4.2: Create Hasher Module
 
 ### Overview
+
 Create the hasher module that handles partial and full file hashing using BLAKE3.
 
 ### Changes Required
@@ -445,29 +451,35 @@ pub use walker::DirectoryWalker;
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml hasher` passes all hasher tests
 
 #### Manual Verification
+
 - [ ] Hasher correctly produces BLAKE3 hashes
 - [ ] Partial hash covers first/last 4KB
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/scanner/hasher.rs`.
----
+
+## Run code-review-fix-loop agent on `src-tauri/src/scanner/hasher.rs`.
 
 ## Phase 4.2.3: Empty File Handling Specification
 
 ### Overview
+
 Zero-byte files require special handling since they all have identical content (nothing). This section documents the explicit empty file grouping behavior.
 
 ### Empty File Behavior
 
 #### Design Decision
+
 All empty files (size = 0 bytes) are **grouped as duplicates** because:
+
 1. They have identical content (empty)
 2. They produce identical hashes (`blake3::hash(b"")`)
 3. They waste disk space through inode overhead
@@ -485,11 +497,13 @@ if size == 0 {
 ```
 
 **Empty file hash value** (BLAKE3 of empty byte array):
+
 ```
 af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262
 ```
 
 All empty files will:
+
 1. Be grouped together in Stage 1 (same size: 0)
 2. Have identical partial hash in Stage 2
 3. Have identical full hash in Stage 3
@@ -539,6 +553,7 @@ fn test_empty_files_are_duplicates() {
 ## Phase 4.3: Create Duplicate Detector
 
 ### Overview
+
 Create the duplicate detector that groups files by size, then by partial hash, then verifies with full hash.
 
 ### Changes Required
@@ -1109,37 +1124,41 @@ pub use walker::DirectoryWalker;
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml detector` passes all detector tests
 - [ ] `cargo clippy --manifest-path src-tauri/Cargo.toml` shows no warnings
 
 #### Manual Verification
+
 - [ ] Detector correctly identifies duplicate files
 - [ ] Three-stage algorithm works as expected
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/scanner/detector.rs`.
----
+
+## Run code-review-fix-loop agent on `src-tauri/src/scanner/detector.rs`.
 
 ## Phase 4.3.3: Live Streaming Event Emission
 
 ### Overview
+
 This section specifies how and when duplicate discovery events are emitted to the frontend during detection, enabling live UI updates.
 
 ### Event Emission Strategy
 
 #### Event Types and Timing
 
-| Event Name | Emission Point | Frequency | Purpose |
-|------------|----------------|-----------|---------|
-| `scan-progress` | During file collection | Every 100 files | Show file discovery progress |
-| `scan-phase` | Phase transitions | Once per phase | Indicate detection stage |
-| `duplicate-found` | After full hash confirms duplicate | Per group discovered | Live duplicate streaming |
-| `scan-results` | Detection complete | Once | Final complete results |
-| `scan-complete` | End of scan | Once | Summary statistics |
+| Event Name        | Emission Point                     | Frequency            | Purpose                      |
+| ----------------- | ---------------------------------- | -------------------- | ---------------------------- |
+| `scan-progress`   | During file collection             | Every 100 files      | Show file discovery progress |
+| `scan-phase`      | Phase transitions                  | Once per phase       | Indicate detection stage     |
+| `duplicate-found` | After full hash confirms duplicate | Per group discovered | Live duplicate streaming     |
+| `scan-results`    | Detection complete                 | Once                 | Final complete results       |
+| `scan-complete`   | End of scan                        | Once                 | Summary statistics           |
 
 #### New Event: `duplicate-found` (Live Streaming)
 
@@ -1191,9 +1210,9 @@ fn verify_with_full_hash(
 
 ```typescript
 interface DuplicateFoundEvent {
-  id: number;           // Group ID
-  hash: string;         // Full content hash
-  file_size: number;    // Size of each file
+  id: number; // Group ID
+  hash: string; // Full content hash
+  file_size: number; // Size of each file
   files: DuplicateFile[];
   wasted_space: number;
 }
@@ -1255,6 +1274,7 @@ See **Phase 5.1.5** in `05-results-ui.md` for the complete frontend event subscr
 ### Throttling Guidelines
 
 To prevent UI flooding:
+
 - `scan-progress`: Every 100 files
 - `duplicate-found`: Immediately (groups are infrequent relative to files)
 - `detection-progress`: Every 50 hashes
@@ -1265,6 +1285,7 @@ To prevent UI flooding:
 ## Phase 4.4: Add Database Queries for Duplicates
 
 ### Overview
+
 Add database queries for storing and retrieving duplicate groups and files.
 
 ### Changes Required
@@ -1636,18 +1657,21 @@ pub mod file_cache {
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml queries` passes
 
 #### Manual Verification
+
 - [ ] Database queries are comprehensive
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on the updated `src-tauri/src/db/queries.rs`.
----
+
+## Run code-review-fix-loop agent on the updated `src-tauri/src/db/queries.rs`.
 
 ## Phase 4.4.1: Cache Invalidation Strategy
 
@@ -1671,12 +1695,14 @@ pub async fn get(
 ```
 
 **How it works:**
+
 - When a file is **modified**, its `modified_at` timestamp changes
 - The cache lookup with the new timestamp returns `None` (cache miss)
 - The file is rehashed and the cache is updated via `upsert()`
 - The old entry is automatically replaced due to `ON CONFLICT(path) DO UPDATE`
 
 **Covered scenarios:**
+
 - File content modified (timestamp changes → cache miss → rehash)
 - File truncated/appended (size and/or timestamp changes → cache miss)
 
@@ -1689,6 +1715,7 @@ pub async fn invalidate(pool: &SqlitePool, path: &str) -> Result<(), sqlx::Error
 ```
 
 **When to call:**
+
 - After detecting a file rename operation
 - After detecting a file move operation
 - When a user manually requests cache refresh
@@ -1705,6 +1732,7 @@ pub async fn cleanup_missing_files(
 ```
 
 **When to call:**
+
 - At the end of each full scan, pass all discovered file paths
 - The function removes cache entries for paths not in the valid set
 
@@ -1717,6 +1745,7 @@ pub async fn clear_old(pool: &SqlitePool, days: i32) -> Result<u64, sqlx::Error>
 ```
 
 **Recommended usage:**
+
 - Call on app startup with `days = 30` (configurable)
 - Removes entries not accessed in the specified period
 - Prevents unbounded cache growth
@@ -1773,14 +1802,14 @@ pub async fn clear_old(pool: &SqlitePool, days: i32) -> Result<u64, sqlx::Error>
 
 ### Edge Cases Handled
 
-| Scenario | Detection Method | Invalidation Action |
-|----------|------------------|---------------------|
-| File modified | `modified_at` changes | Implicit (cache miss) |
-| File renamed | Old path not in scan results | `cleanup_missing_files()` |
-| File moved | Old path not in scan results | `cleanup_missing_files()` |
-| File deleted | Path not in scan results | `cleanup_missing_files()` |
-| File replaced (same name) | `size` or `modified_at` changes | Implicit (cache miss) |
-| Cache corruption | N/A | `clear_old(0)` to purge all |
+| Scenario                  | Detection Method                | Invalidation Action         |
+| ------------------------- | ------------------------------- | --------------------------- |
+| File modified             | `modified_at` changes           | Implicit (cache miss)       |
+| File renamed              | Old path not in scan results    | `cleanup_missing_files()`   |
+| File moved                | Old path not in scan results    | `cleanup_missing_files()`   |
+| File deleted              | Path not in scan results        | `cleanup_missing_files()`   |
+| File replaced (same name) | `size` or `modified_at` changes | Implicit (cache miss)       |
+| Cache corruption          | N/A                             | `clear_old(0)` to purge all |
 
 ### Implementation Notes
 
@@ -1795,6 +1824,7 @@ pub async fn clear_old(pool: &SqlitePool, days: i32) -> Result<u64, sqlx::Error>
 ## Phase 4.5: Integrate Detection with Scan
 
 ### Overview
+
 Integrate the duplicate detector with the scan workflow.
 
 ### Changes Required
@@ -2313,24 +2343,28 @@ Add the `get_scan_results` command:
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml` passes
 
 #### Manual Verification
+
 - [ ] Scan correctly detects duplicates
 - [ ] Results are stored in the database
 - [ ] Events are emitted to the frontend
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/commands/scan.rs`.
----
+
+## Run code-review-fix-loop agent on `src-tauri/src/commands/scan.rs`.
 
 ## Phase 4.6: Update Detection Stats Type
 
 ### Overview
+
 Add the DetectionStats type to the scanner types module for complete export.
 
 ### Changes Required
@@ -2370,18 +2404,21 @@ pub use walker::DirectoryWalker;
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on scanner module files.
----
+
+## Run code-review-fix-loop agent on scanner module files.
 
 ## Phase 4.7: Add Detection Unit Tests
 
 ### Overview
+
 Add comprehensive tests for the duplicate detection system.
 
 ### Changes Required
@@ -2545,22 +2582,26 @@ Add additional tests to the existing test module:
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml detector` passes all tests
 - [ ] `cargo clippy --manifest-path src-tauri/Cargo.toml` shows no warnings
 
 #### Manual Verification
+
 - [ ] Tests cover edge cases and performance scenarios
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on the test additions.
----
+
+## Run code-review-fix-loop agent on the test additions.
 
 ## Phase 4.8: Update Frontend to Display Detection Results
 
 ### Overview
+
 Update the ScanButton component to display duplicate detection results.
 
 ### Changes Required
@@ -2727,13 +2768,9 @@ Update the ScanButton component to display duplicate detection results.
 <div class="scan-container">
   <div class="scan-controls">
     {#if isScanning}
-      <button class="cancel-button" onclick={cancelScan}>
-        Cancel Scan
-      </button>
+      <button class="cancel-button" onclick={cancelScan}> Cancel Scan </button>
     {:else}
-      <button class="scan-button" onclick={startScan}>
-        Start Scan
-      </button>
+      <button class="scan-button" onclick={startScan}> Start Scan </button>
     {/if}
   </div>
 
@@ -3043,9 +3080,11 @@ Update the ScanButton component to display duplicate detection results.
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run check` passes
 
 #### Manual Verification
+
 - [ ] `npm run tauri dev` starts without errors
 - [ ] Scanning works and shows progress
 - [ ] Detection results are displayed
@@ -3053,11 +3092,12 @@ Update the ScanButton component to display duplicate detection results.
 - [ ] "Original" badge is shown on oldest file
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on `src/lib/components/ScanButton.svelte`.
----
+
+## Run code-review-fix-loop agent on `src/lib/components/ScanButton.svelte`.
 
 ## End of File 04
 

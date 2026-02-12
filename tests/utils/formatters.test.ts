@@ -88,7 +88,8 @@ describe('getDirectory (middle ellipsis truncation)', () => {
   });
 
   it('should truncate long paths with middle ellipsis', () => {
-    const longPath = '/Users/john/Documents/Projects/2024/DupliFind/backups/photos/vacation/file.jpg';
+    const longPath =
+      '/Users/john/Documents/Projects/2024/DupliFind/backups/photos/vacation/file.jpg';
     const result = getDirectory(longPath, 50);
 
     expect(result.length).toBeLessThanOrEqual(50);

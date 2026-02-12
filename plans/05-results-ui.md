@@ -13,6 +13,7 @@ This file covers building the full results UI with a master-detail layout showin
 ## Phase 5.1: Create Master-Detail Layout Component
 
 ### Overview
+
 Create the main layout component with a resizable split panel.
 
 ### Changes Required
@@ -115,22 +116,26 @@ Create the main layout component with a resizable split panel.
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run check` passes
 
 #### Manual Verification
+
 - [ ] Layout renders with two panels
 - [ ] Divider can be dragged to resize panels
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
-Run code-review-fix-loop agent.
----
+
+## Run code-review-fix-loop agent.
 
 ## Phase 5.1.5: Live Duplicate Streaming Subscription Pattern
 
 ### Overview
+
 This phase specifies the complete frontend event subscription pattern for receiving live duplicate discovery updates during scanning.
 
 ### Event Subscription Architecture
@@ -145,12 +150,7 @@ Create a centralized scan store for managing all scan-related events:
 import { writable, derived } from 'svelte/store';
 import { listen } from '@tauri-apps/api/event';
 import type { UnlistenFn } from '@tauri-apps/api/event';
-import type {
-  DuplicateGroup,
-  ScanProgress,
-  ScanComplete,
-  DetectionResult
-} from '$lib/types';
+import type { DuplicateGroup, ScanProgress, ScanComplete, DetectionResult } from '$lib/types';
 
 // Event payload types
 interface ScanPhaseEvent {
@@ -176,7 +176,7 @@ interface ScanState {
   phaseMessage: string;
   progress: ScanProgress | null;
   detectionProgress: DetectionProgressEvent | null;
-  liveGroups: DuplicateGroup[];  // Groups streamed during scan
+  liveGroups: DuplicateGroup[]; // Groups streamed during scan
   finalResult: DetectionResult | null;
   scanComplete: ScanComplete | null;
   error: string | null;
@@ -208,12 +208,12 @@ function createScanStore() {
       unlisteners = [
         // File discovery progress
         await listen<ScanProgress>('scan-progress', (e) => {
-          update(state => ({ ...state, progress: e.payload }));
+          update((state) => ({ ...state, progress: e.payload }));
         }),
 
         // Phase transitions
         await listen<ScanPhaseEvent>('scan-phase', (e) => {
-          update(state => ({
+          update((state) => ({
             ...state,
             phase: e.payload.phase,
             phaseMessage: e.payload.message,
@@ -222,22 +222,23 @@ function createScanStore() {
 
         // LIVE DUPLICATE STREAMING - Key pattern!
         await listen<DuplicateGroup>('duplicate-found', (e) => {
-          update(state => ({
+          update((state) => ({
             ...state,
             // Append new group to live list, sorted by wasted space
-            liveGroups: [...state.liveGroups, e.payload]
-              .sort((a, b) => b.wasted_space - a.wasted_space),
+            liveGroups: [...state.liveGroups, e.payload].sort(
+              (a, b) => b.wasted_space - a.wasted_space
+            ),
           }));
         }),
 
         // Detection progress (hashing stats)
         await listen<DetectionProgressEvent>('detection-progress', (e) => {
-          update(state => ({ ...state, detectionProgress: e.payload }));
+          update((state) => ({ ...state, detectionProgress: e.payload }));
         }),
 
         // Final results
         await listen<DetectionResult>('scan-results', (e) => {
-          update(state => ({
+          update((state) => ({
             ...state,
             finalResult: e.payload,
             // Replace live groups with final sorted results
@@ -247,7 +248,7 @@ function createScanStore() {
 
         // Scan completion
         await listen<ScanComplete>('scan-complete', (e) => {
-          update(state => ({
+          update((state) => ({
             ...state,
             isScanning: false,
             phase: 'complete',
@@ -257,7 +258,7 @@ function createScanStore() {
 
         // Error handling
         await listen<ScanErrorEvent>('scan-error', (e) => {
-          update(state => ({
+          update((state) => ({
             ...state,
             isScanning: false,
             phase: 'error',
@@ -269,14 +270,14 @@ function createScanStore() {
 
     // Start a new scan
     startScan() {
-      update(state => ({
+      update((state) => ({
         ...state,
         isScanning: true,
         phase: 'collecting',
         phaseMessage: 'Starting scan...',
         progress: null,
         detectionProgress: null,
-        liveGroups: [],  // Clear previous results
+        liveGroups: [], // Clear previous results
         finalResult: null,
         scanComplete: null,
         error: null,
@@ -300,7 +301,7 @@ function createScanStore() {
 
     // Cleanup listeners
     cleanup() {
-      unlisteners.forEach(fn => fn());
+      unlisteners.forEach((fn) => fn());
       unlisteners = [];
     },
   };
@@ -309,14 +310,13 @@ function createScanStore() {
 export const scanStore = createScanStore();
 
 // Derived stores for convenience
-export const isScanning = derived(scanStore, $s => $s.isScanning);
-export const currentPhase = derived(scanStore, $s => $s.phase);
-export const duplicateGroups = derived(scanStore, $s =>
-  $s.finalResult?.groups ?? $s.liveGroups
-);
-export const totalWastedSpace = derived(scanStore, $s =>
-  $s.finalResult?.total_wasted_space ??
-  $s.liveGroups.reduce((sum, g) => sum + g.wasted_space, 0)
+export const isScanning = derived(scanStore, ($s) => $s.isScanning);
+export const currentPhase = derived(scanStore, ($s) => $s.phase);
+export const duplicateGroups = derived(scanStore, ($s) => $s.finalResult?.groups ?? $s.liveGroups);
+export const totalWastedSpace = derived(
+  scanStore,
+  ($s) =>
+    $s.finalResult?.total_wasted_space ?? $s.liveGroups.reduce((sum, g) => sum + g.wasted_space, 0)
 );
 ```
 
@@ -329,7 +329,13 @@ Using the store in a component:
 ```svelte
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { scanStore, duplicateGroups, totalWastedSpace, isScanning, currentPhase } from '$lib/stores/scanStore';
+  import {
+    scanStore,
+    duplicateGroups,
+    totalWastedSpace,
+    isScanning,
+    currentPhase,
+  } from '$lib/stores/scanStore';
 
   // Initialize listeners on mount
   onMount(() => {
@@ -406,15 +412,15 @@ Using the store in a component:
 let sortTimeout: number | null = null;
 
 await listen<DuplicateGroup>('duplicate-found', (e) => {
-  update(state => {
+  update((state) => {
     const newGroups = [...state.liveGroups, e.payload];
 
     // Debounce sorting during rapid updates
     if (sortTimeout) clearTimeout(sortTimeout);
     sortTimeout = setTimeout(() => {
-      update(s => ({
+      update((s) => ({
         ...s,
-        liveGroups: s.liveGroups.sort((a, b) => b.wasted_space - a.wasted_space)
+        liveGroups: s.liveGroups.sort((a, b) => b.wasted_space - a.wasted_space),
       }));
     }, 500);
 
@@ -464,10 +470,12 @@ export interface ScanProgress {
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run check` passes
 - [ ] TypeScript types are correctly defined
 
 #### Manual Verification
+
 - [ ] Live groups appear as they are discovered
 - [ ] Groups re-sort by wasted space during streaming
 - [ ] Final results replace live groups seamlessly
@@ -479,6 +487,7 @@ export interface ScanProgress {
 ## Phase 5.2: Create Duplicate Groups List Component
 
 ### Overview
+
 Create the component that displays the list of duplicate groups in the master panel.
 
 ### Changes Required
@@ -554,9 +563,7 @@ Create the component that displays the list of duplicate groups in the master pa
     {/each}
 
     {#if groups.length === 0}
-      <div class="empty-state">
-        No duplicate groups found
-      </div>
+      <div class="empty-state">No duplicate groups found</div>
     {/if}
   </div>
 </div>
@@ -657,22 +664,26 @@ Create the component that displays the list of duplicate groups in the master pa
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run check` passes
 
 #### Manual Verification
+
 - [ ] Groups list renders correctly
 - [ ] Selection works
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
-Run code-review-fix-loop agent.
----
+
+## Run code-review-fix-loop agent.
 
 ## Phase 5.3: Create File Details Panel Component
 
 ### Overview
+
 Create the detail panel that shows files within a selected duplicate group.
 
 ### Changes Required
@@ -734,7 +745,7 @@ Create the detail panel that shows files within a selected duplicate group.
     const ellipsis = '/...';
     const availableLength = maxLength - ellipsis.length;
     const startLength = Math.ceil(availableLength * 0.4); // 40% for start
-    const endLength = Math.floor(availableLength * 0.6);  // 60% for end (more useful info)
+    const endLength = Math.floor(availableLength * 0.6); // 60% for end (more useful info)
 
     const start = dir.slice(0, startLength);
     const end = dir.slice(-endLength);
@@ -969,9 +980,11 @@ Create the detail panel that shows files within a selected duplicate group.
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run check` passes
 
 #### Manual Verification
+
 - [ ] File details show correctly
 - [ ] Checkboxes work
 - [ ] Original file is highlighted and not selectable
@@ -981,15 +994,17 @@ Create the detail panel that shows files within a selected duplicate group.
 - [ ] Dates are clearly labeled and visually distinct
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
-Run code-review-fix-loop agent.
----
+
+## Run code-review-fix-loop agent.
 
 ## Phase 5.4: Create TypeScript Types
 
 ### Overview
+
 Create shared TypeScript types for the frontend.
 
 ### Changes Required
@@ -1078,18 +1093,21 @@ export interface FilterState {
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run check` passes
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
-Run code-review-fix-loop agent.
----
+
+## Run code-review-fix-loop agent.
 
 ## Phase 5.5: Create Main Results View
 
 ### Overview
+
 Create the main results view that combines all components.
 
 ### Changes Required
@@ -1185,9 +1203,7 @@ Create the main results view that combines all components.
     {#if selectedFiles.size > 0}
       <div class="selection-info">
         <span>{selectedFiles.size} files selected ({formatBytes(selectedSize)})</span>
-        <button class="delete-button" onclick={handleDeleteSelected}>
-          Delete Selected
-        </button>
+        <button class="delete-button" onclick={handleDeleteSelected}> Delete Selected </button>
       </div>
     {/if}
   </div>
@@ -1288,23 +1304,27 @@ Create the main results view that combines all components.
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run check` passes
 
 #### Manual Verification
+
 - [ ] Results view renders complete layout
 - [ ] Group selection works
 - [ ] File selection works
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
-Run code-review-fix-loop agent.
----
+
+## Run code-review-fix-loop agent.
 
 ## Phase 5.6: Update Main App with Results View
 
 ### Overview
+
 Update the main App.svelte to use the results view.
 
 ### Changes Required
@@ -1417,9 +1437,7 @@ Update the main App.svelte to use the results view.
     <h1>DupliFind</h1>
     <nav>
       {#if currentView === 'results' || detectionResult}
-        <button class="nav-button" onclick={() => (currentView = 'home')}>
-          New Scan
-        </button>
+        <button class="nav-button" onclick={() => (currentView = 'home')}> New Scan </button>
         {#if detectionResult}
           <button
             class="nav-button"
@@ -1444,9 +1462,7 @@ Update the main App.svelte to use the results view.
             <div class="error-banner">{error}</div>
           {/if}
 
-          <button class="scan-button" onclick={startScan}>
-            Start Scan
-          </button>
+          <button class="scan-button" onclick={startScan}> Start Scan </button>
 
           {#if detectionResult}
             <button class="results-link" onclick={() => (currentView = 'results')}>
@@ -1638,19 +1654,22 @@ Update the main App.svelte to use the results view.
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run check` passes
 
 #### Manual Verification
+
 - [ ] `npm run tauri dev` works
 - [ ] Complete scan flow works
 - [ ] Results are displayed correctly
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
-Run code-review-fix-loop agent.
----
+
+## Run code-review-fix-loop agent.
 
 ## Phases 5.7-5.8: Tests
 
@@ -1669,6 +1688,7 @@ Create integration tests for the full results flow.
 ## End of File 05
 
 After completing all phases, you should have:
+
 - Master-detail layout with resizable panels
 - Duplicate groups list with selection
 - File details panel with checkboxes

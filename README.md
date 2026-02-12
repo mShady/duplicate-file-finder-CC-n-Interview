@@ -82,21 +82,21 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ## Development Commands
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start Vite dev server (frontend only) |
-| `npm run tauri:dev` | Start Tauri dev mode with hot reload |
-| `npm run build` | Build frontend for production |
-| `npm run tauri:build` | Build complete application |
-| `npm run check` | Run Svelte type checking |
-| `npm run lint` | Run ESLint |
-| `npm run lint:fix` | Run ESLint with auto-fix |
-| `npm run format` | Format code with Prettier |
-| `npm run test` | Run frontend tests |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run test:coverage` | Run tests with coverage report |
-| `cargo test` | Run Rust tests (from src-tauri/) |
-| `cargo clippy` | Run Rust linter (from src-tauri/) |
+| Command                 | Description                           |
+| ----------------------- | ------------------------------------- |
+| `npm run dev`           | Start Vite dev server (frontend only) |
+| `npm run tauri:dev`     | Start Tauri dev mode with hot reload  |
+| `npm run build`         | Build frontend for production         |
+| `npm run tauri:build`   | Build complete application            |
+| `npm run check`         | Run Svelte type checking              |
+| `npm run lint`          | Run ESLint                            |
+| `npm run lint:fix`      | Run ESLint with auto-fix              |
+| `npm run format`        | Format code with Prettier             |
+| `npm run test`          | Run frontend tests                    |
+| `npm run test:watch`    | Run tests in watch mode               |
+| `npm run test:coverage` | Run tests with coverage report        |
+| `cargo test`            | Run Rust tests (from src-tauri/)      |
+| `cargo clippy`          | Run Rust linter (from src-tauri/)     |
 
 ## Project Structure
 

@@ -56,8 +56,8 @@
           {formatBytes(group.file_size)} each &bull; {formatBytes(group.wasted_space)} wasted
         </span>
       </div>
-      <button 
-        class="action-button" 
+      <button
+        class="action-button"
         onclick={onSelectAllExceptOriginal}
         aria-label="Select all duplicate files except the original for deletion"
       >

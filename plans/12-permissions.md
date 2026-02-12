@@ -13,6 +13,7 @@ This file covers implementing the blocking permission wizard, Full Disk Access g
 ## Phase 12.1: Create Permission Check Commands
 
 ### Overview
+
 Create Rust commands to check for necessary file system permissions.
 
 ### Changes Required
@@ -109,9 +110,11 @@ fn os_version() -> Option<String> {
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -119,6 +122,7 @@ Run code-review-fix-loop agent.
 ## Phase 12.2: Create Permission Wizard Component
 
 ### Overview
+
 Create the blocking permission wizard UI.
 
 ### Changes Required
@@ -200,8 +204,8 @@ Create the blocking permission wizard UI.
     <div class="wizard-content">
       <h1>Permission Required</h1>
       <p class="intro">
-        DupliFind needs Full Disk Access to scan all your files for duplicates.
-        Without this permission, some files may be inaccessible.
+        DupliFind needs Full Disk Access to scan all your files for duplicates. Without this
+        permission, some files may be inaccessible.
       </p>
 
       {#if platform === 'macos'}
@@ -237,9 +241,7 @@ Create the blocking permission wizard UI.
         <button class="nav-btn primary" onclick={onComplete}>Continue</button>
       {/if}
 
-      <button class="skip-btn" onclick={onComplete}>
-        Skip (Some files may be inaccessible)
-      </button>
+      <button class="skip-btn" onclick={onComplete}> Skip (Some files may be inaccessible) </button>
     </div>
   {/if}
 </div>
@@ -268,7 +270,9 @@ Create the blocking permission wizard UI.
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .wizard-content {
@@ -381,9 +385,11 @@ Create the blocking permission wizard UI.
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -391,6 +397,7 @@ Run code-review-fix-loop agent.
 ## Phase 12.3: Add Permission State Persistence
 
 ### Overview
+
 Remember if user has granted permissions or skipped.
 
 ### Changes Required
@@ -398,9 +405,11 @@ Remember if user has granted permissions or skipped.
 Store permission state in settings and check on app startup.
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -408,6 +417,7 @@ Run code-review-fix-loop agent.
 ## Phase 12.4: Create Windows Permission Wizard
 
 ### Overview
+
 Create Windows-specific permission wizard with step-by-step guidance for folder access permissions, particularly for protected system folders and user directories.
 
 ### Windows Permission Scenarios
@@ -516,13 +526,15 @@ Add Windows-specific wizard steps:
   const windowsSteps = [
     {
       title: 'Check Windows Security Settings',
-      description: 'Open Windows Security to manage Controlled Folder Access, which may be blocking DupliFind.',
+      description:
+        'Open Windows Security to manage Controlled Folder Access, which may be blocking DupliFind.',
       action: () => invoke('open_file', { path: 'windowsdefender://threatsettings' }),
       actionLabel: 'Open Windows Security',
     },
     {
       title: 'Allow DupliFind Through Controlled Folder Access',
-      description: 'In "Ransomware protection", click "Allow an app through Controlled folder access" and add DupliFind.',
+      description:
+        'In "Ransomware protection", click "Allow an app through Controlled folder access" and add DupliFind.',
     },
     {
       title: 'Check Blocked Folders',
@@ -559,8 +571,10 @@ Add Windows-specific wizard steps:
   {#if windowsStatus?.controlled_folder_access_enabled}
     <div class="info-banner">
       <strong>Controlled Folder Access is enabled</strong>
-      <p>This Windows Security feature protects your folders from unauthorized changes.
-         You need to add DupliFind to the allowed apps list.</p>
+      <p>
+        This Windows Security feature protects your folders from unauthorized changes. You need to
+        add DupliFind to the allowed apps list.
+      </p>
     </div>
   {/if}
 
@@ -644,10 +658,12 @@ winreg = "0.52"
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check` passes on Windows
 - [ ] `npm run check` passes
 
 #### Manual Verification
+
 - [ ] Windows wizard shows Controlled Folder Access status
 - [ ] Blocked paths are listed when access is denied
 - [ ] "Open Windows Security" button opens correct settings page
@@ -655,9 +671,11 @@ winreg = "0.52"
 - [ ] Access check updates after adding app to allowed list
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent on Windows permission code.
 
 ---
@@ -665,6 +683,7 @@ Run code-review-fix-loop agent on Windows permission code.
 ## Phase 12.5: Integrate Wizard in App Startup
 
 ### Overview
+
 Show permission wizard on first launch or when access is lost.
 
 ### Changes Required
@@ -672,9 +691,11 @@ Show permission wizard on first launch or when access is lost.
 Update App.svelte to check permissions on mount and show wizard if needed.
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -684,9 +705,11 @@ Run code-review-fix-loop agent.
 Add tests for permission checking.
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -694,6 +717,7 @@ Run code-review-fix-loop agent.
 ## End of File 12
 
 After completing all phases:
+
 - Permission check on startup
 - Blocking permission wizard
 - Step-by-step macOS Full Disk Access guide

@@ -13,6 +13,7 @@ This file covers achieving native look and feel on each platform, final styling 
 ## Phase 14.1: macOS Native Styling
 
 ### Overview
+
 Apply macOS-specific styling for native look and feel.
 
 ### Changes Required
@@ -21,10 +22,11 @@ Apply macOS-specific styling for native look and feel.
 
 ```css
 /* macOS-specific styling */
-[data-platform="macos"] {
+[data-platform='macos'] {
   /* Native macOS font stack */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Icons',
-               'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Icons', 'Helvetica Neue', Helvetica,
+    Arial, sans-serif;
   --font-mono: 'SF Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* macOS-style colors */
@@ -36,41 +38,43 @@ Apply macOS-specific styling for native look and feel.
 }
 
 /* macOS window controls spacing */
-[data-platform="macos"] .app-header {
+[data-platform='macos'] .app-header {
   padding-left: 80px; /* Space for traffic lights */
 }
 
 /* macOS-style buttons */
-[data-platform="macos"] button {
+[data-platform='macos'] button {
   border-radius: 6px;
 }
 
 /* macOS-style inputs */
-[data-platform="macos"] input,
-[data-platform="macos"] select {
+[data-platform='macos'] input,
+[data-platform='macos'] select {
   border-radius: 6px;
   border-width: 1px;
 }
 
 /* macOS-style scrollbars */
-[data-platform="macos"] ::-webkit-scrollbar {
+[data-platform='macos'] ::-webkit-scrollbar {
   width: 8px;
 }
 
-[data-platform="macos"] ::-webkit-scrollbar-thumb {
+[data-platform='macos'] ::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.3);
   border-radius: 4px;
 }
 
-[data-platform="macos"] ::-webkit-scrollbar-thumb:hover {
+[data-platform='macos'] ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.5);
 }
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -78,6 +82,7 @@ Run code-review-fix-loop agent.
 ## Phase 14.2: Windows Native Styling
 
 ### Overview
+
 Apply Windows-specific styling for native look and feel.
 
 ### Changes Required
@@ -86,7 +91,7 @@ Apply Windows-specific styling for native look and feel.
 
 ```css
 /* Windows-specific styling */
-[data-platform="windows"] {
+[data-platform='windows'] {
   /* Windows font stack */
   --font-sans: 'Segoe UI', 'Segoe UI Variable', -apple-system, sans-serif;
   --font-mono: 'Cascadia Code', 'Cascadia Mono', Consolas, monospace;
@@ -97,46 +102,48 @@ Apply Windows-specific styling for native look and feel.
 }
 
 /* Windows-style buttons */
-[data-platform="windows"] button {
+[data-platform='windows'] button {
   border-radius: 4px;
 }
 
 /* Windows-style inputs */
-[data-platform="windows"] input,
-[data-platform="windows"] select {
+[data-platform='windows'] input,
+[data-platform='windows'] select {
   border-radius: 4px;
   border-width: 1px;
 }
 
 /* Windows-style focus */
-[data-platform="windows"] :focus-visible {
+[data-platform='windows'] :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 1px;
 }
 
 /* Windows-style scrollbars */
-[data-platform="windows"] ::-webkit-scrollbar {
+[data-platform='windows'] ::-webkit-scrollbar {
   width: 12px;
 }
 
-[data-platform="windows"] ::-webkit-scrollbar-track {
+[data-platform='windows'] ::-webkit-scrollbar-track {
   background: var(--background);
 }
 
-[data-platform="windows"] ::-webkit-scrollbar-thumb {
+[data-platform='windows'] ::-webkit-scrollbar-thumb {
   background: var(--border);
   border: 3px solid var(--background);
 }
 
-[data-platform="windows"] ::-webkit-scrollbar-thumb:hover {
+[data-platform='windows'] ::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
 }
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -144,6 +151,7 @@ Run code-review-fix-loop agent.
 ## Phase 14.3: Platform Detection and Style Loading
 
 ### Overview
+
 Detect platform and apply appropriate styles.
 
 ### Changes Required
@@ -175,6 +183,7 @@ export function getPlatform(): Platform | null {
 ```
 
 Update main.ts:
+
 ```typescript
 import { detectPlatform } from '$lib/utils/platform';
 
@@ -184,9 +193,11 @@ detectPlatform().then(() => {
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -194,6 +205,7 @@ Run code-review-fix-loop agent.
 ## Phase 14.4: Final UI Polish
 
 ### Overview
+
 Review and polish all UI components for consistency.
 
 ### Changes Required
@@ -207,9 +219,11 @@ Review and polish all UI components for consistency.
 - Focus indicators
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -217,6 +231,7 @@ Run code-review-fix-loop agent.
 ## Phase 14.5: Create E2E Test Suite
 
 ### Overview
+
 Set up WebdriverIO E2E tests for the complete application.
 
 ### Changes Required
@@ -432,7 +447,7 @@ describe('Duplicate Detection Logic', () => {
   it('should not flag unique files as duplicates', async () => {
     // After the previous scan, verify unique file is not in any group
     const allFilesInGroups = await $$('.file-item .file-name');
-    const fileNames = await Promise.all(allFilesInGroups.map(el => el.getText()));
+    const fileNames = await Promise.all(allFilesInGroups.map((el) => el.getText()));
 
     expect(fileNames).not.toContain('unique-file.txt');
   });
@@ -451,9 +466,9 @@ describe('Duplicate Detection Logic', () => {
   it('should correctly identify files across subdirectories', async () => {
     // Verify file2-copy.txt in subdir was found as duplicate
     const allFilePaths = await $$('.file-item .file-path');
-    const paths = await Promise.all(allFilePaths.map(el => el.getAttribute('title')));
+    const paths = await Promise.all(allFilePaths.map((el) => el.getAttribute('title')));
 
-    const hasSubdirFile = paths.some(p => p && p.includes('subdir'));
+    const hasSubdirFile = paths.some((p) => p && p.includes('subdir'));
     expect(hasSubdirFile).toBe(true);
   });
 
@@ -529,14 +544,13 @@ describe('Duplicate Detection Edge Cases', () => {
     const scanBtn = await $('button*=Start Scan');
     await scanBtn.click();
 
-    await browser.waitUntil(
-      async () => (await $('.duplicate-groups')).isExisting(),
-      { timeout: 30000 }
-    );
+    await browser.waitUntil(async () => (await $('.duplicate-groups')).isExisting(), {
+      timeout: 30000,
+    });
 
     // Find the group containing empty files
     const allFiles = await $$('.file-item .file-name');
-    const fileNames = await Promise.all(allFiles.map(el => el.getText()));
+    const fileNames = await Promise.all(allFiles.map((el) => el.getText()));
 
     const hasEmpty1 = fileNames.includes('empty1.txt');
     const hasEmpty2 = fileNames.includes('empty2.txt');
@@ -551,7 +565,7 @@ describe('Duplicate Detection Edge Cases', () => {
 
     for (const group of groups) {
       const filesInGroup = await group.$$('.file-item .file-name');
-      const names = await Promise.all(filesInGroup.map(el => el.getText()));
+      const names = await Promise.all(filesInGroup.map((el) => el.getText()));
 
       const hasSameSize1 = names.includes('same-size-1.txt');
       const hasSameSize2 = names.includes('same-size-2.txt');
@@ -568,7 +582,7 @@ describe('Duplicate Detection Edge Cases', () => {
     let foundLargeGroup = false;
     for (const group of groups) {
       const filesInGroup = await group.$$('.file-item .file-name');
-      const names = await Promise.all(filesInGroup.map(el => el.getText()));
+      const names = await Promise.all(filesInGroup.map((el) => el.getText()));
 
       if (names.includes('large1.bin') && names.includes('large2.bin')) {
         foundLargeGroup = true;
@@ -582,9 +596,11 @@ describe('Duplicate Detection Edge Cases', () => {
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -592,6 +608,7 @@ Run code-review-fix-loop agent.
 ## Phase 14.6: Run E2E Tests
 
 ### Overview
+
 Run full E2E test suite and fix any issues.
 
 ### Changes Required
@@ -604,6 +621,7 @@ Run full E2E test suite and fix any issues.
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run build` succeeds
 - [ ] `npm run tauri build -- --debug` succeeds
 - [ ] All E2E tests pass including:
@@ -623,9 +641,11 @@ Run full E2E test suite and fix any issues.
     - [ ] Large file duplicate detection works
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -633,6 +653,7 @@ Run code-review-fix-loop agent.
 ## Phase 14.7: Build Scripts
 
 ### Overview
+
 Create build scripts for distribution.
 
 ### Changes Required
@@ -673,9 +694,11 @@ Write-Host "  src-tauri\target\release\bundle\nsis\DupliFind_*-setup.exe"
 ```
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run code-review-fix-loop agent.
 
 ---
@@ -683,6 +706,7 @@ Run code-review-fix-loop agent.
 ## Phase 14.8: Final Documentation and Cleanup
 
 ### Overview
+
 Update documentation and clean up code.
 
 ### Changes Required
@@ -696,21 +720,25 @@ Update documentation and clean up code.
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `npm run check` passes
 - [ ] `cargo clippy` shows no warnings
 - [ ] `npm run test` passes
 - [ ] `cargo test` passes
 
 #### Manual Verification
+
 - [ ] App builds successfully on macOS
 - [ ] App builds successfully on Windows
 - [ ] All features work as specified
 - [ ] UI is polished and consistent
 
 ### Commit
+
 Execute `/cl:commit`
 
 ### Code Review
+
 Run final comprehensive code review across all files.
 
 ---
@@ -718,6 +746,7 @@ Run final comprehensive code review across all files.
 ## End of File 14
 
 After completing all phases:
+
 - Native macOS styling
 - Native Windows styling
 - Platform detection

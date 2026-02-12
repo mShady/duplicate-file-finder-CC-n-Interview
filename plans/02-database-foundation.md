@@ -14,6 +14,7 @@ This file covers setting up SQLite with the sqlx crate, creating the database sc
 ## Phase 2.1: Add SQLite Dependencies
 
 ### Overview
+
 Add the sqlx crate and related dependencies to the Rust project for database operations.
 
 ### Changes Required
@@ -91,22 +92,26 @@ Note: This is only used during development for sqlx compile-time checking. The a
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 - [ ] `ls src-tauri/.env` shows env file exists
 
 #### Manual Verification
+
 - [ ] Dependencies are appropriate versions
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on `src-tauri/Cargo.toml`.
----
+
+## Run code-review-fix-loop agent on `src-tauri/Cargo.toml`.
 
 ## Phase 2.2: Create Database Module Structure
 
 ### Overview
+
 Create the database module with connection management and initialization logic.
 
 ### Changes Required
@@ -438,22 +443,26 @@ pub fn run() {
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 - [ ] `ls src-tauri/src/db/mod.rs src-tauri/src/db/models.rs src-tauri/src/db/schema.rs` shows all files
 
 #### Manual Verification
+
 - [ ] Module structure is clean and follows Rust conventions
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on all new Rust files in db module.
----
+
+## Run code-review-fix-loop agent on all new Rust files in db module.
 
 ## Phase 2.3: Create Database Migrations
 
 ### Overview
+
 Create SQL migrations for the database schema.
 
 ### Changes Required
@@ -586,23 +595,27 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `ls src-tauri/migrations/` shows migration file exists
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 
 #### Manual Verification
+
 - [ ] Schema covers all required tables from specification
 - [ ] Indexes are appropriate for expected query patterns
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on migration SQL.
----
+
+## Run code-review-fix-loop agent on migration SQL.
 
 ## Phase 2.4: Implement Database Queries
 
 ### Overview
+
 Implement the query layer for common database operations.
 
 ### Changes Required
@@ -1015,23 +1028,27 @@ mod schema;
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml` passes (all tests including new query tests)
 
 #### Manual Verification
+
 - [ ] Query functions cover the main use cases
 - [ ] Tests validate core functionality
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/db/queries.rs`.
----
+
+## Run code-review-fix-loop agent on `src-tauri/src/db/queries.rs`.
 
 ## Phase 2.5: Integrate Database with Application State
 
 ### Overview
+
 Connect the database to the application state and make it available throughout the app.
 
 ### Changes Required
@@ -1228,23 +1245,27 @@ pub fn run() {
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml` passes
 
 #### Manual Verification
+
 - [ ] `npm run tauri dev` starts without errors
 - [ ] Database file is created in app data directory
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on `src-tauri/src/state.rs` and `src-tauri/src/lib.rs`.
----
+
+## Run code-review-fix-loop agent on `src-tauri/src/state.rs` and `src-tauri/src/lib.rs`.
 
 ## Phase 2.6: Add Database Commands for Frontend
 
 ### Overview
+
 Create Tauri commands to expose database operations to the frontend.
 
 ### Changes Required
@@ -1493,20 +1514,23 @@ pub fn run() {
 ### Success Criteria
 
 #### Automated Verification
+
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml` passes
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml` passes
 - [ ] `cargo clippy --manifest-path src-tauri/Cargo.toml` shows no warnings
 
 #### Manual Verification
+
 - [ ] `npm run tauri dev` starts without errors
 - [ ] Commands are callable from the frontend (test via browser console)
 
 ### Commit
+
 Execute `/cl:commit` to commit changes with meaningful message.
 
 ### Code Review
-Run code-review-fix-loop agent on all command files.
----
+
+## Run code-review-fix-loop agent on all command files.
 
 ## End of File 02
 
