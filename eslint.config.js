@@ -43,6 +43,7 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-member-access': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
       '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-redundant-type-constituents': 'off',
     },
   },
   {
@@ -51,12 +52,6 @@ export default tseslint.config(
     ...tseslint.configs.disableTypeChecked,
   },
   {
-    ignores: [
-      'dist/',
-      'build/',
-      'src-tauri/target/',
-      'node_modules/',
-      '.svelte-kit/',
-    ],
+    ignores: ['dist/', 'build/', 'src-tauri/target/', 'node_modules/', '.svelte-kit/'],
   }
 );

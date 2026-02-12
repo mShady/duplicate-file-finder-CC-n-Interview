@@ -8,12 +8,11 @@ function createMockListeners() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const listeners: Record<string, (event: any) => void> = {};
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  vi.mocked(listen).mockImplementation(async (eventName: any, handler: any) => {
-    listeners[eventName] = handler;
-    return () => {
-      delete listeners[eventName];
-    };
+  vi.mocked(listen).mockImplementation((eventName, handler) => {
+    listeners[eventName as string] = handler;
+    return Promise.resolve(() => {
+      delete listeners[eventName as string];
+    });
   });
 
   return {
