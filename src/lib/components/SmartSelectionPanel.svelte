@@ -5,7 +5,6 @@
     selectByLocation,
     selectByPathDepth,
     selectDeepestInGroup,
-    clearSelection,
   } from '$lib/utils/selection';
 
   interface Props {
@@ -38,9 +37,6 @@
     onSelectionChange(selectDeepestInGroup(groups));
   }
 
-  function handleClearSelection() {
-    onSelectionChange(clearSelection());
-  }
 </script>
 
 <div class="smart-selection">
@@ -87,11 +83,6 @@
     <p class="hint">Select all duplicates in a specific folder</p>
   </div>
 
-  <div class="selection-option">
-    <button class="clear-btn" onclick={handleClearSelection}>
-      Clear Selection
-    </button>
-  </div>
 </div>
 
 <style>
@@ -131,10 +122,6 @@
   button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-  }
-
-  .clear-btn {
-    background: var(--error);
   }
 
   .hint {

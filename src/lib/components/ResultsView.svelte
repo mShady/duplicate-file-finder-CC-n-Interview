@@ -148,6 +148,13 @@
         Smart Select
       </button>
       {#if selectedFiles.size > 0}
+        <button
+          class="clear-button"
+          onclick={() => (selectedFiles = new Set())}
+          aria-label="Clear all selected files"
+        >
+          Clear Selection
+        </button>
         <div class="selection-info">
           <span id="selection-summary">{selectedFiles.size} files selected ({formatBytes(selectedSize)})</span>
           <button
@@ -260,6 +267,22 @@
     background: var(--primary);
     color: white;
     border-color: var(--primary);
+  }
+
+  .clear-button {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .clear-button:hover {
+    background: var(--error);
+    color: white;
+    border-color: var(--error);
   }
 
   .selection-info {
