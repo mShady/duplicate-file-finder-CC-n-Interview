@@ -43,3 +43,57 @@ export function getFileName(path: string): string {
   const fileName = parts[parts.length - 1];
   return fileName || path;
 }
+
+/**
+ * Extract the directory from a file path, with optional middle-ellipsis truncation.
+ */
+export function getDirectory(path: string, maxLength: number = 50): string {
+  if (!path) return '';
+
+  const parts = path.split(PATH_SEP);
+  if (parts.length <= 1) return '';
+
+  parts.pop(); // Remove filename
+  const dir = parts.join('/');
+
+  if (dir.length <= maxLength) {
+    return dir;
+  }
+
+  // Middle ellipsis truncation
+  const ellipsis = '/...';
+  const availableLength = maxLength - ellipsis.length;
+  if (availableLength <= 0) return dir.slice(0, maxLength);
+
+  const startLength = Math.ceil(availableLength * 0.4);
+  const endLength = Math.floor(availableLength * 0.6);
+
+  const start = dir.slice(0, startLength);
+  const end = dir.slice(-endLength);
+
+  return `${start}${ellipsis}${end}`;
+}
+
+/**
+ * Classify a file extension into a category string.
+ */
+export function getFileTypeIcon(ext: string): string {
+  const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
+  const videoExts = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+  const audioExts = ['mp3', 'wav', 'flac', 'aac', 'm4a'];
+  const docExts = ['pdf', 'doc', 'docx', 'txt', 'rtf', 'md'];
+
+  if (imageExts.includes(ext)) return 'image';
+  if (videoExts.includes(ext)) return 'video';
+  if (audioExts.includes(ext)) return 'audio';
+  if (docExts.includes(ext)) return 'document';
+  return 'file';
+}
+
+/**
+ * Extract the lowercase file extension from a path.
+ */
+export function getFileExtension(path: string): string {
+  if (!path) return '';
+  return path.split('.').pop()?.toLowerCase() || '';
+}

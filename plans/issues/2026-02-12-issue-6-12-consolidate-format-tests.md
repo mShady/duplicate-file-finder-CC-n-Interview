@@ -8,14 +8,15 @@
 
 ### Test Files
 
-| File | Lines | Tests | Imports from `format.ts`? |
-|---|---|---|---|
-| `tests/utils/format.test.ts` | 49 | `formatBytes` (8 tests, including negative + overflow) | Yes |
-| `tests/utils/formatters.test.ts` | 260 | `formatBytes` (7 tests), `getDirectory` (7), `getFileName` (5), `formatDate` (3), `getFileTypeIcon` (5), `getFileExtension` (4) | No — all re-implemented inline |
+| File                             | Lines | Tests                                                                                                                           | Imports from `format.ts`?      |
+| -------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `tests/utils/format.test.ts`     | 49    | `formatBytes` (8 tests, including negative + overflow)                                                                          | Yes                            |
+| `tests/utils/formatters.test.ts` | 260   | `formatBytes` (7 tests), `getDirectory` (7), `getFileName` (5), `formatDate` (3), `getFileTypeIcon` (5), `getFileExtension` (4) | No — all re-implemented inline |
 
 ### Utility Module
 
 `src/lib/utils/format.ts` currently exports 3 functions:
+
 - `formatBytes(bytes: number): string` — includes negative number and overflow-safe clamping
 - `formatDate(timestamp: number): string`
 - `getFileName(path: string): string`
@@ -23,6 +24,7 @@
 ### Functions Missing from `format.ts`
 
 These are tested in `formatters.test.ts` but don't exist as exports:
+
 - `getDirectory(path: string, maxLength?: number): string` — directory extraction with middle-ellipsis truncation
 - `getFileTypeIcon(ext: string): string` — maps file extension to category string
 - `getFileExtension(path: string): string` — extracts lowercase extension from path
@@ -51,17 +53,17 @@ These are tested in `formatters.test.ts` but don't exist as exports:
 
 ## Conflict Assessment with Future Plans (07–15)
 
-| Plan | Conflict | Action Required |
-|---|---|---|
-| **07 (Scan Progress)** | Phase 7.4 defines `formatBytes`, `formatNumber`, `formatTimeRemaining` inline in `ScanProgressDisplay.svelte` | **None now.** When plan 07 is implemented, these should be imported from `format.ts` instead of defined inline. Add note to plan 07. |
-| **08 (Settings)** | None | — |
-| **09 (File Operations)** | Phase 9.5 `FileInfoDialog.svelte` defines `formatBytes`, `formatDate`, `getFileExtension` inline | **None now.** When plan 09 is implemented, these should be imported from `format.ts`. Add note to plan 09. |
-| **10 (Filtering)** | Phase 10.1 `filters.ts` defines `getExtension()` inline (same logic as our `getFileExtension`) | **None now.** When plan 10 is implemented, it should import `getFileExtension` from `format.ts`. Add note to plan 10. |
-| **11 (Keyboard Nav)** | None | — |
-| **12 (Permissions)** | None | — |
-| **13 (Error Handling)** | Phase 13.4.3 `DiskFullAlert.svelte` defines `formatBytes` inline | **None now.** When plan 13 is implemented, it should import from `format.ts`. Add note to plan 13. |
-| **14 (Platform Polish)** | None | — |
-| **15 (System Tray)** | None | — |
+| Plan                     | Conflict                                                                                                      | Action Required                                                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **07 (Scan Progress)**   | Phase 7.4 defines `formatBytes`, `formatNumber`, `formatTimeRemaining` inline in `ScanProgressDisplay.svelte` | **None now.** When plan 07 is implemented, these should be imported from `format.ts` instead of defined inline. Add note to plan 07. |
+| **08 (Settings)**        | None                                                                                                          | —                                                                                                                                    |
+| **09 (File Operations)** | Phase 9.5 `FileInfoDialog.svelte` defines `formatBytes`, `formatDate`, `getFileExtension` inline              | **None now.** When plan 09 is implemented, these should be imported from `format.ts`. Add note to plan 09.                           |
+| **10 (Filtering)**       | Phase 10.1 `filters.ts` defines `getExtension()` inline (same logic as our `getFileExtension`)                | **None now.** When plan 10 is implemented, it should import `getFileExtension` from `format.ts`. Add note to plan 10.                |
+| **11 (Keyboard Nav)**    | None                                                                                                          | —                                                                                                                                    |
+| **12 (Permissions)**     | None                                                                                                          | —                                                                                                                                    |
+| **13 (Error Handling)**  | Phase 13.4.3 `DiskFullAlert.svelte` defines `formatBytes` inline                                              | **None now.** When plan 13 is implemented, it should import from `format.ts`. Add note to plan 13.                                   |
+| **14 (Platform Polish)** | None                                                                                                          | —                                                                                                                                    |
+| **15 (System Tray)**     | None                                                                                                          | —                                                                                                                                    |
 
 **Verdict**: No blocking conflicts. This fix is beneficial — it establishes `format.ts` as the canonical source, which all future plans should use.
 
@@ -147,6 +149,7 @@ export function getFileExtension(path: string): string {
 **Changes**: Replace contents with the union of all tests from both files, importing all functions from `format.ts`
 
 The merged file will contain:
+
 - `formatBytes` — 9 unique tests (union of both files: 7 from `formatters.test.ts` + 2 extras from `format.test.ts`)
 - `getDirectory` — 7 tests (from `formatters.test.ts`)
 - `getFileName` — 5 tests (from `formatters.test.ts`)
@@ -227,6 +230,7 @@ Add notes to plans 07, 09, 10, and 13 reminding implementers to import format ut
 ### Unit Tests (Phase 1)
 
 All 33 tests in the merged `format.test.ts` must pass:
+
 - `formatBytes`: 0 bytes, bytes, KB, MB, GB, TB, large numbers, negative input, PB overflow clamping
 - `getDirectory`: empty path, filename only, short paths, long path truncation, within max length, Windows paths, very short max length
 - `getFileName`: Unix path, Windows path, filename only, empty string, trailing separator
