@@ -1,0 +1,11 @@
+# Rust build output
+target/
+
+# Tauri generated files
+src-tauri/gen/
+
+# Build output
+dist/
+
+# Dependencies
+node_modules/
