@@ -1,8 +1,6 @@
 <script lang="ts">
   import { invoke } from '@tauri-apps/api/core';
-  import { listen } from '@tauri-apps/api/event';
   import { onMount, onDestroy } from 'svelte';
-  import type { UnlistenFn } from '@tauri-apps/api/event';
   import AppHeader from './lib/components/AppHeader.svelte';
   import HomeView from './lib/components/HomeView.svelte';
   import ScanningView from './lib/components/ScanningView.svelte';
@@ -10,7 +8,8 @@
   import DeleteConfirmDialog from './lib/components/DeleteConfirmDialog.svelte';
   import DeleteSummaryDialog from './lib/components/DeleteSummaryDialog.svelte';
   import HistoryDialog from './lib/components/HistoryDialog.svelte';
-  import type { DetectionResult, ScanProgress, ScanComplete, ScanPhaseEvent, ScanErrorEvent, DeleteFilesResponse, BatchDeletionResult } from '$lib/types';
+  import type { DetectionResult, DeleteFilesResponse, BatchDeletionResult } from '$lib/types';
+  import { scanStore } from '$lib/stores/scanStore.svelte';
   import {
     buildDeletionRequests,
     buildKeptPathsAndGroupIds,
@@ -22,12 +21,6 @@
   type AppView = 'home' | 'scanning' | 'results';
 
   let currentView = $state<AppView>('home');
-  let isScanning = $state(false);
-  let progress = $state<ScanProgress | null>(null);
-  let scanResult = $state<ScanComplete | null>(null);
-  let detectionResult = $state<DetectionResult | null>(null);
-  let error = $state<string | null>(null);
-  let phase = $state<ScanPhaseEvent['phase'] | 'idle'>('idle');
   let selectedPaths = $state<string[]>([]);
 
   // Deletion dialog state
@@ -37,50 +30,27 @@
   let deletionResult = $state<BatchDeletionResult | null>(null);
   let showDeletionHistory = $state(false);
 
-  let unlisteners: UnlistenFn[] = [];
-
   onMount(async () => {
-    // Load last scan paths
     await loadLastScanPaths();
 
-    unlisteners.push(
-      await listen<ScanProgress>('scan-progress', (e) => {
-        progress = e.payload;
-      }),
-      await listen<ScanComplete>('scan-complete', (e) => {
-        scanResult = e.payload;
-        isScanning = false;
-        phase = 'complete';
-        currentView = 'results';
-      }),
-      await listen<DetectionResult>('scan-results', (e) => {
-        detectionResult = e.payload;
-      }),
-      await listen<ScanPhaseEvent>('scan-phase', (e) => {
-        phase = e.payload.phase;
-      }),
-      await listen<ScanErrorEvent>('scan-error', (e) => {
-        error = e.payload.error;
-        isScanning = false;
-        phase = 'idle';
-        currentView = 'home';
-      }),
-    );
+    await scanStore.init({
+      onComplete: () => { currentView = 'results'; },
+      onError: () => { currentView = 'home'; },
+    });
 
     // Check for existing results
     try {
       const existing = await invoke<DetectionResult | null>('get_scan_results');
       if (existing && existing.groups.length > 0) {
-        detectionResult = existing;
+        scanStore.detectionResult = existing;
       }
     } catch (e) {
       console.error('Failed to load existing results:', e);
-      // Don't show error to user for background load failure
     }
   });
 
   onDestroy(() => {
-    unlisteners.forEach((u) => u());
+    scanStore.cleanup();
   });
 
   async function loadLastScanPaths() {
@@ -91,7 +61,6 @@
       }
     } catch (e) {
       console.error('Failed to load last scan paths:', e);
-      // Don't show error to user for background load failure
     }
   }
 
@@ -103,7 +72,6 @@
       });
     } catch (e) {
       console.error('Failed to save scan paths:', e);
-      // Non-critical failure, don't interrupt user flow
     }
   }
 
@@ -113,17 +81,12 @@
 
   async function startScan() {
     if (selectedPaths.length === 0) {
-      error = 'Please select at least one folder to scan';
+      scanStore.error = 'Please select at least one folder to scan';
       return;
     }
 
-    error = null;
-    isScanning = true;
+    scanStore.startScan();
     currentView = 'scanning';
-    detectionResult = null;
-    scanResult = null;
-    progress = null;
-    phase = 'collecting';
 
     try {
       await saveLastScanPaths();
@@ -134,9 +97,7 @@
         },
       });
     } catch (e) {
-      error = e instanceof Error ? e.message : String(e);
-      isScanning = false;
-      phase = 'idle';
+      scanStore.handleScanError(e instanceof Error ? e.message : String(e));
       currentView = 'home';
     }
   }
@@ -144,11 +105,10 @@
   async function cancelScan() {
     try {
       await invoke('cancel_scan');
-      isScanning = false;
-      phase = 'idle';
+      scanStore.cancelledScan();
       currentView = 'home';
     } catch (e) {
-      error = e instanceof Error ? e.message : String(e);
+      scanStore.error = e instanceof Error ? e.message : String(e);
     }
   }
 
@@ -158,20 +118,20 @@
   }
 
   let deletingAllInGroup = $derived.by(() =>
-    detectionResult ? isDeletingAllInGroup(detectionResult, pendingDeletionFiles) : false
+    scanStore.detectionResult ? isDeletingAllInGroup(scanStore.detectionResult, pendingDeletionFiles) : false
   );
 
   let pendingDeletionSize = $derived.by(() =>
-    detectionResult ? computePendingDeletionSize(detectionResult, pendingDeletionFiles) : 0
+    scanStore.detectionResult ? computePendingDeletionSize(scanStore.detectionResult, pendingDeletionFiles) : 0
   );
 
   async function handleConfirmDelete() {
-    if (!detectionResult) return;
+    if (!scanStore.detectionResult) return;
     showDeleteConfirm = false;
-    error = null;
+    scanStore.error = null;
 
-    const requests = buildDeletionRequests(detectionResult, pendingDeletionFiles);
-    const { keptPaths, groupIds } = buildKeptPathsAndGroupIds(detectionResult, pendingDeletionFiles);
+    const requests = buildDeletionRequests(scanStore.detectionResult, pendingDeletionFiles);
+    const { keptPaths, groupIds } = buildKeptPathsAndGroupIds(scanStore.detectionResult, pendingDeletionFiles);
 
     try {
       const response = await invoke<DeleteFilesResponse>('delete_files', {
@@ -183,10 +143,10 @@
 
       if (response.result.successful.length > 0) {
         const deletedPaths = new Set(response.result.successful.map(r => r.path));
-        detectionResult = computeUpdatedResults(detectionResult, deletedPaths);
+        scanStore.detectionResult = computeUpdatedResults(scanStore.detectionResult, deletedPaths);
       }
     } catch (e) {
-      error = e instanceof Error ? e.message : String(e);
+      scanStore.error = e instanceof Error ? e.message : String(e);
     } finally {
       pendingDeletionFiles = [];
     }
@@ -204,16 +164,15 @@
 
   function handleNewScan() {
     currentView = 'home';
-    error = null;
-    progress = null;
-    phase = 'idle';
+    scanStore.error = null;
+    scanStore.reset();
   }
 </script>
 
 <main class="app">
   <AppHeader
     {currentView}
-    {detectionResult}
+    detectionResult={scanStore.detectionResult}
     onNewScan={handleNewScan}
     onViewResults={() => (currentView = 'results')}
     onToggleHistory={() => (showDeletionHistory = !showDeletionHistory)}
@@ -223,24 +182,24 @@
     {#if currentView === 'home'}
       <HomeView
         {selectedPaths}
-        {isScanning}
-        {error}
-        {detectionResult}
+        isScanning={scanStore.isScanning}
+        error={scanStore.error}
+        detectionResult={scanStore.detectionResult}
         onPathsChange={handlePathsChange}
         onStartScan={startScan}
         onViewResults={() => (currentView = 'results')}
       />
     {:else if currentView === 'scanning'}
-      <ScanningView {phase} {progress} {scanResult} onCancel={cancelScan} />
+      <ScanningView phase={scanStore.phase} progress={scanStore.progress} scanResult={scanStore.scanResult} onCancel={cancelScan} />
     {:else if currentView === 'results'}
-      {#if error}
+      {#if scanStore.error}
         <div class="error-banner" role="alert">
-          {error}
-          <button class="error-dismiss" onclick={() => (error = null)} aria-label="Dismiss error">&times;</button>
+          {scanStore.error}
+          <button class="error-dismiss" onclick={() => (scanStore.error = null)} aria-label="Dismiss error">&times;</button>
         </div>
       {/if}
-      {#if detectionResult}
-        <ResultsView result={detectionResult} onDeleteSelected={handleDeleteSelected} />
+      {#if scanStore.detectionResult}
+        <ResultsView result={scanStore.detectionResult} onDeleteSelected={handleDeleteSelected} />
       {:else}
         <div class="empty-results">
           <p>No results available</p>

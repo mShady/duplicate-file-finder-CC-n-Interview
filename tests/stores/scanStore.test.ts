@@ -1,14 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { listen } from '@tauri-apps/api/event';
-import { get } from 'svelte/store';
-import {
-  scanStore,
-  isScanning,
-  currentPhase,
-  duplicateGroups,
-  totalWastedSpace,
-} from '$lib/stores/scanStore';
-import type { DuplicateGroup, DetectionResult } from '$lib/types';
+import { scanStore } from '$lib/stores/scanStore.svelte';
+import type { DetectionResult } from '$lib/types';
 
 // Helper to create mock event listeners that can be triggered
 function createMockListeners() {
@@ -35,32 +28,6 @@ function createMockListeners() {
   };
 }
 
-function createMockGroup(overrides: Partial<DuplicateGroup> = {}): DuplicateGroup {
-  return {
-    id: 1,
-    hash: 'abc123',
-    file_size: 1024,
-    files: [
-      {
-        path: '/test/file1.txt',
-        size: 1024,
-        created_at: 1000000,
-        modified_at: 1000100,
-        is_original: true,
-      },
-      {
-        path: '/test/file2.txt',
-        size: 1024,
-        created_at: 1000200,
-        modified_at: 1000300,
-        is_original: false,
-      },
-    ],
-    wasted_space: 1024,
-    ...overrides,
-  };
-}
-
 describe('scanStore', () => {
   beforeEach(() => {
     scanStore.cleanup();
@@ -69,16 +36,12 @@ describe('scanStore', () => {
 
   describe('initial state', () => {
     it('should have idle initial state', () => {
-      const state = get(scanStore);
-      expect(state.isScanning).toBe(false);
-      expect(state.phase).toBe('idle');
-      expect(state.phaseMessage).toBe('');
-      expect(state.progress).toBeNull();
-      expect(state.detectionProgress).toBeNull();
-      expect(state.liveGroups).toEqual([]);
-      expect(state.finalResult).toBeNull();
-      expect(state.scanComplete).toBeNull();
-      expect(state.error).toBeNull();
+      expect(scanStore.isScanning).toBe(false);
+      expect(scanStore.phase).toBe('idle');
+      expect(scanStore.progress).toBeNull();
+      expect(scanStore.scanResult).toBeNull();
+      expect(scanStore.detectionResult).toBeNull();
+      expect(scanStore.error).toBeNull();
     });
   });
 
@@ -90,8 +53,6 @@ describe('scanStore', () => {
       const registered = mockListeners.getRegistered();
       expect(registered).toContain('scan-progress');
       expect(registered).toContain('scan-phase');
-      expect(registered).toContain('duplicate-found');
-      expect(registered).toContain('detection-progress');
       expect(registered).toContain('scan-results');
       expect(registered).toContain('scan-complete');
       expect(registered).toContain('scan-error');
@@ -99,13 +60,39 @@ describe('scanStore', () => {
 
     it('should prevent double initialization', async () => {
       createMockListeners();
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      await scanStore.init();
       await scanStore.init();
 
-      expect(warnSpy).toHaveBeenCalledWith('scanStore already initialized');
-      warnSpy.mockRestore();
+      // Second init should be a no-op (no extra listeners registered)
+      const listenCallCount = vi.mocked(listen).mock.calls.length;
+      await scanStore.init();
+      expect(vi.mocked(listen).mock.calls.length).toBe(listenCallCount);
+    });
+
+    it('should accept navigation callbacks', async () => {
+      const mockListeners = createMockListeners();
+      const onComplete = vi.fn();
+      const onError = vi.fn();
+      await scanStore.init({ onComplete, onError });
+
+      mockListeners.emit('scan-complete', {
+        session_id: 1,
+        total_files: 10,
+        total_bytes: 1000,
+        duplicate_groups: 1,
+        duplicate_files: 2,
+        wasted_space: 500,
+        duration_ms: 100,
+      });
+      expect(onComplete).toHaveBeenCalledOnce();
+
+      scanStore.cleanup();
+      scanStore.reset();
+      const mockListeners2 = createMockListeners();
+      const onError2 = vi.fn();
+      await scanStore.init({ onError: onError2 });
+
+      mockListeners2.emit('scan-error', { session_id: 1, error: 'fail' });
+      expect(onError2).toHaveBeenCalledOnce();
     });
   });
 
@@ -113,23 +100,33 @@ describe('scanStore', () => {
     it('should set scanning state', () => {
       scanStore.startScan();
 
-      const state = get(scanStore);
-      expect(state.isScanning).toBe(true);
-      expect(state.phase).toBe('collecting');
-      expect(state.phaseMessage).toBe('Starting scan...');
-      expect(state.progress).toBeNull();
-      expect(state.liveGroups).toEqual([]);
-      expect(state.finalResult).toBeNull();
-      expect(state.error).toBeNull();
+      expect(scanStore.isScanning).toBe(true);
+      expect(scanStore.phase).toBe('collecting');
+      expect(scanStore.progress).toBeNull();
+      expect(scanStore.scanResult).toBeNull();
+      expect(scanStore.detectionResult).toBeNull();
+      expect(scanStore.error).toBeNull();
     });
+  });
 
-    it('should clear previous results', () => {
-      // Set some state first
+  describe('cancelledScan()', () => {
+    it('should reset scanning flags', () => {
       scanStore.startScan();
-      const state = get(scanStore);
-      expect(state.finalResult).toBeNull();
-      expect(state.scanComplete).toBeNull();
-      expect(state.liveGroups).toEqual([]);
+      scanStore.cancelledScan();
+
+      expect(scanStore.isScanning).toBe(false);
+      expect(scanStore.phase).toBe('idle');
+    });
+  });
+
+  describe('handleScanError()', () => {
+    it('should set error and stop scanning', () => {
+      scanStore.startScan();
+      scanStore.handleScanError('Something went wrong');
+
+      expect(scanStore.isScanning).toBe(false);
+      expect(scanStore.phase).toBe('idle');
+      expect(scanStore.error).toBe('Something went wrong');
     });
   });
 
@@ -138,10 +135,43 @@ describe('scanStore', () => {
       scanStore.startScan();
       scanStore.reset();
 
-      const state = get(scanStore);
-      expect(state.isScanning).toBe(false);
-      expect(state.phase).toBe('idle');
-      expect(state.liveGroups).toEqual([]);
+      expect(scanStore.isScanning).toBe(false);
+      expect(scanStore.phase).toBe('idle');
+      expect(scanStore.progress).toBeNull();
+      expect(scanStore.scanResult).toBeNull();
+      expect(scanStore.detectionResult).toBeNull();
+      expect(scanStore.error).toBeNull();
+    });
+  });
+
+  describe('setters', () => {
+    it('should allow setting detectionResult directly', () => {
+      const result: DetectionResult = {
+        groups: [],
+        duplicate_count: 0,
+        total_wasted_space: 0,
+        unique_files: 5,
+        stats: {
+          size_groups: 0,
+          size_candidates: 0,
+          partial_hashes: 0,
+          full_hashes: 0,
+          size_grouping_ms: 0,
+          partial_hashing_ms: 0,
+          full_hashing_ms: 0,
+        },
+      };
+
+      scanStore.detectionResult = result;
+      expect(scanStore.detectionResult).toEqual(result);
+    });
+
+    it('should allow setting error directly', () => {
+      scanStore.error = 'test error';
+      expect(scanStore.error).toBe('test error');
+
+      scanStore.error = null;
+      expect(scanStore.error).toBeNull();
     });
   });
 
@@ -160,25 +190,7 @@ describe('scanStore', () => {
       };
 
       mockListeners.emit('scan-progress', progress);
-
-      const state = get(scanStore);
-      expect(state.progress).toEqual(progress);
-    });
-
-    it('should update detection progress on detection-progress event', async () => {
-      const mockListeners = createMockListeners();
-      await scanStore.init();
-
-      const detectionProgress = {
-        partial_hashes: 50,
-        full_hashes: 20,
-        groups_found: 5,
-      };
-
-      mockListeners.emit('detection-progress', detectionProgress);
-
-      const state = get(scanStore);
-      expect(state.detectionProgress).toEqual(detectionProgress);
+      expect(scanStore.progress).toEqual(progress);
     });
 
     it('should update phase on scan-phase event', async () => {
@@ -190,56 +202,22 @@ describe('scanStore', () => {
         message: 'Hashing files...',
       });
 
-      const state = get(scanStore);
-      expect(state.phase).toBe('partial_hashing');
-      expect(state.phaseMessage).toBe('Hashing files...');
+      expect(scanStore.phase).toBe('partial_hashing');
     });
 
-    it('should add live groups on duplicate-found event', async () => {
+    it('should set detectionResult on scan-results event', async () => {
       const mockListeners = createMockListeners();
       await scanStore.init();
 
-      const group = createMockGroup({ id: 1, wasted_space: 500 });
-      mockListeners.emit('duplicate-found', group);
-
-      const state = get(scanStore);
-      expect(state.liveGroups).toHaveLength(1);
-      expect(state.liveGroups[0].id).toBe(1);
-    });
-
-    it('should sort live groups by wasted space descending', async () => {
-      const mockListeners = createMockListeners();
-      await scanStore.init();
-
-      const smallGroup = createMockGroup({ id: 1, wasted_space: 100 });
-      const largeGroup = createMockGroup({ id: 2, wasted_space: 1000 });
-
-      mockListeners.emit('duplicate-found', smallGroup);
-      mockListeners.emit('duplicate-found', largeGroup);
-
-      const state = get(scanStore);
-      expect(state.liveGroups).toHaveLength(2);
-      expect(state.liveGroups[0].wasted_space).toBe(1000);
-      expect(state.liveGroups[1].wasted_space).toBe(100);
-    });
-
-    it('should replace live groups with final results', async () => {
-      const mockListeners = createMockListeners();
-      await scanStore.init();
-
-      // Add a live group first
-      mockListeners.emit('duplicate-found', createMockGroup({ id: 1 }));
-
-      // Then emit final results
       const result: DetectionResult = {
-        groups: [createMockGroup({ id: 10 }), createMockGroup({ id: 20 })],
-        duplicate_count: 2,
-        total_wasted_space: 2048,
+        groups: [],
+        duplicate_count: 0,
+        total_wasted_space: 0,
         unique_files: 5,
         stats: {
-          size_groups: 3,
-          size_candidates: 4,
-          partial_hashes: 4,
+          size_groups: 1,
+          size_candidates: 2,
+          partial_hashes: 2,
           full_hashes: 2,
           size_grouping_ms: 10,
           partial_hashing_ms: 20,
@@ -248,11 +226,7 @@ describe('scanStore', () => {
       };
 
       mockListeners.emit('scan-results', result);
-
-      const state = get(scanStore);
-      expect(state.finalResult).toEqual(result);
-      expect(state.liveGroups).toHaveLength(2);
-      expect(state.liveGroups[0].id).toBe(10);
+      expect(scanStore.detectionResult).toEqual(result);
     });
 
     it('should handle scan completion', async () => {
@@ -272,10 +246,9 @@ describe('scanStore', () => {
 
       mockListeners.emit('scan-complete', complete);
 
-      const state = get(scanStore);
-      expect(state.isScanning).toBe(false);
-      expect(state.phase).toBe('complete');
-      expect(state.scanComplete).toEqual(complete);
+      expect(scanStore.isScanning).toBe(false);
+      expect(scanStore.phase).toBe('complete');
+      expect(scanStore.scanResult).toEqual(complete);
     });
 
     it('should handle scan error', async () => {
@@ -288,15 +261,14 @@ describe('scanStore', () => {
         error: 'Permission denied',
       });
 
-      const state = get(scanStore);
-      expect(state.isScanning).toBe(false);
-      expect(state.phase).toBe('error');
-      expect(state.error).toBe('Permission denied');
+      expect(scanStore.isScanning).toBe(false);
+      expect(scanStore.phase).toBe('idle');
+      expect(scanStore.error).toBe('Permission denied');
     });
   });
 
   describe('cleanup()', () => {
-    it('should clean up listeners', async () => {
+    it('should clean up listeners so events no longer update state', async () => {
       const mockListeners = createMockListeners();
       await scanStore.init();
 
@@ -309,10 +281,9 @@ describe('scanStore', () => {
         error: 'Should not be received',
       });
 
-      const state = get(scanStore);
       // State should still be from startScan, not from the error event
-      expect(state.isScanning).toBe(true);
-      expect(state.error).toBeNull();
+      expect(scanStore.isScanning).toBe(true);
+      expect(scanStore.error).toBeNull();
     });
 
     it('should allow reinit after cleanup', async () => {
@@ -320,126 +291,12 @@ describe('scanStore', () => {
       await scanStore.init();
       scanStore.cleanup();
 
-      // Should not warn about double init
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      await scanStore.init();
-      expect(warnSpy).not.toHaveBeenCalled();
-      warnSpy.mockRestore();
-    });
-  });
-});
-
-describe('derived stores', () => {
-  beforeEach(() => {
-    scanStore.cleanup();
-    scanStore.reset();
-  });
-
-  describe('isScanning', () => {
-    it('should reflect scanning state', () => {
-      expect(get(isScanning)).toBe(false);
-
-      scanStore.startScan();
-      expect(get(isScanning)).toBe(true);
-
-      scanStore.reset();
-      expect(get(isScanning)).toBe(false);
-    });
-  });
-
-  describe('currentPhase', () => {
-    it('should reflect current phase', () => {
-      expect(get(currentPhase)).toBe('idle');
-
-      scanStore.startScan();
-      expect(get(currentPhase)).toBe('collecting');
-    });
-  });
-
-  describe('duplicateGroups', () => {
-    it('should return empty array initially', () => {
-      expect(get(duplicateGroups)).toEqual([]);
-    });
-
-    it('should return live groups when no final result', async () => {
+      // Should not throw and should register listeners again
       const mockListeners = createMockListeners();
       await scanStore.init();
 
-      mockListeners.emit('duplicate-found', createMockGroup({ id: 1 }));
-
-      expect(get(duplicateGroups)).toHaveLength(1);
-    });
-
-    it('should prefer final results over live groups', async () => {
-      const mockListeners = createMockListeners();
-      await scanStore.init();
-
-      // Add live group
-      mockListeners.emit('duplicate-found', createMockGroup({ id: 1 }));
-
-      // Add final results
-      const result: DetectionResult = {
-        groups: [createMockGroup({ id: 10 }), createMockGroup({ id: 20 })],
-        duplicate_count: 2,
-        total_wasted_space: 2048,
-        unique_files: 5,
-        stats: {
-          size_groups: 1,
-          size_candidates: 2,
-          partial_hashes: 2,
-          full_hashes: 2,
-          size_grouping_ms: 10,
-          partial_hashing_ms: 20,
-          full_hashing_ms: 30,
-        },
-      };
-
-      mockListeners.emit('scan-results', result);
-
-      const groups = get(duplicateGroups);
-      expect(groups).toHaveLength(2);
-      expect(groups[0].id).toBe(10);
-    });
-  });
-
-  describe('totalWastedSpace', () => {
-    it('should return 0 initially', () => {
-      expect(get(totalWastedSpace)).toBe(0);
-    });
-
-    it('should sum live group wasted space', async () => {
-      const mockListeners = createMockListeners();
-      await scanStore.init();
-
-      mockListeners.emit('duplicate-found', createMockGroup({ id: 1, wasted_space: 100 }));
-      mockListeners.emit('duplicate-found', createMockGroup({ id: 2, wasted_space: 200 }));
-
-      expect(get(totalWastedSpace)).toBe(300);
-    });
-
-    it('should use final result total when available', async () => {
-      const mockListeners = createMockListeners();
-      await scanStore.init();
-
-      const result: DetectionResult = {
-        groups: [],
-        duplicate_count: 0,
-        total_wasted_space: 5000,
-        unique_files: 10,
-        stats: {
-          size_groups: 0,
-          size_candidates: 0,
-          partial_hashes: 0,
-          full_hashes: 0,
-          size_grouping_ms: 0,
-          partial_hashing_ms: 0,
-          full_hashing_ms: 0,
-        },
-      };
-
-      mockListeners.emit('scan-results', result);
-
-      expect(get(totalWastedSpace)).toBe(5000);
+      const registered = mockListeners.getRegistered();
+      expect(registered).toContain('scan-progress');
     });
   });
 });
