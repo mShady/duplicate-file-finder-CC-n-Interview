@@ -584,15 +584,10 @@ if self.progress.total_files.load(Ordering::Relaxed) % 1000 == 0 {
     onCancel: () => void;
   }
 
-  let { availableSpace, onResume, onCancel }: Props = $props();
+  // Import shared format utilities (see plans/issues/2026-02-12-issue-6-12-consolidate-format-tests.md)
+  import { formatBytes } from '$lib/utils/format';
 
-  function formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  }
+  let { availableSpace, onResume, onCancel }: Props = $props();
 </script>
 
 <div class="alert-overlay">

@@ -408,6 +408,9 @@ Create a dialog component to display detailed file information.
 
 ```svelte
 <script lang="ts">
+  // Import shared format utilities (see plans/issues/2026-02-12-issue-6-12-consolidate-format-tests.md)
+  import { formatBytes, formatDate, getFileExtension } from '$lib/utils/format';
+
   interface FileInfoResponse {
     path: string;
     name: string;
@@ -424,24 +427,6 @@ Create a dialog component to display detailed file information.
   }
 
   let { info, onClose }: Props = $props();
-
-  function formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  }
-
-  function formatDate(timestamp: number | null): string {
-    if (!timestamp) return 'Unknown';
-    return new Date(timestamp * 1000).toLocaleString();
-  }
-
-  function getFileExtension(name: string): string {
-    const ext = name.split('.').pop();
-    return ext && ext !== name ? `.${ext}` : 'None';
-  }
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {

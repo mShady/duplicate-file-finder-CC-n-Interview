@@ -22,6 +22,8 @@ Define filter types and filtering logic.
 
 ```typescript
 import type { DuplicateGroup, FileType, FilterState } from '$lib/types';
+// Import shared format utilities (see plans/issues/2026-02-12-issue-6-12-consolidate-format-tests.md)
+import { getFileExtension } from '$lib/utils/format';
 
 export const fileTypeExtensions: Record<FileType, string[]> = {
   images: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tiff', 'heic'],
@@ -36,7 +38,7 @@ export function filterGroups(groups: DuplicateGroup[], filter: FilterState): Dup
   return groups.filter((group) => {
     // File type filter
     if (filter.fileType !== 'all') {
-      const ext = getExtension(group.files[0]?.path || '');
+      const ext = getFileExtension(group.files[0]?.path || '');
       const validExts = fileTypeExtensions[filter.fileType];
       if (filter.fileType === 'other') {
         const allKnownExts = [
@@ -66,9 +68,7 @@ export function filterGroups(groups: DuplicateGroup[], filter: FilterState): Dup
   });
 }
 
-function getExtension(path: string): string {
-  return path.split('.').pop()?.toLowerCase() || '';
-}
+// getFileExtension is imported from $lib/utils/format (no inline definition needed)
 ```
 
 ### Commit
