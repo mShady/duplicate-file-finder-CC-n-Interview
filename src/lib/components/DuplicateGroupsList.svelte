@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { DuplicateGroup } from '$lib/types';
+  import { formatBytes } from '$lib/utils/format';
 
   interface Props {
     groups: DuplicateGroup[];
@@ -8,14 +9,6 @@
   }
 
   let { groups, selectedGroupId, onSelect }: Props = $props();
-
-  function formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-  }
 
   function getFileExtension(group: DuplicateGroup): string {
     // Defensive: check if files array exists and has items

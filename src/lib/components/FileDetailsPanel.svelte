@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { DuplicateGroup } from '$lib/types';
+  import { formatBytes, formatDate, getFileName } from '$lib/utils/format';
 
   interface Props {
     group: DuplicateGroup | null;
@@ -10,68 +11,30 @@
 
   let { group, selectedFiles, onToggleFile, onSelectAllExceptOriginal }: Props = $props();
 
-  // Detect path separator (cross-platform)
   const PATH_SEP = /[/\\]/;
-
-  function formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  }
-
-  function formatDate(timestamp: number): string {
-    // Validate timestamp (should be Unix timestamp in seconds)
-    if (!timestamp || timestamp < 0) {
-      return 'Unknown';
-    }
-    
-    try {
-      return new Date(timestamp * 1000).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return 'Invalid date';
-    }
-  }
-
-  function getFileName(path: string): string {
-    if (!path) return '';
-    
-    const parts = path.split(PATH_SEP);
-    const fileName = parts[parts.length - 1];
-    return fileName || path; // Fallback to full path if no filename
-  }
 
   function getDirectory(path: string, maxLength: number = 50): string {
     if (!path) return '';
-    
+
     const parts = path.split(PATH_SEP);
-    if (parts.length <= 1) return ''; // No directory, just filename
-    
-    parts.pop(); // Remove filename
-    const dir = parts.join('/'); // Use forward slash for display consistency
+    if (parts.length <= 1) return '';
+
+    parts.pop();
+    const dir = parts.join('/');
 
     if (dir.length <= maxLength) {
       return dir;
     }
 
-    // Middle ellipsis truncation: show start and end
     const ellipsis = '/...';
     const availableLength = maxLength - ellipsis.length;
-    
-    // Handle edge case of very small maxLength
+
     if (availableLength < 10) {
       return ellipsis + dir.slice(-availableLength);
     }
-    
-    const startLength = Math.ceil(availableLength * 0.4); // 40% for start
-    const endLength = Math.floor(availableLength * 0.6);  // 60% for end (more useful info)
+
+    const startLength = Math.ceil(availableLength * 0.4);
+    const endLength = Math.floor(availableLength * 0.6);
 
     const start = dir.slice(0, startLength);
     const end = dir.slice(-endLength);

@@ -2,7 +2,7 @@
   import { invoke } from '@tauri-apps/api/core';
   import { onMount } from 'svelte';
   import type { DeletionRecord } from '$lib/types';
-  import { formatBytes } from '$lib/utils/format';
+  import { formatBytes, formatDate, getFileName } from '$lib/utils/format';
 
   interface Props {
     onClose: () => void;
@@ -18,7 +18,6 @@
   let totalCount = $state(0);
   let totalFreed = $state(0);
   const pageSize = 50;
-  const PATH_SEP = /[\/\\]/;
 
   onMount(() => {
     loadSummary();
@@ -66,32 +65,6 @@
   function loadMore() {
     page += 1;
     loadHistory();
-  }
-
-  function formatDate(timestamp: number): string {
-    if (!timestamp || timestamp < 0) {
-      return 'Unknown';
-    }
-
-    try {
-      return new Date(timestamp * 1000).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return 'Invalid date';
-    }
-  }
-
-  function getFileName(path: string): string {
-    if (!path) return '';
-
-    const parts = path.split(PATH_SEP);
-    const fileName = parts[parts.length - 1];
-    return fileName || path;
   }
 
 
