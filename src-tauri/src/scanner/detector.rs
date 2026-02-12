@@ -41,12 +41,8 @@ impl DuplicateGroup {
         }
     }
 
-    /// Get the number of files in this group
-    pub fn file_count(&self) -> usize {
-        self.files.len()
-    }
-
     /// Get the "original" file (marked during detection)
+    #[allow(dead_code)]
     pub fn original(&self) -> Option<&DuplicateFile> {
         self.files.iter().find(|f| f.is_original)
     }
@@ -131,7 +127,8 @@ impl DuplicateDetector {
         }
     }
 
-    /// Get a cancellation handle
+    /// Get a cancellation handle (used in tests)
+    #[cfg(test)]
     pub fn cancel_handle(&self) -> Arc<AtomicBool> {
         Arc::clone(&self.cancelled)
     }
@@ -150,8 +147,11 @@ impl DuplicateDetector {
 
         // Stage 1: Group by size
         let start = std::time::Instant::now();
-        let size_groups = self.group_by_size(files);
-        stats.size_grouping_ms = start.elapsed().as_millis() as u64;
+        let size_groups = Self::group_by_size(files);
+        #[allow(clippy::cast_possible_truncation)]
+        {
+            stats.size_grouping_ms = start.elapsed().as_millis() as u64;
+        }
         stats.size_groups = size_groups.len() as u64;
 
         // Filter to only groups with multiple files
@@ -168,7 +168,10 @@ impl DuplicateDetector {
         // Stage 2: Group by partial hash within size groups
         let start = std::time::Instant::now();
         let partial_groups = self.group_by_partial_hash(size_candidates, &mut stats)?;
-        stats.partial_hashing_ms = start.elapsed().as_millis() as u64;
+        #[allow(clippy::cast_possible_truncation)]
+        {
+            stats.partial_hashing_ms = start.elapsed().as_millis() as u64;
+        }
 
         if self.cancelled.load(Ordering::Relaxed) {
             return Err(ScanError::Cancelled);
@@ -177,7 +180,10 @@ impl DuplicateDetector {
         // Stage 3: Verify with full hash
         let start = std::time::Instant::now();
         let duplicate_groups = self.verify_with_full_hash(partial_groups, &mut stats)?;
-        stats.full_hashing_ms = start.elapsed().as_millis() as u64;
+        #[allow(clippy::cast_possible_truncation)]
+        {
+            stats.full_hashing_ms = start.elapsed().as_millis() as u64;
+        }
 
         // Calculate totals
         let duplicate_count: u64 = duplicate_groups
@@ -197,7 +203,7 @@ impl DuplicateDetector {
     }
 
     /// Stage 1: Group files by size
-    fn group_by_size(&self, files: Vec<FileInfo>) -> HashMap<u64, Vec<FileInfo>> {
+    fn group_by_size(files: Vec<FileInfo>) -> HashMap<u64, Vec<FileInfo>> {
         let mut groups: HashMap<u64, Vec<FileInfo>> = HashMap::new();
 
         for file in files {

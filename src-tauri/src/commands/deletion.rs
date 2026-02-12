@@ -14,7 +14,7 @@ pub struct DeleteFilesRequest {
     /// Maps deleted file path -> path of the retained duplicate copy (if any)
     #[serde(default)]
     pub kept_paths: HashMap<String, String>,
-    /// Maps deleted file path -> duplicate_groups.id for deletion history
+    /// Maps deleted file path -> `duplicate_groups.id` for deletion history
     #[serde(default)]
     pub group_ids: HashMap<String, i64>,
 }

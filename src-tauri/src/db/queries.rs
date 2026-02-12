@@ -275,7 +275,11 @@ pub mod scan_sessions {
 pub mod deletion_history {
     use super::{DeletionRecord, SqlitePool};
 
+    /// Row type for deletion history queries
+    type DeletionHistoryRow = (i64, String, i64, String, i64, Option<i64>, Option<String>);
+
     /// Record a deletion
+    #[allow(clippy::too_many_arguments)]
     pub async fn record(
         pool: &SqlitePool,
         file_path: &str,
@@ -310,7 +314,7 @@ pub mod deletion_history {
         limit: i32,
         offset: i32,
     ) -> Result<Vec<DeletionRecord>, sqlx::Error> {
-        let results: Vec<(i64, String, i64, String, i64, Option<i64>, Option<String>)> =
+        let results: Vec<DeletionHistoryRow> =
             sqlx::query_as(
                 "SELECT id, file_path, file_size, file_hash, deleted_at, group_id, kept_path
              FROM deletion_history
@@ -452,6 +456,19 @@ pub mod duplicate_groups {
 pub mod scanned_files {
     use super::{ScannedFile, SqlitePool};
 
+    /// Row type for scanned file queries
+    type ScannedFileRow = (
+        i64,
+        String,
+        i64,
+        Option<String>,
+        Option<String>,
+        i64,
+        i64,
+        i64,
+        Option<i64>,
+    );
+
     /// Insert a scanned file
     #[allow(clippy::too_many_arguments)]
     pub async fn insert(
@@ -498,17 +515,7 @@ pub mod scanned_files {
         pool: &SqlitePool,
         group_id: i64,
     ) -> Result<Vec<ScannedFile>, sqlx::Error> {
-        let results: Vec<(
-            i64,
-            String,
-            i64,
-            Option<String>,
-            Option<String>,
-            i64,
-            i64,
-            i64,
-            Option<i64>,
-        )> = sqlx::query_as(
+        let results: Vec<ScannedFileRow> = sqlx::query_as(
             "SELECT id, path, size, partial_hash, full_hash, created_at, modified_at, scanned_at, group_id
              FROM scanned_files
              WHERE group_id = ?
@@ -551,17 +558,7 @@ pub mod scanned_files {
         pool: &SqlitePool,
         path: &str,
     ) -> Result<Option<ScannedFile>, sqlx::Error> {
-        let result: Option<(
-            i64,
-            String,
-            i64,
-            Option<String>,
-            Option<String>,
-            i64,
-            i64,
-            i64,
-            Option<i64>,
-        )> = sqlx::query_as(
+        let result: Option<ScannedFileRow> = sqlx::query_as(
             "SELECT id, path, size, partial_hash, full_hash, created_at, modified_at, scanned_at, group_id
              FROM scanned_files
              WHERE path = ?",
@@ -642,6 +639,9 @@ pub mod scanned_files {
 pub mod file_cache {
     use super::{FileCache, SqlitePool};
 
+    /// Row type for file cache queries
+    type FileCacheRow = (i64, String, i64, i64, String, Option<String>, i64);
+
     /// Get cached file info
     pub async fn get(
         pool: &SqlitePool,
@@ -649,7 +649,7 @@ pub mod file_cache {
         size: i64,
         modified_at: i64,
     ) -> Result<Option<FileCache>, sqlx::Error> {
-        let result: Option<(i64, String, i64, i64, String, Option<String>, i64)> = sqlx::query_as(
+        let result: Option<FileCacheRow> = sqlx::query_as(
             "SELECT id, path, size, modified_at, partial_hash, full_hash, cached_at
              FROM file_cache
              WHERE path = ? AND size = ? AND modified_at = ?",

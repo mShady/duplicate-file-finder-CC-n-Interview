@@ -21,6 +21,7 @@ pub enum HashError {
 
 /// Result of hashing a file
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct HashResult {
     /// Partial hash (first 4KB + last 4KB)
     pub partial_hash: String,
@@ -66,15 +67,19 @@ impl FileHasher {
         let mut hasher = blake3::Hasher::new();
 
         // Read first chunk
-        let mut first_chunk = vec![0u8; PARTIAL_HASH_CHUNK_SIZE as usize];
+        #[allow(clippy::cast_possible_truncation)]
+        let chunk_size = PARTIAL_HASH_CHUNK_SIZE as usize;
+        let mut first_chunk = vec![0u8; chunk_size];
         file.read_exact(&mut first_chunk)?;
         hasher.update(&first_chunk);
 
         // Seek to last chunk
-        file.seek(SeekFrom::End(-(PARTIAL_HASH_CHUNK_SIZE as i64)))?;
+        #[allow(clippy::cast_possible_wrap)]
+        let neg_chunk = -(PARTIAL_HASH_CHUNK_SIZE as i64);
+        file.seek(SeekFrom::End(neg_chunk))?;
 
         // Read last chunk
-        let mut last_chunk = vec![0u8; PARTIAL_HASH_CHUNK_SIZE as usize];
+        let mut last_chunk = vec![0u8; chunk_size];
         file.read_exact(&mut last_chunk)?;
         hasher.update(&last_chunk);
 
@@ -108,6 +113,7 @@ impl FileHasher {
     /// Compute full hash with parallel processing for large files
     ///
     /// Uses BLAKE3's rayon feature for files larger than 1MB
+    #[allow(dead_code, clippy::unused_self)]
     pub fn full_hash_parallel<P: AsRef<Path>>(&self, path: P) -> Result<String, HashError> {
         let path = path.as_ref();
         let data = std::fs::read(path)?;
@@ -126,6 +132,7 @@ impl FileHasher {
 
     /// Compute both partial and full hash in one pass for small files,
     /// or partial only for large files
+    #[allow(dead_code)]
     pub fn compute_hashes<P: AsRef<Path>>(
         &mut self,
         path: P,
@@ -173,6 +180,7 @@ impl Default for FileHasher {
 }
 
 /// Compute hash of raw data (utility function)
+#[allow(dead_code)]
 pub fn hash_data(data: &[u8]) -> String {
     blake3::hash(data).to_hex().to_string()
 }
