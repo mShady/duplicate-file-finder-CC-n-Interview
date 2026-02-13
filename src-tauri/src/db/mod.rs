@@ -6,7 +6,6 @@
 
 pub mod models;
 pub mod queries;
-mod schema;
 
 use sqlx::migrate::MigrateDatabase;
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
