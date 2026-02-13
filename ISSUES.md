@@ -1,5 +1,3 @@
-<!-- DO NOT COMMIT - Local working notes only -->
-
 # Codebase Issues Tracker
 
 | #   | Issue                                                                                                                                      | Impact | Area     | Status                                                |
