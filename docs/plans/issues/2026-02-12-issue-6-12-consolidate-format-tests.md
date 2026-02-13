@@ -194,22 +194,22 @@ Add notes to plans 07, 09, 10, and 13 reminding implementers to import format ut
 
 #### 2.1 Update Plan 07 (Phase 7.4)
 
-**File**: `plans/07-scan-progress.md`
+**File**: `docs/plans/07-scan-progress.md`
 **Changes**: Add an import note before the `ScanProgressDisplay.svelte` code block, and replace the inline `formatBytes` function with an import. Also add `formatNumber` and `formatTimeRemaining` to `format.ts` guidance.
 
 #### 2.2 Update Plan 09 (Phase 9.5)
 
-**File**: `plans/09-file-operations.md`
+**File**: `docs/plans/09-file-operations.md`
 **Changes**: Add an import note before the `FileInfoDialog.svelte` code block. Replace inline `formatBytes`, `formatDate`, `getFileExtension` with imports from `$lib/utils/format`.
 
 #### 2.3 Update Plan 10 (Phase 10.1)
 
-**File**: `plans/10-filtering-search.md`
+**File**: `docs/plans/10-filtering-search.md`
 **Changes**: Replace the inline `getExtension` function in `filters.ts` with an import of `getFileExtension` from `$lib/utils/format`.
 
 #### 2.4 Update Plan 13 (Phase 13.4.3)
 
-**File**: `plans/13-error-handling.md`
+**File**: `docs/plans/13-error-handling.md`
 **Changes**: Replace the inline `formatBytes` in `DiskFullAlert.svelte` with an import from `$lib/utils/format`.
 
 ### Success Criteria

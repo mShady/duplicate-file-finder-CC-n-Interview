@@ -115,7 +115,9 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 │   ├── Cargo.toml         # Rust dependencies
 │   └── tauri.conf.json    # Tauri configuration
 ├── scripts/               # Setup and build scripts
-└── plans/                 # Implementation plans
+└── docs/                  # Documentation
+    ├── Specification.md   # Product specification
+    └── plans/             # Implementation plans
 ```
 
 ## License

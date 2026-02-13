@@ -641,7 +641,7 @@ For duplicate file scanning where file sizes vary dramatically, **α = 0.2** pro
 ```svelte
 <script lang="ts">
   import type { ScanProgress } from '$lib/types';
-  // Import shared format utilities (see plans/issues/2026-02-12-issue-6-12-consolidate-format-tests.md)
+  // Import shared format utilities (see docs/plans/issues/2026-02-12-issue-6-12-consolidate-format-tests.md)
   import { formatBytes } from '$lib/utils/format';
 
   interface Props {

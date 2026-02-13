@@ -408,7 +408,7 @@ Create a dialog component to display detailed file information.
 
 ```svelte
 <script lang="ts">
-  // Import shared format utilities (see plans/issues/2026-02-12-issue-6-12-consolidate-format-tests.md)
+  // Import shared format utilities (see docs/plans/issues/2026-02-12-issue-6-12-consolidate-format-tests.md)
   import { formatBytes, formatDate, getFileExtension } from '$lib/utils/format';
 
   interface FileInfoResponse {

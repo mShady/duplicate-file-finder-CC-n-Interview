@@ -22,7 +22,7 @@ Define filter types and filtering logic.
 
 ```typescript
 import type { DuplicateGroup, FileType, FilterState } from '$lib/types';
-// Import shared format utilities (see plans/issues/2026-02-12-issue-6-12-consolidate-format-tests.md)
+// Import shared format utilities (see docs/plans/issues/2026-02-12-issue-6-12-consolidate-format-tests.md)
 import { getFileExtension } from '$lib/utils/format';
 
 export const fileTypeExtensions: Record<FileType, string[]> = {

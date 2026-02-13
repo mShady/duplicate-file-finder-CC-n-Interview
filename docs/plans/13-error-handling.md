@@ -584,7 +584,7 @@ if self.progress.total_files.load(Ordering::Relaxed) % 1000 == 0 {
     onCancel: () => void;
   }
 
-  // Import shared format utilities (see plans/issues/2026-02-12-issue-6-12-consolidate-format-tests.md)
+  // Import shared format utilities (see docs/plans/issues/2026-02-12-issue-6-12-consolidate-format-tests.md)
   import { formatBytes } from '$lib/utils/format';
 
   let { availableSpace, onResume, onCancel }: Props = $props();
