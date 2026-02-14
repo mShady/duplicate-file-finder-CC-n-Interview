@@ -54,7 +54,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::greet,
             // Settings commands
             commands::get_setting,
             commands::set_setting,
