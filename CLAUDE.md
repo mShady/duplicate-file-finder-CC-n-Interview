@@ -28,9 +28,9 @@ npx prettier --check .   # Prettier - verify formatting (do not auto-fix without
 
 If any check fails, fix the issues and re-run until all checks pass.
 
-## Pre-Commit Formatting
+## Committing
 
-Before committing **any** files (including markdown/plan files), run `npx prettier --write .` to auto-format. When making multiple commits in a row, it's fine to run it once before the first commit.
+Always use `/cl:commit` to create commits. Before invoking the command, run `npx prettier --write .` to auto-format so that any Prettier changes are visible in the diff and reflected in the commit message. `/cl:commit` can create multiple commits in a single invocation — group related changes into meaningful commits.
 
 ## Dead Code Annotations
 
