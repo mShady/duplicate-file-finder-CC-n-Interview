@@ -1,5 +1,9 @@
 # DupliFind - Claude Code Project Instructions
 
+## Guiding Principles
+
+- Always optimize for correctness over speed.
+
 ## Automated Verification
 
 When asked to run automated verification (or when plan steps call for it), run **all** of the following checks. All must pass before considering verification complete.
