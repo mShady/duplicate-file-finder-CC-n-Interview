@@ -8,10 +8,10 @@ Create a typed API wrapper layer (`src/lib/api/`) that centralises all `invoke()
 
 **8 raw `invoke()` calls** scattered across 2 files:
 
-| File | Commands called |
-|---|---|
-| `src/App.svelte` | `get_scan_results`, `get_setting`, `set_setting`, `start_scan`, `cancel_scan`, `delete_files` |
-| `src/lib/components/DeletionHistoryPanel.svelte` | `get_deletion_history_summary`, `get_deletion_history` |
+| File                                             | Commands called                                                                               |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| `src/App.svelte`                                 | `get_scan_results`, `get_setting`, `set_setting`, `start_scan`, `cancel_scan`, `delete_files` |
+| `src/lib/components/DeletionHistoryPanel.svelte` | `get_deletion_history_summary`, `get_deletion_history`                                        |
 
 **7 additional registered commands** not yet called from the frontend (reserved for future plan phases):
 `get_all_settings`, `add_protected_folder`, `remove_protected_folder`, `get_protected_folders`, `is_path_protected`, `get_scan_progress`, `is_scanning`
@@ -19,6 +19,7 @@ Create a typed API wrapper layer (`src/lib/api/`) that centralises all `invoke()
 **Types already exist** in `src/lib/types.ts` (128 lines) and mirror the Rust structs correctly. The gap is not missing types — it's the absence of a wrapper layer around the raw `invoke()` calls.
 
 ### Key Discoveries:
+
 - `src/App.svelte:47` — `invoke<DetectionResult | null>('get_scan_results')` with inline type param
 - `src/App.svelte:62` — `invoke<string | null>('get_setting', { key: 'last_scan_paths' })` with inline type param
 - `src/App.svelte:97` — `invoke('start_scan', { request: { ... } })` with **no** return type assertion (return value is ignored)
@@ -31,6 +32,7 @@ Create a typed API wrapper layer (`src/lib/api/`) that centralises all `invoke()
 A `src/lib/api/` directory with domain-grouped wrapper modules covering all 15 registered Tauri commands. Frontend components import typed functions (e.g. `startScan(request)`) instead of calling `invoke()` directly. Existing call sites in `App.svelte` and `DeletionHistoryPanel.svelte` are migrated.
 
 ### Verification:
+
 - `npm run check` passes (svelte-check confirms type correctness)
 - `npm run lint` passes
 - `npm run build` produces a clean production build
@@ -74,7 +76,7 @@ export interface ScanRequest {
 
 #### 1.2 Create `src/lib/api/scan.ts`
 
-**File**: `src/lib/api/scan.ts` *(new)*
+**File**: `src/lib/api/scan.ts` _(new)_
 **Changes**: Typed wrappers for the 5 scan commands
 
 ```typescript
@@ -109,7 +111,7 @@ export async function getScanResults(): Promise<DetectionResult | null> {
 
 #### 1.3 Create `src/lib/api/settings.ts`
 
-**File**: `src/lib/api/settings.ts` *(new)*
+**File**: `src/lib/api/settings.ts` _(new)_
 **Changes**: Typed wrappers for the 3 settings commands
 
 ```typescript
@@ -131,7 +133,7 @@ export async function getAllSettings(): Promise<Setting[]> {
 
 #### 1.4 Create `src/lib/api/deletion.ts`
 
-**File**: `src/lib/api/deletion.ts` *(new)*
+**File**: `src/lib/api/deletion.ts` _(new)_
 **Changes**: Typed wrappers for the 3 deletion commands
 
 ```typescript
@@ -145,7 +147,7 @@ interface DeleteFilesRequestPayload {
 }
 
 export async function deleteFiles(
-  request: DeleteFilesRequestPayload,
+  request: DeleteFilesRequestPayload
 ): Promise<DeleteFilesResponse> {
   return invoke<DeleteFilesResponse>('delete_files', { request });
 }
@@ -154,17 +156,14 @@ export async function getDeletionHistorySummary(): Promise<[number, number]> {
   return invoke<[number, number]>('get_deletion_history_summary');
 }
 
-export async function getDeletionHistory(
-  limit: number,
-  offset: number,
-): Promise<DeletionRecord[]> {
+export async function getDeletionHistory(limit: number, offset: number): Promise<DeletionRecord[]> {
   return invoke<DeletionRecord[]>('get_deletion_history', { limit, offset });
 }
 ```
 
 #### 1.5 Create `src/lib/api/protected.ts`
 
-**File**: `src/lib/api/protected.ts` *(new)*
+**File**: `src/lib/api/protected.ts` _(new)_
 **Changes**: Typed wrappers for the 4 protected-folder commands
 
 ```typescript
@@ -190,7 +189,7 @@ export async function isPathProtected(path: string): Promise<boolean> {
 
 #### 1.6 Create `src/lib/api/index.ts`
 
-**File**: `src/lib/api/index.ts` *(new)*
+**File**: `src/lib/api/index.ts` _(new)_
 **Changes**: Barrel re-export
 
 ```typescript
@@ -209,11 +208,13 @@ export {
 
 **File**: `src/App.svelte`
 **Changes**:
+
 - Remove `import { invoke } from '@tauri-apps/api/core'`
 - Add `import { startScan, cancelScan, getScanResults, getSetting, setSetting, deleteFiles } from '$lib/api'`
 - Replace all 6 `invoke()` calls with the typed wrapper functions
 
 Before → After examples:
+
 ```typescript
 // Before (line 47):
 const existing = await invoke<DetectionResult | null>('get_scan_results');
@@ -246,7 +247,9 @@ const response = await invoke<DeleteFilesResponse>('delete_files', {
 });
 // After:
 const response = await deleteFiles({
-  files: requests, kept_paths: keptPaths, group_ids: groupIds,
+  files: requests,
+  kept_paths: keptPaths,
+  group_ids: groupIds,
 });
 ```
 
@@ -254,11 +257,13 @@ const response = await deleteFiles({
 
 **File**: `src/lib/components/DeletionHistoryPanel.svelte`
 **Changes**:
+
 - Remove `import { invoke } from '@tauri-apps/api/core'`
 - Add `import { getDeletionHistorySummary, getDeletionHistory } from '$lib/api'`
 - Replace both `invoke()` calls
 
 Before → After:
+
 ```typescript
 // Before (line 29):
 const [count, freed] = await invoke<[number, number]>('get_deletion_history_summary');
@@ -267,7 +272,8 @@ const [count, freed] = await getDeletionHistorySummary();
 
 // Before (lines 48-51):
 const records = await invoke<DeletionRecord[]>('get_deletion_history', {
-  limit: pageSize, offset: page * pageSize,
+  limit: pageSize,
+  offset: page * pageSize,
 });
 // After:
 const records = await getDeletionHistory(pageSize, page * pageSize);
@@ -276,6 +282,7 @@ const records = await getDeletionHistory(pageSize, page * pageSize);
 ### Success Criteria:
 
 #### Automated Verification:
+
 - [ ] `npm run check` passes (svelte-check)
 - [ ] `npm run lint` passes (ESLint)
 - [ ] `npm run build` succeeds (Vite production build)
@@ -285,6 +292,7 @@ const records = await getDeletionHistory(pageSize, page * pageSize);
 - [ ] `npx prettier --check .` passes
 
 #### Manual Verification:
+
 - [ ] No remaining `import { invoke }` from `@tauri-apps/api/core` in component files (only in `src/lib/api/*.ts`)
 - [ ] App starts and scans a folder successfully
 - [ ] Deletion flow works end-to-end

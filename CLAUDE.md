@@ -28,6 +28,10 @@ npx prettier --check .   # Prettier - verify formatting (do not auto-fix without
 
 If any check fails, fix the issues and re-run until all checks pass.
 
+## Pre-Commit Formatting
+
+Before committing **any** files (including markdown/plan files), run `npx prettier --write .` to auto-format. When making multiple commits in a row, it's fine to run it once before the first commit.
+
 ## Dead Code Annotations
 
 The following items have `#[allow(dead_code)]` or `#[allow(unused_imports)]` because they are not yet used in production code but are needed in future plan phases. When a phase starts **using** one of these items, remove its suppression annotation:
