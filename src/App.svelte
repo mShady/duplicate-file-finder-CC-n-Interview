@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { invoke } from '@tauri-apps/api/core';
   import { onMount, onDestroy } from 'svelte';
   import AppHeader from './lib/components/AppHeader.svelte';
   import HomeView from './lib/components/HomeView.svelte';
@@ -8,7 +7,15 @@
   import DeleteConfirmDialog from './lib/components/DeleteConfirmDialog.svelte';
   import DeleteSummaryDialog from './lib/components/DeleteSummaryDialog.svelte';
   import HistoryDialog from './lib/components/HistoryDialog.svelte';
-  import type { DetectionResult, DeleteFilesResponse, BatchDeletionResult } from '$lib/types';
+  import type { BatchDeletionResult } from '$lib/types';
+  import {
+    startScan as apiStartScan,
+    cancelScan as apiCancelScan,
+    getScanResults,
+    getSetting,
+    setSetting,
+    deleteFiles,
+  } from '$lib/api';
   import { scanStore } from '$lib/stores/scanStore.svelte';
   import {
     buildDeletionRequests,
@@ -44,7 +51,7 @@
 
     // Check for existing results
     try {
-      const existing = await invoke<DetectionResult | null>('get_scan_results');
+      const existing = await getScanResults();
       if (existing && existing.groups.length > 0) {
         scanStore.detectionResult = existing;
       }
@@ -59,7 +66,7 @@
 
   async function loadLastScanPaths() {
     try {
-      const value = await invoke<string | null>('get_setting', { key: 'last_scan_paths' });
+      const value = await getSetting('last_scan_paths');
       if (value) {
         selectedPaths = JSON.parse(value);
       }
@@ -70,10 +77,7 @@
 
   async function saveLastScanPaths() {
     try {
-      await invoke('set_setting', {
-        key: 'last_scan_paths',
-        value: JSON.stringify(selectedPaths),
-      });
+      await setSetting('last_scan_paths', JSON.stringify(selectedPaths));
     } catch (e) {
       console.error('Failed to save scan paths:', e);
     }
@@ -94,12 +98,7 @@
 
     try {
       await saveLastScanPaths();
-      await invoke('start_scan', {
-        request: {
-          paths: selectedPaths,
-          parallelism: 'normal',
-        },
-      });
+      await apiStartScan({ paths: selectedPaths, parallelism: 'normal' });
     } catch (e) {
       scanStore.handleScanError(e instanceof Error ? e.message : String(e));
       currentView = 'home';
@@ -108,7 +107,7 @@
 
   async function cancelScan() {
     try {
-      await invoke('cancel_scan');
+      await apiCancelScan();
       scanStore.cancelledScan();
       currentView = 'home';
     } catch (e) {
@@ -145,8 +144,10 @@
     );
 
     try {
-      const response = await invoke<DeleteFilesResponse>('delete_files', {
-        request: { files: requests, kept_paths: keptPaths, group_ids: groupIds },
+      const response = await deleteFiles({
+        files: requests,
+        kept_paths: keptPaths,
+        group_ids: groupIds,
       });
 
       deletionResult = response.result;

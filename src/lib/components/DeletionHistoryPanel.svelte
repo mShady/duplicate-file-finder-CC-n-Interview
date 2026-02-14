@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { invoke } from '@tauri-apps/api/core';
   import { onMount } from 'svelte';
   import type { DeletionRecord } from '$lib/types';
+  import { getDeletionHistorySummary, getDeletionHistory } from '$lib/api';
   import { formatBytes, formatDate, getFileName } from '$lib/utils/format';
 
   interface Props {
@@ -26,7 +26,7 @@
 
   async function loadSummary() {
     try {
-      const [count, freed] = await invoke<[number, number]>('get_deletion_history_summary');
+      const [count, freed] = await getDeletionHistorySummary();
       totalCount = count;
       totalFreed = freed;
     } catch {
@@ -45,10 +45,7 @@
     error = null;
 
     try {
-      const records = await invoke<DeletionRecord[]>('get_deletion_history', {
-        limit: pageSize,
-        offset: page * pageSize,
-      });
+      const records = await getDeletionHistory(pageSize, page * pageSize);
 
       if (records.length < pageSize) {
         hasMore = false;

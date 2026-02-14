@@ -117,6 +117,11 @@ export interface DeletionRecord {
   kept_path: string | null;
 }
 
+export interface ScanRequest {
+  paths: string[];
+  parallelism?: string;
+}
+
 export type FileType = 'images' | 'videos' | 'documents' | 'audio' | 'other' | 'all';
 
 export interface FilterState {
