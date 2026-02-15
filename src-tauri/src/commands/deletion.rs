@@ -1,12 +1,14 @@
 //! Deletion Tauri commands
 
 use crate::db::queries;
-use crate::services::deletion::{BatchDeletionResult, DeletionRequest, DeletionService};
+use crate::services::deletion::{
+    BatchDeletionResult, DeletionProgressEvent, DeletionRequest, DeletionService,
+};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 
 #[derive(Debug, Deserialize)]
 pub struct DeleteFilesRequest {
@@ -29,6 +31,7 @@ pub struct DeleteFilesResponse {
 #[tauri::command]
 pub async fn delete_files(
     request: DeleteFilesRequest,
+    app_handle: AppHandle,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<DeleteFilesResponse, String> {
     if request.files.is_empty() {
@@ -68,9 +71,39 @@ pub async fn delete_files(
 
     // Perform deletion (blocking I/O, run on blocking thread)
     let files = request.files;
+    let handle = app_handle.clone();
     let result = tokio::task::spawn_blocking(move || {
         let mut service = DeletionService::new();
-        service.delete_batch(&files)
+
+        // Phase 1: Verify all files (with progress events)
+        let verification = service.verify_batch(&files, |completed, total| {
+            let _ = handle.emit(
+                "deletion-progress",
+                DeletionProgressEvent {
+                    phase: "verifying".to_string(),
+                    completed,
+                    total,
+                    current_path: files
+                        .get(completed.saturating_sub(1))
+                        .map(|f| f.path.clone()),
+                },
+            );
+        });
+
+        // Phase 2: Emit trashing event and batch-trash verified files
+        let _ = handle.emit(
+            "deletion-progress",
+            DeletionProgressEvent {
+                phase: "trashing".to_string(),
+                completed: 0,
+                total: verification.verified.len(),
+                current_path: None,
+            },
+        );
+
+        let mut batch_result = DeletionService::trash_verified(&verification.verified);
+        batch_result.failed.extend(verification.failed);
+        batch_result
     })
     .await
     .map_err(|e| e.to_string())?;
