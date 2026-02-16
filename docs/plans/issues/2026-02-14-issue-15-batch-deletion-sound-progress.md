@@ -315,9 +315,9 @@ pub async fn delete_files(
 
 #### Automated Verification
 
-- [x] `cargo test` — all existing tests pass (68+ tests)
-- [x] `cargo clippy` — zero warnings
-- [x] `npm run build` — frontend build still works (no breaking type changes)
+- [ ] `cargo test` — all existing tests pass (68+ tests)
+- [ ] `cargo clippy` — zero warnings
+- [ ] `npm run build` — frontend build still works (no breaking type changes)
 
 #### Manual Verification
 
