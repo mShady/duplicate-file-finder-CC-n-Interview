@@ -108,13 +108,80 @@ impl DeletionService {
         let mut failed = Vec::new();
         let mut total_freed: u64 = 0;
 
+        // Phase 1: Verify all files first without deleting
+        let mut verified_paths = Vec::new();
         for request in requests {
-            let result = self.delete_to_trash(request);
-            if result.success {
-                total_freed += result.size;
-                successful.push(result);
-            } else {
-                failed.push(result);
+            let path = Path::new(&request.path);
+
+            match self.verify_file(path, &request.expected_hash) {
+                Ok(true) => {
+                    // File verified successfully, add to batch
+                    verified_paths.push((path, request));
+                }
+                Ok(false) => {
+                    // Hash mismatch
+                    failed.push(DeletionResult {
+                        path: request.path.clone(),
+                        success: false,
+                        error: Some("File changed since scan".to_string()),
+                        size: request.size,
+                    });
+                }
+                Err(e) => {
+                    // Verification error (file not found, IO error, etc.)
+                    failed.push(DeletionResult {
+                        path: request.path.clone(),
+                        success: false,
+                        error: Some(e.to_string()),
+                        size: request.size,
+                    });
+                }
+            }
+        }
+
+        // Phase 2: Delete all verified files in a single batch operation
+        if !verified_paths.is_empty() {
+            // Use trash::delete_all for batch deletion (single OS notification)
+            let paths_to_delete: Vec<&Path> = verified_paths.iter().map(|(p, _)| *p).collect();
+
+            match trash::delete_all(&paths_to_delete) {
+                Ok(()) => {
+                    // All files deleted successfully
+                    for (_, request) in verified_paths {
+                        total_freed += request.size;
+                        successful.push(DeletionResult {
+                            path: request.path.clone(),
+                            success: true,
+                            error: None,
+                            size: request.size,
+                        });
+                    }
+                }
+                Err(e) => {
+                    // Batch deletion failed - fall back to individual deletion to identify which files failed
+                    for (path, request) in verified_paths {
+                        match trash::delete(path) {
+                            Ok(()) => {
+                                total_freed += request.size;
+                                successful.push(DeletionResult {
+                                    path: request.path.clone(),
+                                    success: true,
+                                    error: None,
+                                    size: request.size,
+                                });
+                            }
+                            Err(e) => {
+                                failed.push(DeletionResult {
+                                    path: request.path.clone(),
+                                    success: false,
+                                    error: Some(e.to_string()),
+                                    size: request.size,
+                                });
+                            }
+                        }
+                    }
+                    log::warn!("Batch deletion failed, fell back to individual deletion: {}", e);
+                }
             }
         }
 
