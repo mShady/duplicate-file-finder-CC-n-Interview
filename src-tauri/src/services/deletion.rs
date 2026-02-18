@@ -61,6 +61,7 @@ impl DeletionService {
     }
 
     /// Delete a single file to trash
+    #[allow(dead_code)]
     pub fn delete_to_trash(&mut self, request: &DeletionRequest) -> DeletionResult {
         let path = Path::new(&request.path);
 
@@ -108,13 +109,75 @@ impl DeletionService {
         let mut failed = Vec::new();
         let mut total_freed: u64 = 0;
 
+        // Phase 1: Verify all files first without deleting
+        let mut verified_paths = Vec::new();
         for request in requests {
-            let result = self.delete_to_trash(request);
-            if result.success {
-                total_freed += result.size;
-                successful.push(result);
-            } else {
-                failed.push(result);
+            let path = Path::new(&request.path);
+
+            match self.verify_file(path, &request.expected_hash) {
+                Ok(true) => {
+                    verified_paths.push((path.to_path_buf(), request.clone()));
+                }
+                Ok(false) => {
+                    failed.push(DeletionResult {
+                        path: request.path.clone(),
+                        success: false,
+                        error: Some("File changed since scan".to_string()),
+                        size: request.size,
+                    });
+                }
+                Err(e) => {
+                    failed.push(DeletionResult {
+                        path: request.path.clone(),
+                        success: false,
+                        error: Some(e.to_string()),
+                        size: request.size,
+                    });
+                }
+            }
+        }
+
+        // Phase 2: Delete all verified files at once (single notification)
+        if !verified_paths.is_empty() {
+            let paths_to_delete: Vec<_> = verified_paths.iter().map(|(p, _)| p.as_path()).collect();
+
+            match trash::delete_all(&paths_to_delete) {
+                Ok(()) => {
+                    // All files deleted successfully
+                    for (_, request) in verified_paths {
+                        total_freed += request.size;
+                        successful.push(DeletionResult {
+                            path: request.path,
+                            success: true,
+                            error: None,
+                            size: request.size,
+                        });
+                    }
+                }
+                Err(_) => {
+                    // Batch deletion failed, fall back to individual deletion
+                    for (path, request) in verified_paths {
+                        match trash::delete(&path) {
+                            Ok(()) => {
+                                total_freed += request.size;
+                                successful.push(DeletionResult {
+                                    path: request.path,
+                                    success: true,
+                                    error: None,
+                                    size: request.size,
+                                });
+                            }
+                            Err(e) => {
+                                failed.push(DeletionResult {
+                                    path: request.path,
+                                    success: false,
+                                    error: Some(e.to_string()),
+                                    size: request.size,
+                                });
+                            }
+                        }
+                    }
+                }
             }
         }
 
