@@ -32,6 +32,17 @@ npx prettier --check .   # Prettier - verify formatting (do not auto-fix without
 
 If any check fails, fix the issues and re-run until all checks pass.
 
+## GitHub API
+
+Do **not** use the `gh` CLI — it is unavailable in Cloud environments. Instead, use `curl` with the `$GH_TOKEN` environment variable to call the GitHub REST API directly for all GitHub operations (creating PRs, commenting on issues, etc.).
+
+```bash
+curl -s -X POST "https://api.github.com/repos/OWNER/REPO/pulls" \
+  -H "Authorization: token $GH_TOKEN" \
+  -H "Accept: application/vnd.github+json" \
+  -d '{ ... }'
+```
+
 ## Committing
 
 Always use `/cl:commit` to create commits. Before invoking the command, run `npx prettier --write .` to auto-format so that any Prettier changes are visible in the diff and reflected in the commit message. `/cl:commit` can create multiple commits in a single invocation — group related changes into meaningful commits.
