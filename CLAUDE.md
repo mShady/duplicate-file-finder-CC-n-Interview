@@ -34,7 +34,7 @@ If any check fails, fix the issues and re-run until all checks pass.
 
 ## GitHub API
 
-Do **not** use the `gh` CLI — it is unavailable in Cloud environments. Instead, use `curl` with the `$GH_TOKEN` environment variable to call the GitHub REST API directly for all GitHub operations (creating PRs, commenting on issues, etc.).
+> **Claude Cloud Environment (Claude.ai/Code) only:** Do **not** use the `gh` CLI — it is unavailable in this environment. Instead, use `curl` with the `$GH_TOKEN` environment variable to call the GitHub REST API directly for all GitHub operations (creating PRs, commenting on issues, etc.).
 
 ```bash
 curl -s -X POST "https://api.github.com/repos/OWNER/REPO/pulls" \
