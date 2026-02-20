@@ -61,6 +61,7 @@ impl DeletionService {
     }
 
     /// Delete a single file to trash
+    #[allow(dead_code)]
     pub fn delete_to_trash(&mut self, request: &DeletionRequest) -> DeletionResult {
         let path = Path::new(&request.path);
 
@@ -102,19 +103,87 @@ impl DeletionService {
         }
     }
 
-    /// Delete multiple files to trash
-    pub fn delete_batch(&mut self, requests: &[DeletionRequest]) -> BatchDeletionResult {
-        let mut successful = Vec::new();
+    /// Delete multiple files to trash, reporting progress via callback.
+    ///
+    /// The callback receives `(files_verified_so_far, total_files, current_path)` after each
+    /// file's hash is verified. Verification is Phase 1; Phase 2 calls `trash::delete_all()`
+    /// once so the OS plays a single notification sound.
+    pub fn delete_batch_with_progress<F>(
+        &mut self,
+        requests: &[DeletionRequest],
+        on_progress: F,
+    ) -> BatchDeletionResult
+    where
+        F: Fn(usize, usize, Option<&str>),
+    {
+        let total = requests.len();
+        let mut to_delete: Vec<(&DeletionRequest, std::path::PathBuf)> = Vec::new();
         let mut failed = Vec::new();
+
+        // Phase 1: verify every file's hash without deleting anything yet
+        for (i, request) in requests.iter().enumerate() {
+            let path = std::path::PathBuf::from(&request.path);
+            on_progress(i + 1, total, Some(&request.path));
+
+            match self.verify_file(&path, &request.expected_hash) {
+                Ok(true) => to_delete.push((request, path)),
+                Ok(false) => failed.push(DeletionResult {
+                    path: request.path.clone(),
+                    success: false,
+                    error: Some("File changed since scan".to_string()),
+                    size: request.size,
+                }),
+                Err(e) => failed.push(DeletionResult {
+                    path: request.path.clone(),
+                    success: false,
+                    error: Some(e.to_string()),
+                    size: request.size,
+                }),
+            }
+        }
+
+        // Phase 2: move all verified files to trash in one call (single OS notification)
+        let mut successful = Vec::new();
         let mut total_freed: u64 = 0;
 
-        for request in requests {
-            let result = self.delete_to_trash(request);
-            if result.success {
-                total_freed += result.size;
-                successful.push(result);
-            } else {
-                failed.push(result);
+        if !to_delete.is_empty() {
+            let paths: Vec<&std::path::PathBuf> = to_delete.iter().map(|(_, p)| p).collect();
+            match trash::delete_all(paths) {
+                Ok(()) => {
+                    for (request, _) in &to_delete {
+                        total_freed += request.size;
+                        successful.push(DeletionResult {
+                            path: request.path.clone(),
+                            success: true,
+                            error: None,
+                            size: request.size,
+                        });
+                    }
+                }
+                Err(_) => {
+                    // Fallback: individual deletion to identify which files fail
+                    for (request, path) in &to_delete {
+                        match trash::delete(path) {
+                            Ok(()) => {
+                                total_freed += request.size;
+                                successful.push(DeletionResult {
+                                    path: request.path.clone(),
+                                    success: true,
+                                    error: None,
+                                    size: request.size,
+                                });
+                            }
+                            Err(e) => {
+                                failed.push(DeletionResult {
+                                    path: request.path.clone(),
+                                    success: false,
+                                    error: Some(e.to_string()),
+                                    size: request.size,
+                                });
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -123,6 +192,12 @@ impl DeletionService {
             failed,
             total_freed,
         }
+    }
+
+    /// Delete multiple files to trash (no progress reporting)
+    #[allow(dead_code)]
+    pub fn delete_batch(&mut self, requests: &[DeletionRequest]) -> BatchDeletionResult {
+        self.delete_batch_with_progress(requests, |_, _, _| {})
     }
 }
 
