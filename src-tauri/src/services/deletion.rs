@@ -103,15 +103,24 @@ impl DeletionService {
         }
     }
 
-    /// Delete multiple files to trash
-    pub fn delete_batch(&mut self, requests: &[DeletionRequest]) -> BatchDeletionResult {
+    /// Delete multiple files to trash, emitting progress as each file is verified.
+    ///
+    /// `on_progress(current, total)` is called after each file's hash is verified.
+    /// All verified files are then moved to trash in a single batch operation so the
+    /// OS plays the trash notification sound only once.
+    pub fn delete_batch<F: FnMut(usize, usize)>(
+        &mut self,
+        requests: &[DeletionRequest],
+        mut on_progress: F,
+    ) -> BatchDeletionResult {
         let mut successful = Vec::new();
         let mut failed = Vec::new();
         let mut total_freed: u64 = 0;
+        let total = requests.len();
 
-        // Phase 1: Verify all files first without deleting
+        // Phase 1: Verify all files first without deleting, reporting progress per file
         let mut verified_paths = Vec::new();
-        for request in requests {
+        for (i, request) in requests.iter().enumerate() {
             let path = Path::new(&request.path);
 
             match self.verify_file(path, &request.expected_hash) {
@@ -135,6 +144,8 @@ impl DeletionService {
                     });
                 }
             }
+
+            on_progress(i + 1, total);
         }
 
         // Phase 2: Delete all verified files at once (single notification)
@@ -333,10 +344,17 @@ mod tests {
         ];
 
         let mut service = DeletionService::new();
-        let batch_result = service.delete_batch(&requests);
+        let mut progress_calls = Vec::new();
+        let batch_result = service.delete_batch(&requests, |current, total| {
+            progress_calls.push((current, total));
+        });
 
         assert_eq!(batch_result.successful.len(), 1);
         assert_eq!(batch_result.failed.len(), 1);
         assert_eq!(batch_result.total_freed, 12);
+        // Progress should be called once per file
+        assert_eq!(progress_calls.len(), 2);
+        assert_eq!(progress_calls[0], (1, 2));
+        assert_eq!(progress_calls[1], (2, 2));
     }
 }

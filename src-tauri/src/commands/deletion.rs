@@ -6,7 +6,7 @@ use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 
 #[derive(Debug, Deserialize)]
 pub struct DeleteFilesRequest {
@@ -25,9 +25,14 @@ pub struct DeleteFilesResponse {
     pub message: String,
 }
 
-/// Delete files to trash
+/// Delete files to trash, emitting `deletion-progress` events as each file is verified.
+///
+/// The frontend can listen to `deletion-progress` events to show a progress indicator.
+/// All verified files are moved to trash in a single batch so the OS notification
+/// plays only once.
 #[tauri::command]
 pub async fn delete_files(
+    app: AppHandle,
     request: DeleteFilesRequest,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<DeleteFilesResponse, String> {
@@ -66,11 +71,17 @@ pub async fn delete_files(
     let kept_paths = request.kept_paths;
     let group_ids = request.group_ids;
 
-    // Perform deletion (blocking I/O, run on blocking thread)
+    // Perform deletion (blocking I/O, run on blocking thread).
+    // Progress events are emitted per file during hash verification.
     let files = request.files;
     let result = tokio::task::spawn_blocking(move || {
         let mut service = DeletionService::new();
-        service.delete_batch(&files)
+        service.delete_batch(&files, |current, total| {
+            let _ = app.emit(
+                "deletion-progress",
+                serde_json::json!({ "current": current, "total": total }),
+            );
+        })
     })
     .await
     .map_err(|e| e.to_string())?;
