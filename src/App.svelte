@@ -5,9 +5,11 @@
   import ScanningView from './lib/components/ScanningView.svelte';
   import ResultsView from './lib/components/ResultsView.svelte';
   import DeleteConfirmDialog from './lib/components/DeleteConfirmDialog.svelte';
+  import DeleteProgressDialog from './lib/components/DeleteProgressDialog.svelte';
   import DeleteSummaryDialog from './lib/components/DeleteSummaryDialog.svelte';
   import HistoryDialog from './lib/components/HistoryDialog.svelte';
-  import type { BatchDeletionResult } from '$lib/types';
+  import type { BatchDeletionResult, DeletionProgressEvent } from '$lib/types';
+  import { listen } from '@tauri-apps/api/event';
   import {
     startScan as apiStartScan,
     cancelScan as apiCancelScan,
@@ -32,10 +34,15 @@
 
   // Deletion dialog state
   let showDeleteConfirm = $state(false);
+  let showDeleteProgress = $state(false);
   let showDeleteSummary = $state(false);
   let pendingDeletionFiles = $state<string[]>([]);
   let deletionResult = $state<BatchDeletionResult | null>(null);
   let showDeletionHistory = $state(false);
+
+  // Deletion progress state
+  let deletionProgressCurrent = $state(0);
+  let deletionProgressTotal = $state(0);
 
   onMount(async () => {
     await loadLastScanPaths();
@@ -137,11 +144,22 @@
     showDeleteConfirm = false;
     scanStore.error = null;
 
+    // Show progress dialog and reset counters
+    deletionProgressCurrent = 0;
+    deletionProgressTotal = pendingDeletionFiles.length;
+    showDeleteProgress = true;
+
     const requests = buildDeletionRequests(scanStore.detectionResult, pendingDeletionFiles);
     const { keptPaths, groupIds } = buildKeptPathsAndGroupIds(
       scanStore.detectionResult,
       pendingDeletionFiles
     );
+
+    // Subscribe to per-file progress events from the backend
+    const unlisten = await listen<DeletionProgressEvent>('deletion-progress', (e) => {
+      deletionProgressCurrent = e.payload.current;
+      deletionProgressTotal = e.payload.total;
+    });
 
     try {
       const response = await deleteFiles({
@@ -160,6 +178,8 @@
     } catch (e) {
       scanStore.error = e instanceof Error ? e.message : String(e);
     } finally {
+      unlisten();
+      showDeleteProgress = false;
       pendingDeletionFiles = [];
     }
   }
@@ -244,6 +264,10 @@
     onConfirm={handleConfirmDelete}
     onCancel={handleCancelDelete}
   />
+{/if}
+
+{#if showDeleteProgress}
+  <DeleteProgressDialog current={deletionProgressCurrent} total={deletionProgressTotal} />
 {/if}
 
 {#if showDeleteSummary && deletionResult}

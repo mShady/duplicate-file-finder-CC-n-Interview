@@ -83,6 +83,11 @@ export interface ProtectedFolder {
 }
 
 // Deletion types
+export interface DeletionProgressEvent {
+  current: number;
+  total: number;
+}
+
 export interface DeletionRequest {
   path: string;
   expected_hash: string;
