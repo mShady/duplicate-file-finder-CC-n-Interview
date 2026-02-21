@@ -2,11 +2,21 @@
   interface Props {
     current: number;
     total: number;
+    phase: 'verifying' | 'deleting';
   }
 
-  let { current, total }: Props = $props();
+  let { current, total, phase = 'verifying' }: Props = $props();
 
-  let percent = $derived(total > 0 ? Math.round((current / total) * 100) : 0);
+  // Verification occupies 0–50%, deletion occupies 50–100%
+  let percent = $derived(
+    total > 0
+      ? phase === 'verifying'
+        ? Math.round((current / total) * 50)
+        : 50 + Math.round((current / total) * 50)
+      : 0
+  );
+
+  let phaseLabel = $derived(phase === 'verifying' ? 'Verifying files...' : 'Moving to Trash...');
 </script>
 
 <div class="dialog-overlay">
@@ -20,7 +30,7 @@
     <h2>Moving to Trash</h2>
 
     <div class="progress-info">
-      <span class="progress-label">Verifying and deleting files...</span>
+      <span class="progress-label">{phaseLabel}</span>
       <span class="progress-count" aria-label="{current} of {total} files processed"
         >{current} / {total}</span
       >

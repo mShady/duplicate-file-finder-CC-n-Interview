@@ -43,6 +43,7 @@
   // Deletion progress state
   let deletionProgressCurrent = $state(0);
   let deletionProgressTotal = $state(0);
+  let deletionProgressPhase = $state<'verifying' | 'deleting'>('verifying');
 
   onMount(async () => {
     await loadLastScanPaths();
@@ -147,6 +148,7 @@
     // Show progress dialog and reset counters
     deletionProgressCurrent = 0;
     deletionProgressTotal = pendingDeletionFiles.length;
+    deletionProgressPhase = 'verifying';
     showDeleteProgress = true;
 
     const requests = buildDeletionRequests(scanStore.detectionResult, pendingDeletionFiles);
@@ -159,6 +161,7 @@
     const unlisten = await listen<DeletionProgressEvent>('deletion-progress', (e) => {
       deletionProgressCurrent = e.payload.current;
       deletionProgressTotal = e.payload.total;
+      deletionProgressPhase = e.payload.phase;
     });
 
     try {
@@ -267,7 +270,11 @@
 {/if}
 
 {#if showDeleteProgress}
-  <DeleteProgressDialog current={deletionProgressCurrent} total={deletionProgressTotal} />
+  <DeleteProgressDialog
+    current={deletionProgressCurrent}
+    total={deletionProgressTotal}
+    phase={deletionProgressPhase}
+  />
 {/if}
 
 {#if showDeleteSummary && deletionResult}

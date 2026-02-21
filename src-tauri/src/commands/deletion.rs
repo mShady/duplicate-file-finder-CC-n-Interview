@@ -76,10 +76,10 @@ pub async fn delete_files(
     let files = request.files;
     let result = tokio::task::spawn_blocking(move || {
         let mut service = DeletionService::new();
-        service.delete_batch(&files, |current, total| {
+        service.delete_batch(&files, |current, total, phase| {
             let _ = app.emit(
                 "deletion-progress",
-                serde_json::json!({ "current": current, "total": total }),
+                serde_json::json!({ "current": current, "total": total, "phase": phase }),
             );
         })
     })

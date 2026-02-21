@@ -86,6 +86,7 @@ export interface ProtectedFolder {
 export interface DeletionProgressEvent {
   current: number;
   total: number;
+  phase: 'verifying' | 'deleting';
 }
 
 export interface DeletionRequest {
