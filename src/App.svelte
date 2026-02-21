@@ -6,8 +6,11 @@
   import ResultsView from './lib/components/ResultsView.svelte';
   import DeleteConfirmDialog from './lib/components/DeleteConfirmDialog.svelte';
   import DeleteSummaryDialog from './lib/components/DeleteSummaryDialog.svelte';
+  import DeletionProgressDialog from './lib/components/DeletionProgressDialog.svelte';
   import HistoryDialog from './lib/components/HistoryDialog.svelte';
-  import type { BatchDeletionResult } from '$lib/types';
+  import { listen } from '@tauri-apps/api/event';
+  import type { BatchDeletionResult, DeletionProgressEvent } from '$lib/types';
+  import type { UnlistenFn } from '@tauri-apps/api/event';
   import {
     startScan as apiStartScan,
     cancelScan as apiCancelScan,
@@ -36,6 +39,8 @@
   let pendingDeletionFiles = $state<string[]>([]);
   let deletionResult = $state<BatchDeletionResult | null>(null);
   let showDeletionHistory = $state(false);
+  let isDeleting = $state(false);
+  let deletionProgress = $state<DeletionProgressEvent | null>(null);
 
   onMount(async () => {
     await loadLastScanPaths();
@@ -136,6 +141,8 @@
     if (!scanStore.detectionResult) return;
     showDeleteConfirm = false;
     scanStore.error = null;
+    isDeleting = true;
+    deletionProgress = null;
 
     const requests = buildDeletionRequests(scanStore.detectionResult, pendingDeletionFiles);
     const { keptPaths, groupIds } = buildKeptPathsAndGroupIds(
@@ -143,7 +150,13 @@
       pendingDeletionFiles
     );
 
+    let unlisten: UnlistenFn | null = null;
+
     try {
+      unlisten = await listen<DeletionProgressEvent>('deletion-progress', (e) => {
+        deletionProgress = e.payload;
+      });
+
       const response = await deleteFiles({
         files: requests,
         kept_paths: keptPaths,
@@ -160,6 +173,9 @@
     } catch (e) {
       scanStore.error = e instanceof Error ? e.message : String(e);
     } finally {
+      unlisten?.();
+      isDeleting = false;
+      deletionProgress = null;
       pendingDeletionFiles = [];
     }
   }
@@ -244,6 +260,10 @@
     onConfirm={handleConfirmDelete}
     onCancel={handleCancelDelete}
   />
+{/if}
+
+{#if isDeleting && deletionProgress}
+  <DeletionProgressDialog progress={deletionProgress} />
 {/if}
 
 {#if showDeleteSummary && deletionResult}
