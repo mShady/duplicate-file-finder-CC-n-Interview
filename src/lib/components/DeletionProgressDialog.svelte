@@ -7,6 +7,8 @@
 
   let { progress }: Props = $props();
 
+  let isIndeterminate = $derived(progress.phase === 'trashing');
+
   let percentage = $derived(
     progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0
   );
@@ -23,7 +25,11 @@
     <p class="phase-label">{phaseLabel}</p>
 
     <div class="progress-bar-container">
-      <div class="progress-bar" style="width: {percentage}%"></div>
+      {#if isIndeterminate}
+        <div class="progress-bar indeterminate"></div>
+      {:else}
+        <div class="progress-bar" style="width: {percentage}%"></div>
+      {/if}
     </div>
 
     <p class="progress-text">
@@ -83,6 +89,20 @@
     background: var(--primary);
     border-radius: 4px;
     transition: width 0.2s ease;
+  }
+
+  .progress-bar.indeterminate {
+    width: 40%;
+    animation: indeterminate 1.2s ease-in-out infinite;
+  }
+
+  @keyframes indeterminate {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(350%);
+    }
   }
 
   .progress-text {
