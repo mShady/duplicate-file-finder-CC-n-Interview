@@ -315,15 +315,15 @@ pub async fn delete_files(
 
 #### Automated Verification
 
-- [ ] `cargo test` — all existing tests pass (68+ tests)
-- [ ] `cargo clippy` — zero warnings
-- [ ] `npm run build` — frontend build still works (no breaking type changes)
+- [x] `cargo test` — all existing tests pass (68+ tests)
+- [x] `cargo clippy` — zero warnings
+- [x] `npm run build` — frontend build still works (no breaking type changes)
 
 #### Manual Verification
 
-- [ ] Deleting multiple files produces exactly one macOS trash sound (not N sounds)
-- [ ] Files are actually moved to system Trash (verifiable in Finder)
-- [ ] "Put Back" works for trashed files (right-click in Trash → "Put Back")
+- [x] Deleting multiple files produces exactly one macOS trash sound (not N sounds)
+- [x] Files are actually moved to system Trash (verifiable in Finder)
+- [x] "Put Back" works for trashed files (right-click in Trash → "Put Back")
 
 **Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation from the human that the manual testing was successful before proceeding to the next phase.
 
@@ -543,19 +543,19 @@ Add dialog to template (after the delete confirm dialog block):
 
 #### Automated Verification
 
-- [ ] `npm test` — all frontend tests pass
-- [ ] `npm run check` — svelte-check passes
-- [ ] `npm run lint` — ESLint passes
-- [ ] `npm run build` — production build succeeds
+- [x] `npm test` — all frontend tests pass
+- [x] `npm run check` — svelte-check passes
+- [x] `npm run lint` — ESLint passes
+- [x] `npm run build` — production build succeeds
 
 #### Manual Verification
 
-- [ ] Progress dialog appears after confirming deletion
-- [ ] Progress bar updates as files are verified
-- [ ] Phase label changes from "Verifying files..." to "Moving to Trash..."
-- [ ] Current file path is displayed during verification
-- [ ] Summary dialog appears after deletion completes
-- [ ] Exactly one macOS trash sound is heard (at the end, during "Moving to Trash" phase)
+- [x] Progress dialog appears after confirming deletion
+- [x] Progress bar updates as files are verified
+- [x] Phase label changes from "Verifying files..." to "Moving to Trash..."
+- [x] Current file path is displayed during verification
+- [x] Summary dialog appears after deletion completes
+- [x] Exactly one macOS trash sound is heard (at the end, during "Moving to Trash" phase)
 
 **Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation from the human that the manual testing was successful before proceeding to the next phase.
 
