@@ -6,7 +6,7 @@ use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 
 #[derive(Debug, Deserialize)]
 pub struct DeleteFilesRequest {
@@ -28,6 +28,7 @@ pub struct DeleteFilesResponse {
 /// Delete files to trash
 #[tauri::command]
 pub async fn delete_files(
+    app: AppHandle,
     request: DeleteFilesRequest,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<DeleteFilesResponse, String> {
@@ -70,7 +71,12 @@ pub async fn delete_files(
     let files = request.files;
     let result = tokio::task::spawn_blocking(move || {
         let mut service = DeletionService::new();
-        service.delete_batch(&files)
+        service.delete_batch(&files, |current, total| {
+            let _ = app.emit(
+                "deletion-progress",
+                serde_json::json!({ "current": current, "total": total }),
+            );
+        })
     })
     .await
     .map_err(|e| e.to_string())?;
