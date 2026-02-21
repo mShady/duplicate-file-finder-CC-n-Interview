@@ -107,6 +107,13 @@ export interface DeleteFilesResponse {
   message: string;
 }
 
+export interface DeletionProgressEvent {
+  phase: 'verifying' | 'trashing';
+  completed: number;
+  total: number;
+  current_path: string | null;
+}
+
 export interface DeletionRecord {
   id: number;
   file_path: string;
