@@ -7,14 +7,22 @@
 
   let { current, total, phase = 'verifying' }: Props = $props();
 
-  // Verification occupies 0–50%, deletion occupies 50–100%
+  // Verification occupies 0–50%.
+  // Deletion: bar sits at 50% with a pulse animation while the batch call runs
+  // (current === 0), then jumps to 100% when done (current > 0).
   let percent = $derived(
     total > 0
       ? phase === 'verifying'
         ? Math.round((current / total) * 50)
-        : 50 + Math.round((current / total) * 50)
+        : current === 0
+          ? 50
+          : 100
       : 0
   );
+
+  // True while the batch trash call is in flight — no per-file events available,
+  // so we show a pulse animation instead of a frozen bar.
+  let isWaiting = $derived(phase === 'deleting' && current === 0);
 
   let phaseLabel = $derived(phase === 'verifying' ? 'Verifying files...' : 'Moving to Trash...');
 </script>
@@ -43,7 +51,7 @@
       aria-valuemin={0}
       aria-valuemax={100}
     >
-      <div class="progress-bar-fill" style="width: {percent}%"></div>
+      <div class="progress-bar-fill" class:waiting={isWaiting} style="width: {percent}%"></div>
     </div>
 
     <p class="note">Please wait — files will be moved to the system Trash.</p>
@@ -103,6 +111,20 @@
     background: var(--primary);
     border-radius: 4px;
     transition: width 0.15s ease;
+  }
+
+  .progress-bar-fill.waiting {
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
   }
 
   .note {
