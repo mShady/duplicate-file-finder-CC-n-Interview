@@ -107,6 +107,13 @@ export interface DeleteFilesResponse {
   message: string;
 }
 
+export interface DeletionProgressEvent {
+  /** Number of files whose hash has been verified so far. */
+  current: number;
+  /** Total number of files being deleted. */
+  total: number;
+}
+
 export interface DeletionRecord {
   id: number;
   file_path: string;

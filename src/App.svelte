@@ -5,9 +5,11 @@
   import ScanningView from './lib/components/ScanningView.svelte';
   import ResultsView from './lib/components/ResultsView.svelte';
   import DeleteConfirmDialog from './lib/components/DeleteConfirmDialog.svelte';
+  import DeleteProgressDialog from './lib/components/DeleteProgressDialog.svelte';
   import DeleteSummaryDialog from './lib/components/DeleteSummaryDialog.svelte';
   import HistoryDialog from './lib/components/HistoryDialog.svelte';
-  import type { BatchDeletionResult } from '$lib/types';
+  import type { BatchDeletionResult, DeletionProgressEvent } from '$lib/types';
+  import { listen, type UnlistenFn } from '@tauri-apps/api/event';
   import {
     startScan as apiStartScan,
     cancelScan as apiCancelScan,
@@ -32,10 +34,14 @@
 
   // Deletion dialog state
   let showDeleteConfirm = $state(false);
+  let showDeletionProgress = $state(false);
+  let deletionProgress = $state<DeletionProgressEvent>({ current: 0, total: 0 });
   let showDeleteSummary = $state(false);
   let pendingDeletionFiles = $state<string[]>([]);
   let deletionResult = $state<BatchDeletionResult | null>(null);
   let showDeletionHistory = $state(false);
+
+  let unlistenProgress: UnlistenFn | null = null;
 
   onMount(async () => {
     await loadLastScanPaths();
@@ -58,10 +64,15 @@
     } catch (e) {
       console.error('Failed to load existing results:', e);
     }
+
+    unlistenProgress = await listen<DeletionProgressEvent>('deletion-progress', (event) => {
+      deletionProgress = event.payload;
+    });
   });
 
   onDestroy(() => {
     scanStore.cleanup();
+    unlistenProgress?.();
   });
 
   async function loadLastScanPaths() {
@@ -143,6 +154,10 @@
       pendingDeletionFiles
     );
 
+    // Show progress dialog before starting deletion
+    deletionProgress = { current: 0, total: pendingDeletionFiles.length };
+    showDeletionProgress = true;
+
     try {
       const response = await deleteFiles({
         files: requests,
@@ -160,6 +175,7 @@
     } catch (e) {
       scanStore.error = e instanceof Error ? e.message : String(e);
     } finally {
+      showDeletionProgress = false;
       pendingDeletionFiles = [];
     }
   }
@@ -233,6 +249,13 @@
 
 {#if showDeletionHistory}
   <HistoryDialog onClose={() => (showDeletionHistory = false)} />
+{/if}
+
+{#if showDeletionProgress}
+  <DeleteProgressDialog
+    progress={deletionProgress}
+    fileCount={pendingDeletionFiles.length || deletionProgress.total}
+  />
 {/if}
 
 {#if showDeleteConfirm}
