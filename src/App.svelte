@@ -262,7 +262,7 @@
   />
 {/if}
 
-{#if isDeleting && deletionProgress}
+{#if isDeleting}
   <DeletionProgressDialog progress={deletionProgress} />
 {/if}
 

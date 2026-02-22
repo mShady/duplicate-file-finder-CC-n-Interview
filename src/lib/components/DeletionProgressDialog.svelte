@@ -2,20 +2,21 @@
   import type { DeletionProgressEvent } from '$lib/types';
 
   interface Props {
-    progress: DeletionProgressEvent;
+    progress: DeletionProgressEvent | null;
   }
 
   let { progress }: Props = $props();
 
-  let isIndeterminate = $derived(progress.phase === 'trashing');
+  let isIndeterminate = $derived(!progress || progress.phase === 'trashing');
 
   let percentage = $derived(
-    progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0
+    progress && progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0
   );
 
-  let phaseLabel = $derived(
-    progress.phase === 'verifying' ? 'Verifying files...' : 'Moving to Trash...'
-  );
+  let phaseLabel = $derived.by(() => {
+    if (!progress) return 'Preparing...';
+    return progress.phase === 'verifying' ? 'Verifying files...' : 'Moving to Trash...';
+  });
 </script>
 
 <div class="dialog-overlay">
@@ -33,16 +34,20 @@
     </div>
 
     <p class="progress-text">
-      {#if progress.phase === 'verifying'}
+      {#if !progress}
+        Preparing files for deletion...
+      {:else if progress.phase === 'verifying'}
         {progress.completed} of {progress.total} files verified
       {:else}
         Moving {progress.total} files to Trash...
       {/if}
     </p>
 
-    {#if progress.current_path && progress.phase === 'verifying'}
+    {#if progress?.current_path && progress.phase === 'verifying'}
       <p class="current-path" title={progress.current_path}>{progress.current_path}</p>
     {/if}
+
+    <p class="recovery-note">Files will be recoverable from your system Trash.</p>
   </div>
 </div>
 
@@ -119,5 +124,11 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     margin: 0;
+  }
+
+  .recovery-note {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 1rem 0 0;
   }
 </style>
