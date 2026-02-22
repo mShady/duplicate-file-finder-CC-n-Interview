@@ -156,7 +156,9 @@ impl DeletionService {
                     }
                 }
                 Err(_) => {
-                    // Fallback: delete individually to identify which files failed
+                    // Fallback: delete individually to identify which files failed.
+                    // Note: each trash::delete() call may trigger a separate OS
+                    // notification sound, unlike the single-shot delete_all() above.
                     for (req, path) in &verified {
                         match trash::delete(path) {
                             Ok(()) => {
