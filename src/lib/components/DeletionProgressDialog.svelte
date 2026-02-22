@@ -33,6 +33,10 @@
       {/if}
     </div>
 
+    {#if progress?.phase === 'verifying'}
+      <p class="percentage">{percentage}%</p>
+    {/if}
+
     <p class="progress-text">
       {#if !progress}
         Preparing files for deletion...
@@ -108,6 +112,12 @@
     100% {
       transform: translateX(350%);
     }
+  }
+
+  .percentage {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0.5rem 0 0;
   }
 
   .progress-text {
