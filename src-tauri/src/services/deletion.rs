@@ -40,10 +40,18 @@ pub struct BatchDeletionResult {
     pub total_freed: u64,
 }
 
+/// Phase of a batch deletion operation
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DeletionPhase {
+    Verifying,
+    Trashing,
+}
+
 /// Progress event emitted during batch deletion
 #[derive(Debug, Clone, Serialize)]
 pub struct DeletionProgressEvent {
-    pub phase: String,
+    pub phase: DeletionPhase,
     pub completed: usize,
     pub total: usize,
     pub current_path: Option<String>,

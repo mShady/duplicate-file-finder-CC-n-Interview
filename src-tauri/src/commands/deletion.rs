@@ -2,7 +2,7 @@
 
 use crate::db::queries;
 use crate::services::deletion::{
-    BatchDeletionResult, DeletionProgressEvent, DeletionRequest, DeletionService,
+    BatchDeletionResult, DeletionPhase, DeletionProgressEvent, DeletionRequest, DeletionService,
 };
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
@@ -81,7 +81,7 @@ pub async fn delete_files(
             let _ = handle.emit(
                 "deletion-progress",
                 DeletionProgressEvent {
-                    phase: "verifying".to_string(),
+                    phase: DeletionPhase::Verifying,
                     completed,
                     total,
                     current_path: files
@@ -95,7 +95,7 @@ pub async fn delete_files(
         let _ = handle.emit(
             "deletion-progress",
             DeletionProgressEvent {
-                phase: "trashing".to_string(),
+                phase: DeletionPhase::Trashing,
                 completed: 0,
                 total: verification.verified.len(),
                 current_path: None,
