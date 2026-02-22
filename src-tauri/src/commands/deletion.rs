@@ -6,7 +6,7 @@ use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 
 #[derive(Debug, Deserialize)]
 pub struct DeleteFilesRequest {
@@ -19,6 +19,13 @@ pub struct DeleteFilesRequest {
     pub group_ids: HashMap<String, i64>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+struct DeletionProgressPayload {
+    current: usize,
+    total: usize,
+    phase: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct DeleteFilesResponse {
     pub result: BatchDeletionResult,
@@ -28,6 +35,7 @@ pub struct DeleteFilesResponse {
 /// Delete files to trash
 #[tauri::command]
 pub async fn delete_files(
+    app: AppHandle,
     request: DeleteFilesRequest,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<DeleteFilesResponse, String> {
@@ -67,10 +75,20 @@ pub async fn delete_files(
     let group_ids = request.group_ids;
 
     // Perform deletion (blocking I/O, run on blocking thread)
+    // Emit progress events via the Tauri AppHandle
     let files = request.files;
     let result = tokio::task::spawn_blocking(move || {
         let mut service = DeletionService::new();
-        service.delete_batch(&files)
+        service.delete_batch(&files, |current, total, phase| {
+            let _ = app.emit(
+                "deletion-progress",
+                DeletionProgressPayload {
+                    current,
+                    total,
+                    phase: phase.to_string(),
+                },
+            );
+        })
     })
     .await
     .map_err(|e| e.to_string())?;

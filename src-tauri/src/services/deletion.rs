@@ -61,6 +61,7 @@ impl DeletionService {
     }
 
     /// Delete a single file to trash
+    #[cfg(test)]
     pub fn delete_to_trash(&mut self, request: &DeletionRequest) -> DeletionResult {
         let path = Path::new(&request.path);
 
@@ -102,19 +103,101 @@ impl DeletionService {
         }
     }
 
-    /// Delete multiple files to trash
-    pub fn delete_batch(&mut self, requests: &[DeletionRequest]) -> BatchDeletionResult {
+    /// Delete multiple files to trash using a two-phase approach:
+    /// 1. Verify all file hashes (reports per-file progress via callback)
+    /// 2. Batch-trash all verified files with `trash::delete_all()` (single OS notification)
+    ///
+    /// The `on_progress` callback receives `(current, total, phase)` where phase is
+    /// `"verifying"` during hash checks or `"trashing"` before the batch trash call.
+    /// Falls back to individual deletion if the batch operation fails.
+    pub fn delete_batch(
+        &mut self,
+        requests: &[DeletionRequest],
+        mut on_progress: impl FnMut(usize, usize, &str),
+    ) -> BatchDeletionResult {
+        let total = requests.len();
+        let mut verified: Vec<&DeletionRequest> = Vec::new();
+        let mut failed: Vec<DeletionResult> = Vec::new();
+
+        // Phase 1: Verify all file hashes before deleting anything
+        for (i, request) in requests.iter().enumerate() {
+            let path = Path::new(&request.path);
+            match self.verify_file(path, &request.expected_hash) {
+                Ok(true) => {
+                    verified.push(request);
+                }
+                Ok(false) => {
+                    failed.push(DeletionResult {
+                        path: request.path.clone(),
+                        success: false,
+                        error: Some("File changed since scan".to_string()),
+                        size: request.size,
+                    });
+                }
+                Err(e) => {
+                    failed.push(DeletionResult {
+                        path: request.path.clone(),
+                        success: false,
+                        error: Some(e.to_string()),
+                        size: request.size,
+                    });
+                }
+            }
+            on_progress(i + 1, total, "verifying");
+        }
+
+        if verified.is_empty() {
+            return BatchDeletionResult {
+                successful: Vec::new(),
+                failed,
+                total_freed: 0,
+            };
+        }
+
+        // Phase 2: Batch-trash all verified files (single OS notification/sound)
+        on_progress(0, verified.len(), "trashing");
+
+        let verified_paths: Vec<&Path> = verified.iter().map(|r| Path::new(&r.path)).collect();
+
         let mut successful = Vec::new();
-        let mut failed = Vec::new();
         let mut total_freed: u64 = 0;
 
-        for request in requests {
-            let result = self.delete_to_trash(request);
-            if result.success {
-                total_freed += result.size;
-                successful.push(result);
-            } else {
-                failed.push(result);
+        match trash::delete_all(&verified_paths) {
+            Ok(()) => {
+                for req in &verified {
+                    total_freed += req.size;
+                    successful.push(DeletionResult {
+                        path: req.path.clone(),
+                        success: true,
+                        error: None,
+                        size: req.size,
+                    });
+                }
+            }
+            Err(_) => {
+                // Batch failed — fall back to individual deletion to identify failures
+                for req in &verified {
+                    let path = Path::new(&req.path);
+                    match trash::delete(path) {
+                        Ok(()) => {
+                            total_freed += req.size;
+                            successful.push(DeletionResult {
+                                path: req.path.clone(),
+                                success: true,
+                                error: None,
+                                size: req.size,
+                            });
+                        }
+                        Err(e) => {
+                            failed.push(DeletionResult {
+                                path: req.path.clone(),
+                                success: false,
+                                error: Some(e.to_string()),
+                                size: req.size,
+                            });
+                        }
+                    }
+                }
             }
         }
 
@@ -269,11 +352,20 @@ mod tests {
             },
         ];
 
+        let mut progress_calls = Vec::new();
         let mut service = DeletionService::new();
-        let batch_result = service.delete_batch(&requests);
+        let batch_result = service.delete_batch(&requests, |current, total, phase| {
+            progress_calls.push((current, total, phase.to_string()));
+        });
 
         assert_eq!(batch_result.successful.len(), 1);
         assert_eq!(batch_result.failed.len(), 1);
         assert_eq!(batch_result.total_freed, 12);
+
+        // Should have progress calls for verification (2 files) + 1 trashing call
+        assert_eq!(progress_calls.len(), 3);
+        assert_eq!(progress_calls[0], (1, 2, "verifying".to_string()));
+        assert_eq!(progress_calls[1], (2, 2, "verifying".to_string()));
+        assert_eq!(progress_calls[2], (0, 1, "trashing".to_string()));
     }
 }

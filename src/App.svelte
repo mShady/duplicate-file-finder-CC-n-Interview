@@ -1,13 +1,16 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { listen } from '@tauri-apps/api/event';
+  import type { UnlistenFn } from '@tauri-apps/api/event';
   import AppHeader from './lib/components/AppHeader.svelte';
   import HomeView from './lib/components/HomeView.svelte';
   import ScanningView from './lib/components/ScanningView.svelte';
   import ResultsView from './lib/components/ResultsView.svelte';
   import DeleteConfirmDialog from './lib/components/DeleteConfirmDialog.svelte';
+  import DeleteProgressDialog from './lib/components/DeleteProgressDialog.svelte';
   import DeleteSummaryDialog from './lib/components/DeleteSummaryDialog.svelte';
   import HistoryDialog from './lib/components/HistoryDialog.svelte';
-  import type { BatchDeletionResult } from '$lib/types';
+  import type { BatchDeletionResult, DeletionProgressEvent } from '$lib/types';
   import {
     startScan as apiStartScan,
     cancelScan as apiCancelScan,
@@ -32,10 +35,14 @@
 
   // Deletion dialog state
   let showDeleteConfirm = $state(false);
+  let showDeleteProgress = $state(false);
   let showDeleteSummary = $state(false);
   let pendingDeletionFiles = $state<string[]>([]);
+  let deletionProgress = $state<DeletionProgressEvent | null>(null);
   let deletionResult = $state<BatchDeletionResult | null>(null);
   let showDeletionHistory = $state(false);
+
+  let unlistenDeletionProgress: UnlistenFn | null = null;
 
   onMount(async () => {
     await loadLastScanPaths();
@@ -47,6 +54,11 @@
       onError: () => {
         currentView = 'home';
       },
+    });
+
+    // Listen for deletion progress events from backend
+    unlistenDeletionProgress = await listen<DeletionProgressEvent>('deletion-progress', (event) => {
+      deletionProgress = event.payload;
     });
 
     // Check for existing results
@@ -62,6 +74,7 @@
 
   onDestroy(() => {
     scanStore.cleanup();
+    unlistenDeletionProgress?.();
   });
 
   async function loadLastScanPaths() {
@@ -137,6 +150,10 @@
     showDeleteConfirm = false;
     scanStore.error = null;
 
+    // Show progress dialog
+    deletionProgress = null;
+    showDeleteProgress = true;
+
     const requests = buildDeletionRequests(scanStore.detectionResult, pendingDeletionFiles);
     const { keptPaths, groupIds } = buildKeptPathsAndGroupIds(
       scanStore.detectionResult,
@@ -151,6 +168,7 @@
       });
 
       deletionResult = response.result;
+      showDeleteProgress = false;
       showDeleteSummary = true;
 
       if (response.result.successful.length > 0) {
@@ -158,9 +176,11 @@
         scanStore.detectionResult = computeUpdatedResults(scanStore.detectionResult, deletedPaths);
       }
     } catch (e) {
+      showDeleteProgress = false;
       scanStore.error = e instanceof Error ? e.message : String(e);
     } finally {
       pendingDeletionFiles = [];
+      deletionProgress = null;
     }
   }
 
@@ -244,6 +264,10 @@
     onConfirm={handleConfirmDelete}
     onCancel={handleCancelDelete}
   />
+{/if}
+
+{#if showDeleteProgress}
+  <DeleteProgressDialog progress={deletionProgress} />
 {/if}
 
 {#if showDeleteSummary && deletionResult}
