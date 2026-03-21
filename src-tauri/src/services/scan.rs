@@ -199,7 +199,10 @@ impl ScanService {
         {
             let db_guard = db.lock().await;
 
-            // Store duplicate groups and files
+            // Store duplicate groups and files, tracking failures
+            let total_groups = detection_result.groups.len();
+            let mut failed_groups: usize = 0;
+
             for group in &detection_result.groups {
                 match queries::duplicate_groups::create(
                     db_guard.pool(),
@@ -232,8 +235,29 @@ impl ScanService {
                     }
                     Err(e) => {
                         log::warn!("Failed to create duplicate group: {e}");
+                        failed_groups += 1;
                     }
                 }
+            }
+
+            // If all group inserts failed, treat the scan as failed
+            if total_groups > 0 && failed_groups == total_groups {
+                log::error!(
+                    "All {total_groups} group inserts failed — marking scan as failed"
+                );
+                let _ = queries::scan_sessions::update_status(
+                    db_guard.pool(),
+                    session_id,
+                    ScanStatus::Failed,
+                )
+                .await;
+                sink.on_error(
+                    session_id,
+                    &format!(
+                        "Failed to persist scan results: all {total_groups} group inserts failed"
+                    ),
+                );
+                return;
             }
 
             // Update session stats
