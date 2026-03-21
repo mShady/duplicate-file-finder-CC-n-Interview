@@ -531,4 +531,210 @@ mod tests {
         assert_eq!(default.errors, 0);
         assert_eq!(default.duration_ms, 0);
     }
+
+    /// Readable handle to captured events from `DetailedMockEventSink`.
+    struct CapturedEvents {
+        events: Arc<Mutex<Vec<String>>>,
+        completions: Arc<Mutex<Vec<ScanComplete>>>,
+        errors: Arc<Mutex<Vec<(i64, String)>>>,
+    }
+
+    /// Captures event payloads (not just names) for detailed assertion.
+    struct DetailedMockEventSink {
+        events: Arc<Mutex<Vec<String>>>,
+        completions: Arc<Mutex<Vec<ScanComplete>>>,
+        errors: Arc<Mutex<Vec<(i64, String)>>>,
+    }
+
+    impl DetailedMockEventSink {
+        fn new() -> (Self, CapturedEvents) {
+            let events = Arc::new(Mutex::new(Vec::new()));
+            let completions = Arc::new(Mutex::new(Vec::new()));
+            let errors = Arc::new(Mutex::new(Vec::new()));
+            (
+                Self {
+                    events: Arc::clone(&events),
+                    completions: Arc::clone(&completions),
+                    errors: Arc::clone(&errors),
+                },
+                CapturedEvents {
+                    events,
+                    completions,
+                    errors,
+                },
+            )
+        }
+    }
+
+    impl ScanEventSink for DetailedMockEventSink {
+        fn on_progress(&self, _progress: &ScanProgress) {
+            self.events.lock().unwrap().push("progress".into());
+        }
+        fn on_phase(&self, _phase: &str, _message: &str) {
+            self.events.lock().unwrap().push("phase".into());
+        }
+        fn on_error(&self, session_id: i64, error: &str) {
+            self.events.lock().unwrap().push("error".into());
+            self.errors
+                .lock()
+                .unwrap()
+                .push((session_id, error.to_string()));
+        }
+        fn on_complete(&self, completion: &ScanComplete) {
+            self.events.lock().unwrap().push("complete".into());
+            self.completions.lock().unwrap().push(completion.clone());
+        }
+        fn on_results(&self, _results: &DetectionResult) {
+            self.events.lock().unwrap().push("results".into());
+        }
+    }
+
+    /// Helper: set up a DB and scan session for a given temp directory.
+    async fn setup_scan_db(
+        paths: &[std::path::PathBuf],
+    ) -> (Arc<AsyncMutex<crate::db::Database>>, i64) {
+        let db_dir = tempfile::tempdir().unwrap();
+        let db = crate::db::Database::new(db_dir.path().join("test.db"))
+            .await
+            .unwrap();
+        let db = Arc::new(AsyncMutex::new(db));
+
+        let session_id = {
+            let db_guard = db.lock().await;
+            let path_strings: Vec<String> = paths.iter().map(|p| p.display().to_string()).collect();
+            queries::scan_sessions::create(db_guard.pool(), &path_strings)
+                .await
+                .unwrap()
+        };
+
+        (db, session_id)
+    }
+
+    #[tokio::test]
+    async fn test_scan_service_persists_groups_to_db() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let content = b"duplicate content for persistence test";
+        std::fs::write(temp_dir.path().join("dup1.txt"), content).unwrap();
+        std::fs::write(temp_dir.path().join("dup2.txt"), content).unwrap();
+
+        let config = ScanConfig {
+            paths: vec![temp_dir.path().to_path_buf()],
+            follow_symlinks: false,
+            max_depth: None,
+            parallelism: crate::scanner::ParallelismMode::Light,
+        };
+
+        let (db, session_id) = setup_scan_db(&config.paths).await;
+
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let (sink, _captured) = DetailedMockEventSink::new();
+
+        ScanService::run(config, session_id, cancel_flag, Arc::clone(&db), sink).await;
+
+        // Verify groups were persisted to DB
+        let db_guard = db.lock().await;
+        let groups =
+            queries::duplicate_groups::get_by_session(db_guard.pool(), session_id)
+                .await
+                .unwrap();
+
+        assert_eq!(groups.len(), 1, "should persist exactly 1 duplicate group");
+        assert_eq!(groups[0].file_count, 2);
+        assert!(groups[0].wasted_space > 0);
+    }
+
+    #[tokio::test]
+    async fn test_scan_service_session_status_completed() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        std::fs::write(temp_dir.path().join("file.txt"), b"content").unwrap();
+
+        let config = ScanConfig {
+            paths: vec![temp_dir.path().to_path_buf()],
+            follow_symlinks: false,
+            max_depth: None,
+            parallelism: crate::scanner::ParallelismMode::Light,
+        };
+
+        let (db, session_id) = setup_scan_db(&config.paths).await;
+
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let (sink, _events) = MockEventSink::new();
+
+        ScanService::run(config, session_id, cancel_flag, Arc::clone(&db), sink).await;
+
+        // Verify session status is "completed" in DB
+        let db_guard = db.lock().await;
+        let session = queries::scan_sessions::get_latest(db_guard.pool())
+            .await
+            .unwrap()
+            .expect("session should exist");
+
+        assert_eq!(session.status, "completed");
+        assert!(session.completed_at.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_scan_complete_event_has_correct_counts() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let content = b"duplicate content for event test";
+        std::fs::write(temp_dir.path().join("dup1.txt"), content).unwrap();
+        std::fs::write(temp_dir.path().join("dup2.txt"), content).unwrap();
+        std::fs::write(temp_dir.path().join("unique.txt"), b"unique content").unwrap();
+
+        let config = ScanConfig {
+            paths: vec![temp_dir.path().to_path_buf()],
+            follow_symlinks: false,
+            max_depth: None,
+            parallelism: crate::scanner::ParallelismMode::Light,
+        };
+
+        let (db, session_id) = setup_scan_db(&config.paths).await;
+
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let (sink, captured) = DetailedMockEventSink::new();
+
+        ScanService::run(config, session_id, cancel_flag, db, sink).await;
+
+        let completions = captured.completions.lock().unwrap();
+        assert_eq!(completions.len(), 1, "should emit exactly 1 complete event");
+
+        let complete = &completions[0];
+        assert_eq!(complete.duplicate_groups, 1);
+        assert_eq!(complete.duplicate_files, 1); // 2 files in group, 1 is duplicate
+        assert_eq!(complete.total_files, 3);
+        assert!(complete.wasted_space > 0);
+
+        let errors = captured.errors.lock().unwrap();
+        assert!(errors.is_empty(), "no errors on successful scan");
+    }
+
+    #[tokio::test]
+    async fn test_scan_service_no_error_on_success() {
+        // Baseline: a normal scan emits no error events.
+        // After fixing finding #4, DB failures WILL emit errors —
+        // this test ensures the happy path stays clean.
+        let temp_dir = tempfile::tempdir().unwrap();
+        std::fs::write(temp_dir.path().join("file.txt"), b"some content").unwrap();
+
+        let config = ScanConfig {
+            paths: vec![temp_dir.path().to_path_buf()],
+            follow_symlinks: false,
+            max_depth: None,
+            parallelism: crate::scanner::ParallelismMode::Light,
+        };
+
+        let (db, session_id) = setup_scan_db(&config.paths).await;
+
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let (sink, captured) = DetailedMockEventSink::new();
+
+        ScanService::run(config, session_id, cancel_flag, db, sink).await;
+
+        let events = captured.events.lock().unwrap();
+        assert!(events.contains(&"complete".to_string()));
+        assert!(!events.contains(&"error".to_string()));
+
+        let errors = captured.errors.lock().unwrap();
+        assert!(errors.is_empty());
+    }
 }
