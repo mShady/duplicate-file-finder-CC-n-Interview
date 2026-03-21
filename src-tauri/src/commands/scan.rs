@@ -231,7 +231,6 @@ pub async fn is_scanning(state: State<'_, Mutex<AppState>>) -> Result<bool, Stri
 
 /// Get the latest scan results
 #[tauri::command]
-#[allow(clippy::cast_sign_loss)]
 pub async fn get_scan_results(
     state: State<'_, Mutex<AppState>>,
 ) -> Result<Option<DetectionResult>, String> {
@@ -270,7 +269,7 @@ pub async fn get_scan_results(
             .enumerate()
             .map(|(i, f)| crate::scanner::DuplicateFile {
                 path: PathBuf::from(&f.path),
-                size: f.size as u64,
+                size: f.size.try_into().unwrap_or(0u64),
                 created_at: f.created_at,
                 modified_at: f.modified_at,
                 is_original: i == 0, // First file (oldest) is original
@@ -282,19 +281,19 @@ pub async fn get_scan_results(
         }
 
         groups.push(crate::scanner::DuplicateGroup {
-            id: db_group.id as u64,
+            id: db_group.id.try_into().unwrap_or(0u64),
             hash: db_group.hash,
-            file_size: db_group.file_size as u64,
+            file_size: db_group.file_size.try_into().unwrap_or(0u64),
             files,
-            wasted_space: db_group.wasted_space as u64,
+            wasted_space: db_group.wasted_space.try_into().unwrap_or(0u64),
         });
     }
 
     Ok(Some(DetectionResult {
         groups,
         duplicate_count: total_duplicate_count,
-        total_wasted_space: session.wasted_space as u64,
-        unique_files: (session.total_files as u64).saturating_sub(total_duplicate_count),
+        total_wasted_space: session.wasted_space.try_into().unwrap_or(0u64),
+        unique_files: (session.total_files.try_into().unwrap_or(0u64)).saturating_sub(total_duplicate_count),
         stats: crate::scanner::DetectionStats::default(),
     }))
 }
