@@ -121,8 +121,8 @@ fn test_walk_with_callback_error_handling() {
 
 #### Automated Verification:
 
-- [ ] `cargo test services::scan::tests` passes
-- [ ] `cargo test scanner::tests` passes
+- [x] `cargo test services::scan::tests` passes — 10 tests (8 existing + 2 new)
+- [x] `cargo test scanner::tests` passes — 12 tests (11 existing + 1 new)
 
 ---
 
