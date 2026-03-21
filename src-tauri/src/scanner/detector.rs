@@ -339,11 +339,11 @@ mod tests {
         let metadata = std::fs::metadata(&path).unwrap();
         let created = metadata
             .created()
-            .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64)
+            .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs().cast_signed())
             .unwrap_or(0);
         let modified = metadata
             .modified()
-            .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64)
+            .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs().cast_signed())
             .unwrap_or(0);
 
         FileInfo {
