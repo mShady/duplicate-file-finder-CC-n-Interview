@@ -195,38 +195,61 @@ impl ScanService {
             detection_result.total_wasted_space
         );
 
-        // Phase 3: Store results in database
+        // Phase 3: Store results in database inside a single transaction
+        // to avoid thousands of sequential round-trips under the mutex.
         {
             let db_guard = db.lock().await;
 
-            // Store duplicate groups and files, tracking failures
             let total_groups = detection_result.groups.len();
             let mut failed_groups: usize = 0;
 
+            // Use a transaction to batch all inserts into a single disk sync
+            let mut tx = match sqlx::pool::Pool::begin(db_guard.pool()).await {
+                Ok(tx) => tx,
+                Err(e) => {
+                    log::error!("Failed to begin transaction: {e}");
+                    let _ = queries::scan_sessions::update_status(
+                        db_guard.pool(),
+                        session_id,
+                        ScanStatus::Failed,
+                    )
+                    .await;
+                    sink.on_error(
+                        session_id,
+                        &format!("Failed to persist scan results: {e}"),
+                    );
+                    return;
+                }
+            };
+
             for group in &detection_result.groups {
-                match queries::duplicate_groups::create(
-                    db_guard.pool(),
-                    &group.hash,
-                    group.file_size as i64,
-                    group.files.len() as i32,
-                    group.wasted_space as i64,
-                    Some(session_id),
+                match sqlx::query(
+                    "INSERT INTO duplicate_groups (hash, file_size, file_count, wasted_space, scan_session_id)
+                     VALUES (?, ?, ?, ?, ?) RETURNING id",
                 )
+                .bind(&group.hash)
+                .bind(group.file_size as i64)
+                .bind(group.files.len() as i32)
+                .bind(group.wasted_space as i64)
+                .bind(Some(session_id))
+                .fetch_one(&mut *tx)
                 .await
                 {
-                    Ok(group_id) => {
+                    Ok(row) => {
+                        let group_id: i64 = sqlx::Row::get(&row, 0);
                         for file in &group.files {
-                            if let Err(e) = queries::scanned_files::insert(
-                                db_guard.pool(),
-                                &file.path.display().to_string(),
-                                file.size as i64,
-                                None,
-                                Some(&group.hash),
-                                file.created_at,
-                                file.modified_at,
-                                Some(group_id),
-                                Some(session_id),
+                            if let Err(e) = sqlx::query(
+                                "INSERT INTO scanned_files (path, size, partial_hash, full_hash, created_at, modified_at, group_id, scan_session_id)
+                                 VALUES (?, ?, NULL, ?, ?, ?, ?, ?)",
                             )
+                            .bind(file.path.display().to_string())
+                            .bind(file.size as i64)
+                            .bind(Some(&group.hash))
+                            .bind(file.created_at)
+                            .bind(file.modified_at)
+                            .bind(Some(group_id))
+                            .bind(Some(session_id))
+                            .execute(&mut *tx)
                             .await
                             {
                                 log::warn!("Failed to insert scanned file: {e}");
@@ -240,11 +263,12 @@ impl ScanService {
                 }
             }
 
-            // If all group inserts failed, treat the scan as failed
+            // If all group inserts failed, roll back and treat the scan as failed
             if total_groups > 0 && failed_groups == total_groups {
                 log::error!(
                     "All {total_groups} group inserts failed — marking scan as failed"
                 );
+                let _ = tx.rollback().await;
                 let _ = queries::scan_sessions::update_status(
                     db_guard.pool(),
                     session_id,
@@ -260,7 +284,22 @@ impl ScanService {
                 return;
             }
 
-            // Update session stats
+            if let Err(e) = tx.commit().await {
+                log::error!("Failed to commit scan results transaction: {e}");
+                let _ = queries::scan_sessions::update_status(
+                    db_guard.pool(),
+                    session_id,
+                    ScanStatus::Failed,
+                )
+                .await;
+                sink.on_error(
+                    session_id,
+                    &format!("Failed to commit scan results: {e}"),
+                );
+                return;
+            }
+
+            // Update session stats (outside the transaction since the groups are committed)
             if let Err(e) = queries::scan_sessions::update_stats(
                 db_guard.pool(),
                 session_id,
