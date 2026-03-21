@@ -455,13 +455,13 @@ mod tests {
         let dir = tempdir().unwrap();
         let content = b"Test content";
 
-        let file1 = create_test_file(dir.path(), "newer.txt", content);
-        let mut file2 = create_test_file(dir.path(), "older.txt", content);
+        let newer = create_test_file(dir.path(), "newer.txt", content);
+        let mut older = create_test_file(dir.path(), "older.txt", content);
 
-        // Manually set file2 as older
-        file2.created_at = file1.created_at - 1000;
+        // Manually set older file's creation time
+        older.created_at = newer.created_at - 1000;
 
-        let files = vec![file1, file2];
+        let files = vec![newer, older];
 
         let mut detector = DuplicateDetector::new();
         let result = detector.detect(files).unwrap();
