@@ -187,8 +187,8 @@ async fn test_scan_service_no_error_on_success() {
 
 #### Automated Verification:
 
-- [ ] `cargo test services::scan::tests` passes
-- [ ] All existing 68 tests still pass
+- [x] `cargo test services::scan::tests` passes — 14 tests (10 existing + 4 new)
+- [x] All tests pass — 78 total (68 original + 10 new across phases 1-3)
 
 ---
 
