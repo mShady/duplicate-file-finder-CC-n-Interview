@@ -67,8 +67,8 @@ async fn test_db_negative_value_cast_behavior() {
 
 #### Automated Verification:
 
-- [ ] `cargo test db::tests` passes (or wherever we place these)
-- [ ] `cargo clippy --all-targets -- -D warnings` clean
+- [x] `cargo test db::tests` passes — 5 tests (2 existing + 3 new)
+- [x] `cargo clippy --all-targets -- -D warnings` clean
 
 ---
 
