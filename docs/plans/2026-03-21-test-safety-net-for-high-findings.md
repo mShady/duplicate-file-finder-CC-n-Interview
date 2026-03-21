@@ -232,8 +232,8 @@ async fn test_scan_service_cancelled_emits_error_event() {
 
 #### Automated Verification:
 
-- [ ] `cargo test services::scan::tests` passes
-- [ ] No test hangs or deadlocks (timeout after 10s)
+- [x] `cargo test services::scan::tests` passes — 17 tests (14 existing + 3 new)
+- [x] No test hangs or deadlocks — all completed in <1s
 
 ---
 
