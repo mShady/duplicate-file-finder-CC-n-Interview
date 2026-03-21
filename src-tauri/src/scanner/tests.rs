@@ -233,4 +233,37 @@ mod integration_tests {
         assert!(!info.is_symlink);
         assert!(info.created_at > 0 || info.modified_at > 0);
     }
+
+    #[test]
+    fn test_walk_with_callback_error_handling() {
+        use crate::scanner::ScanError;
+
+        let test_dir = create_test_structure();
+
+        let config = ScanConfig {
+            paths: vec![test_dir.path().to_path_buf()],
+            follow_symlinks: false,
+            max_depth: None,
+            parallelism: ParallelismMode::Normal,
+        };
+
+        let walker = DirectoryWalker::new(config);
+        let mut call_count = 0u32;
+
+        // Callback that fails on every file
+        let result = walker.walk_with_callback(|_file_info| {
+            call_count += 1;
+            Err(ScanError::Path("intentional test error".to_string()))
+        });
+
+        // Walk should succeed even though all callbacks failed
+        let _stats = result.unwrap();
+
+        // All files were visited (callback was called) but all errored
+        assert!(call_count > 0, "callback should have been called at least once");
+
+        // The walker counts callback errors as skipped files via progress tracker.
+        // stats.errors comes from WalkDir entry errors, not callback errors.
+        // This documents the current behavior for the safety net.
+    }
 }

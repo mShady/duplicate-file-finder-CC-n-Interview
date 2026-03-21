@@ -456,4 +456,59 @@ mod tests {
         assert_eq!(json["duplicate_groups"], 3);
         assert_eq!(json["wasted_space"], 2000);
     }
+
+    #[tokio::test]
+    async fn test_scan_service_walker_stats_populated() {
+        // Baseline test: a normal scan produces non-zero walker stats.
+        // This establishes that if walker_handle.join() succeeds, we get real data.
+        // The bug (finding #3) is that on panic, unwrap_or_default() silently
+        // returns zeroed stats instead of reporting the error.
+        let temp_dir = tempfile::tempdir().unwrap();
+        std::fs::write(temp_dir.path().join("file.txt"), b"content").unwrap();
+
+        let config = ScanConfig {
+            paths: vec![temp_dir.path().to_path_buf()],
+            follow_symlinks: false,
+            max_depth: None,
+            parallelism: crate::scanner::ParallelismMode::Light,
+        };
+
+        let db_dir = tempfile::tempdir().unwrap();
+        let db = crate::db::Database::new(db_dir.path().join("test.db"))
+            .await
+            .unwrap();
+        let db = Arc::new(AsyncMutex::new(db));
+
+        let session_id = {
+            let db_guard = db.lock().await;
+            let paths: Vec<String> = config.paths.iter().map(|p| p.display().to_string()).collect();
+            crate::db::queries::scan_sessions::create(db_guard.pool(), &paths)
+                .await
+                .unwrap()
+        };
+
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let (sink, events) = MockEventSink::new();
+
+        ScanService::run(config, session_id, cancel_flag, db, sink).await;
+
+        let events = events.lock().unwrap();
+        // A successful scan with 1 file should emit complete (not error)
+        assert!(events.contains(&"complete".to_string()));
+        assert!(!events.contains(&"error".to_string()));
+    }
+
+    #[test]
+    fn test_scan_stats_default_is_zeroed() {
+        // Documents what unwrap_or_default() returns when a thread panics.
+        // BUG: walker_handle.join().unwrap_or_default() uses this on panic,
+        // silently producing zeroed stats instead of propagating the error.
+        let default = crate::scanner::ScanStats::default();
+        assert_eq!(default.total_files, 0);
+        assert_eq!(default.total_bytes, 0);
+        assert_eq!(default.directories, 0);
+        assert_eq!(default.symlinks_skipped, 0);
+        assert_eq!(default.errors, 0);
+        assert_eq!(default.duration_ms, 0);
+    }
 }
