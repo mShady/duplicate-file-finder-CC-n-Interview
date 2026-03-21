@@ -123,4 +123,116 @@ mod tests {
 
         assert_eq!(result.0, 1);
     }
+
+    /// Helper: create a test database and a scan session, returning (`Database`, `session_id`).
+    async fn setup_test_db_with_session() -> (Database, i64) {
+        let temp_dir = tempdir().unwrap();
+        let db = Database::new(temp_dir.path().join("test.db"))
+            .await
+            .unwrap();
+        let session_id =
+            queries::scan_sessions::create(db.pool(), &["/test".to_string()])
+                .await
+                .unwrap();
+        // Mark session as completed so get_scan_results would pick it up
+        queries::scan_sessions::update_status(
+            db.pool(),
+            session_id,
+            models::ScanStatus::Completed,
+        )
+        .await
+        .unwrap();
+        (db, session_id)
+    }
+
+    #[tokio::test]
+    async fn test_db_roundtrip_large_file_size() {
+        let (db, session_id) = setup_test_db_with_session().await;
+
+        // Insert a group with file_size near i64::MAX
+        let large_size: i64 = i64::MAX; // 9_223_372_036_854_775_807
+        let group_id = queries::duplicate_groups::create(
+            db.pool(),
+            "abc123",
+            large_size,
+            2,
+            large_size,
+            Some(session_id),
+        )
+        .await
+        .unwrap();
+
+        // Read it back via the query layer
+        let groups = queries::duplicate_groups::get_by_session(db.pool(), session_id)
+            .await
+            .unwrap();
+
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].id, group_id);
+        // The DB stores i64 faithfully — the bug is in the command layer's `as u64` cast,
+        // not in the DB layer itself. This test confirms the DB round-trip is lossless.
+        assert_eq!(groups[0].file_size, large_size);
+        assert_eq!(groups[0].wasted_space, large_size);
+    }
+
+    #[tokio::test]
+    async fn test_db_roundtrip_zero_wasted_space() {
+        let (db, session_id) = setup_test_db_with_session().await;
+
+        let group_id = queries::duplicate_groups::create(
+            db.pool(),
+            "zerohash",
+            1024,
+            2,
+            0, // zero wasted space
+            Some(session_id),
+        )
+        .await
+        .unwrap();
+
+        let groups = queries::duplicate_groups::get_by_session(db.pool(), session_id)
+            .await
+            .unwrap();
+
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].id, group_id);
+        assert_eq!(groups[0].wasted_space, 0);
+        // 0_i64 as u64 == 0_u64, so this boundary case is safe
+    }
+
+    #[tokio::test]
+    async fn test_db_negative_value_cast_behavior() {
+        let (db, session_id) = setup_test_db_with_session().await;
+
+        // Directly insert a row with negative file_size via raw SQL.
+        // This simulates data corruption or overflow from a u64 > i64::MAX
+        // being stored via `as i64`.
+        sqlx::query(
+            "INSERT INTO duplicate_groups (hash, file_size, file_count, wasted_space, scan_session_id)
+             VALUES ('negativehash', -100, 2, -200, ?)",
+        )
+        .bind(session_id)
+        .execute(db.pool())
+        .await
+        .unwrap();
+
+        let groups = queries::duplicate_groups::get_by_session(db.pool(), session_id)
+            .await
+            .unwrap();
+
+        assert_eq!(groups.len(), 1);
+        // The DB layer returns raw i64 values — negative values are preserved
+        assert_eq!(groups[0].file_size, -100);
+        assert_eq!(groups[0].wasted_space, -200);
+
+        // BUG: The command layer (get_scan_results) does `as u64` on these values,
+        // which wraps -100_i64 to 18446744073709551516_u64 and
+        // -200_i64 to 18446744073709551416_u64.
+        // Documenting the wrap behavior so the fix can be verified:
+        #[allow(clippy::cast_sign_loss)]
+        {
+            assert_eq!(-100_i64 as u64, 18_446_744_073_709_551_516);
+            assert_eq!(-200_i64 as u64, 18_446_744_073_709_551_416);
+        }
+    }
 }
