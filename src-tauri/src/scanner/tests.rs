@@ -163,9 +163,8 @@ mod integration_tests {
     #[test]
     #[cfg(unix)]
     fn test_symlink_skipping() {
-        let test_dir = create_test_structure();
-
         use std::os::unix::fs::symlink;
+        let test_dir = create_test_structure();
         let link_path = test_dir.path().join("link_to_file1");
         symlink(test_dir.path().join("file1.txt"), &link_path).unwrap();
 
