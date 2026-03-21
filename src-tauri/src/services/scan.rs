@@ -134,7 +134,27 @@ impl ScanService {
 
         cancel_linker.abort();
 
-        let walker_stats = walker_handle.join().unwrap_or_default();
+        let walker_stats = match walker_handle.join() {
+            Ok(stats) => stats,
+            Err(panic_payload) => {
+                let panic_msg = panic_payload
+                    .downcast_ref::<&str>()
+                    .copied()
+                    .or_else(|| panic_payload.downcast_ref::<String>().map(String::as_str))
+                    .unwrap_or("unknown panic");
+                log::error!("Walker thread panicked: {panic_msg}");
+                sink.on_error(session_id, &format!("File collection failed: {panic_msg}"));
+
+                let db_guard = db.lock().await;
+                let _ = queries::scan_sessions::update_status(
+                    db_guard.pool(),
+                    session_id,
+                    ScanStatus::Failed,
+                )
+                .await;
+                return;
+            }
+        };
         log::info!(
             "File collection complete: {} files, {} bytes",
             walker_stats.total_files,
