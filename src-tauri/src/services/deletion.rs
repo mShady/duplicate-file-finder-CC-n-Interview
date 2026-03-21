@@ -237,7 +237,7 @@ impl DeletionService {
         }
     }
 
-    /// Delete multiple files to trash (used by tests; production uses verify_batch + trash_verified)
+    /// Delete multiple files to trash (used by tests; production uses `verify_batch` + `trash_verified`)
     #[cfg(test)]
     pub fn delete_batch(&mut self, requests: &[DeletionRequest]) -> BatchDeletionResult {
         let mut successful = Vec::new();
