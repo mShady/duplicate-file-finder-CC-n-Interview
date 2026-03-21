@@ -536,6 +536,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     fn test_large_file_detection() {
         let dir = tempdir().unwrap();
 
