@@ -1,6 +1,5 @@
 //! Scan-related Tauri commands
 
-use crate::db::models::ScanStatus;
 use crate::db::queries;
 use crate::scanner::{
     DetectionResult, ParallelismMode, ScanConfig, ScanProgress,
@@ -171,37 +170,17 @@ pub async fn start_scan(
 /// Cancel the current scan
 #[tauri::command]
 pub async fn cancel_scan(
-    state: State<'_, Mutex<AppState>>,
+    _state: State<'_, Mutex<AppState>>,
     scan_state: State<'_, Mutex<ScanState>>,
 ) -> Result<(), String> {
-    // Set cancel flag
-    {
-        let scan_state = scan_state.lock().map_err(|e| e.to_string())?;
-        if let Some(cancel_flag) = &scan_state.cancel_flag {
-            cancel_flag.store(true, Ordering::Relaxed);
-        } else {
-            return Err("No scan in progress".to_string());
-        }
-    }
-
-    // Update database status
-    {
-        let db = {
-            let state = state.lock().map_err(|e| e.to_string())?;
-            let session_id = state.current_scan_id;
-            let db = state.database();
-            match (db, session_id) {
-                (Some(db), Some(id)) => Some((db, id)),
-                _ => None,
-            }
-        };
-
-        if let Some((db, session_id)) = db {
-            let db = db.lock().await;
-            queries::scan_sessions::update_status(db.pool(), session_id, ScanStatus::Cancelled)
-                .await
-                .map_err(|e| e.to_string())?;
-        }
+    // Only set the cancel flag — ScanService::run() handles the DB status
+    // update when it detects cancellation. This avoids a race condition where
+    // both cancel_scan and ScanService write conflicting statuses.
+    let scan_state = scan_state.lock().map_err(|e| e.to_string())?;
+    if let Some(cancel_flag) = &scan_state.cancel_flag {
+        cancel_flag.store(true, Ordering::Relaxed);
+    } else {
+        return Err("No scan in progress".to_string());
     }
 
     Ok(())
