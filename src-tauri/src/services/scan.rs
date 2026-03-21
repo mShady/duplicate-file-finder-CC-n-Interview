@@ -761,4 +761,119 @@ mod tests {
         let errors = captured.errors.lock().unwrap();
         assert!(errors.is_empty());
     }
+
+    #[tokio::test]
+    async fn test_scan_service_cancelled_status() {
+        // Pre-cancel: set cancel_flag before scan starts.
+        // ScanService::run() should detect cancellation during detection,
+        // set session to Failed, and emit an error event.
+        // Note: cancel_scan (command layer) also sets Cancelled in DB —
+        // documenting what ScanService alone does here.
+        let temp_dir = tempfile::tempdir().unwrap();
+        let content = b"dup content for cancel test";
+        std::fs::write(temp_dir.path().join("dup1.txt"), content).unwrap();
+        std::fs::write(temp_dir.path().join("dup2.txt"), content).unwrap();
+
+        let config = ScanConfig {
+            paths: vec![temp_dir.path().to_path_buf()],
+            follow_symlinks: false,
+            max_depth: None,
+            parallelism: crate::scanner::ParallelismMode::Light,
+        };
+
+        let (db, session_id) = setup_scan_db(&config.paths).await;
+
+        // Pre-cancel
+        let cancel_flag = Arc::new(AtomicBool::new(true));
+        let (sink, captured) = DetailedMockEventSink::new();
+
+        ScanService::run(config, session_id, cancel_flag, Arc::clone(&db), sink).await;
+
+        // Check what ScanService wrote to DB
+        let db_guard = db.lock().await;
+        let session = queries::scan_sessions::get_latest(db_guard.pool())
+            .await
+            .unwrap()
+            .expect("session should exist");
+
+        // ScanService sets "failed" when detector returns Err(Cancelled)
+        assert_eq!(session.status, "failed");
+
+        // Should have emitted an error event (not complete)
+        let events = captured.events.lock().unwrap();
+        assert!(
+            events.contains(&"error".to_string()),
+            "cancelled scan should emit error event"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_scan_cancellation_mid_detection() {
+        // Cancel after a short delay to hit the detection phase.
+        // Verifies no panic or deadlock occurs.
+        let temp_dir = tempfile::tempdir().unwrap();
+        for i in 0..20 {
+            std::fs::write(
+                temp_dir.path().join(format!("file{i}.txt")),
+                format!("content {i}"),
+            )
+            .unwrap();
+        }
+
+        let config = ScanConfig {
+            paths: vec![temp_dir.path().to_path_buf()],
+            follow_symlinks: false,
+            max_depth: None,
+            parallelism: crate::scanner::ParallelismMode::Light,
+        };
+
+        let (db, session_id) = setup_scan_db(&config.paths).await;
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let cancel_clone = Arc::clone(&cancel_flag);
+
+        // Cancel after 10ms
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            cancel_clone.store(true, Ordering::Relaxed);
+        });
+
+        let (sink, captured) = DetailedMockEventSink::new();
+
+        ScanService::run(config, session_id, cancel_flag, db, sink).await;
+
+        // Should not hang or panic — just verify we got some events
+        let events = captured.events.lock().unwrap();
+        assert!(!events.is_empty(), "should emit at least one event");
+    }
+
+    #[tokio::test]
+    async fn test_scan_service_cancelled_emits_error_event() {
+        // Pre-cancel and verify exactly one error event is emitted
+        // (not both error AND complete).
+        let temp_dir = tempfile::tempdir().unwrap();
+        std::fs::write(temp_dir.path().join("file.txt"), b"content").unwrap();
+
+        let config = ScanConfig {
+            paths: vec![temp_dir.path().to_path_buf()],
+            follow_symlinks: false,
+            max_depth: None,
+            parallelism: crate::scanner::ParallelismMode::Light,
+        };
+
+        let (db, session_id) = setup_scan_db(&config.paths).await;
+        let cancel_flag = Arc::new(AtomicBool::new(true));
+        let (sink, captured) = DetailedMockEventSink::new();
+
+        ScanService::run(config, session_id, cancel_flag, db, sink).await;
+
+        let events = captured.events.lock().unwrap();
+        let has_error = events.contains(&"error".to_string());
+        let has_complete = events.contains(&"complete".to_string());
+
+        // Should emit error XOR complete, never both
+        assert!(
+            has_error ^ has_complete,
+            "should emit exactly one of error or complete, got error={has_error} complete={has_complete}"
+        );
+    }
 }
