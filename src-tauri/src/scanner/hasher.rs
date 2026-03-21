@@ -321,6 +321,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::cast_possible_truncation)]
     fn test_partial_hash_different_middle() {
         let dir = tempdir().unwrap();
 
