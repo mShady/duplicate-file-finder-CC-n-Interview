@@ -204,7 +204,7 @@ mod tests {
     #[test]
     fn test_parallelism_thread_count() {
         let light = ParallelismMode::Light.thread_count();
-        assert!(light >= 1 && light <= 2);
+        assert!((1..=2).contains(&light));
 
         let normal = ParallelismMode::Normal.thread_count();
         assert!(normal >= 1);
