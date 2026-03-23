@@ -2,10 +2,11 @@
 
 use super::hasher::FileHasher;
 use super::types::{FileInfo, ScanError};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
 /// A group of duplicate files
@@ -109,8 +110,6 @@ pub struct DetectionStats {
 
 /// Duplicate file detector
 pub struct DuplicateDetector {
-    /// File hasher
-    hasher: FileHasher,
     /// Cancellation flag
     cancelled: Arc<AtomicBool>,
     /// Next group ID
@@ -121,7 +120,6 @@ impl DuplicateDetector {
     /// Create a new duplicate detector
     pub fn new() -> Self {
         Self {
-            hasher: FileHasher::new(),
             cancelled: Arc::new(AtomicBool::new(false)),
             next_group_id: 1,
         }
@@ -218,34 +216,56 @@ impl DuplicateDetector {
         groups
     }
 
-    /// Stage 2: Group by partial hash within size groups
+    /// Stage 2: Group by partial hash within size groups (parallel)
     fn group_by_partial_hash(
-        &mut self,
+        &self,
         size_groups: Vec<(u64, Vec<FileInfo>)>,
         stats: &mut DetectionStats,
     ) -> Result<Vec<(String, u64, Vec<FileInfo>)>, ScanError> {
-        let mut partial_groups: HashMap<(String, u64), Vec<FileInfo>> = HashMap::new();
+        // Flatten all candidate files for parallel hashing
+        let all_files: Vec<FileInfo> = size_groups
+            .into_iter()
+            .flat_map(|(_, files)| files)
+            .collect();
 
-        for (_size, files) in size_groups {
-            for file in files {
-                if self.cancelled.load(Ordering::Relaxed) {
-                    return Err(ScanError::Cancelled);
+        let cancelled = &self.cancelled;
+        let hash_count = AtomicU64::new(0);
+
+        // Hash all files in parallel, each thread gets its own FileHasher
+        let hashed: Vec<(String, FileInfo)> = all_files
+            .into_par_iter()
+            .filter_map(|file| {
+                if cancelled.load(Ordering::Relaxed) {
+                    return None;
                 }
-
-                match self.hasher.partial_hash(&file.path) {
+                let mut hasher = FileHasher::new();
+                match hasher.partial_hash(&file.path) {
                     Ok(hash) => {
-                        stats.partial_hashes += 1;
-                        let key = (hash, file.size);
-                        partial_groups.entry(key).or_default().push(file);
+                        hash_count.fetch_add(1, Ordering::Relaxed);
+                        Some((hash, file))
                     }
                     Err(e) => {
                         log::debug!("Failed to hash {}: {}", file.path.display(), e);
+                        None
                     }
                 }
-            }
+            })
+            .collect();
+
+        if cancelled.load(Ordering::Relaxed) {
+            return Err(ScanError::Cancelled);
         }
 
-        // Filter to only groups with multiple files and return as vec
+        stats.partial_hashes = hash_count.load(Ordering::Relaxed);
+
+        // Group by (hash, size)
+        let mut partial_groups: HashMap<(String, u64), Vec<FileInfo>> = HashMap::new();
+        for (hash, file) in hashed {
+            let key = (hash, file.size);
+            partial_groups.entry(key).or_default().push(file);
+        }
+
+        // Filter to only groups with multiple files
         Ok(partial_groups
             .into_iter()
             .filter(|(_, files)| files.len() > 1)
@@ -253,59 +273,80 @@ impl DuplicateDetector {
             .collect())
     }
 
-    /// Stage 3: Verify duplicates with full hash
+    /// Stage 3: Verify duplicates with full hash (parallel)
     fn verify_with_full_hash(
         &mut self,
         partial_groups: Vec<(String, u64, Vec<FileInfo>)>,
         stats: &mut DetectionStats,
     ) -> Result<Vec<DuplicateGroup>, ScanError> {
-        let mut final_groups: Vec<DuplicateGroup> = Vec::new();
+        // Flatten all files from partial groups for parallel full hashing
+        let all_files: Vec<(u64, FileInfo)> = partial_groups
+            .into_iter()
+            .flat_map(|(_, size, files)| files.into_iter().map(move |f| (size, f)))
+            .collect();
 
-        for (_partial_hash, size, files) in partial_groups {
-            if self.cancelled.load(Ordering::Relaxed) {
-                return Err(ScanError::Cancelled);
-            }
+        let cancelled = &self.cancelled;
+        let hash_count = AtomicU64::new(0);
 
-            // Group by full hash
-            let mut full_hash_groups: HashMap<String, Vec<FileInfo>> = HashMap::new();
-
-            for file in files {
-                match self.hasher.full_hash(&file.path) {
+        // Full-hash all files in parallel
+        let hashed: Vec<(String, u64, FileInfo)> = all_files
+            .into_par_iter()
+            .filter_map(|(size, file)| {
+                if cancelled.load(Ordering::Relaxed) {
+                    return None;
+                }
+                let mut hasher = FileHasher::new();
+                match hasher.full_hash(&file.path) {
                     Ok(hash) => {
-                        stats.full_hashes += 1;
-                        full_hash_groups.entry(hash).or_default().push(file);
+                        hash_count.fetch_add(1, Ordering::Relaxed);
+                        Some((hash, size, file))
                     }
                     Err(e) => {
                         log::debug!("Failed to full hash {}: {}", file.path.display(), e);
+                        None
                     }
                 }
-            }
+            })
+            .collect();
 
-            // Create duplicate groups for files with matching full hashes
-            for (hash, files) in full_hash_groups {
-                if files.len() > 1 {
-                    let mut dup_files: Vec<DuplicateFile> =
-                        files.into_iter().map(DuplicateFile::from).collect();
+        if cancelled.load(Ordering::Relaxed) {
+            return Err(ScanError::Cancelled);
+        }
 
-                    // Mark the oldest file as original
-                    if let Some(oldest_idx) = dup_files
-                        .iter()
-                        .enumerate()
-                        .min_by_key(|(_, f)| f.created_at)
-                        .map(|(i, _)| i)
-                    {
-                        dup_files[oldest_idx].is_original = true;
-                    }
+        stats.full_hashes = hash_count.load(Ordering::Relaxed);
 
-                    let group = DuplicateGroup::new(
-                        self.next_group_id,
-                        hash,
-                        size,
-                        dup_files,
-                    );
-                    self.next_group_id += 1;
-                    final_groups.push(group);
+        // Group by (full_hash, size)
+        let mut full_hash_groups: HashMap<(String, u64), Vec<FileInfo>> = HashMap::new();
+        for (hash, size, file) in hashed {
+            full_hash_groups.entry((hash, size)).or_default().push(file);
+        }
+
+        // Build duplicate groups
+        let mut final_groups: Vec<DuplicateGroup> = Vec::new();
+
+        for ((hash, size), files) in full_hash_groups {
+            if files.len() > 1 {
+                let mut dup_files: Vec<DuplicateFile> =
+                    files.into_iter().map(DuplicateFile::from).collect();
+
+                // Mark the oldest file as original
+                if let Some(oldest_idx) = dup_files
+                    .iter()
+                    .enumerate()
+                    .min_by_key(|(_, f)| f.created_at)
+                    .map(|(i, _)| i)
+                {
+                    dup_files[oldest_idx].is_original = true;
                 }
+
+                let group = DuplicateGroup::new(
+                    self.next_group_id,
+                    hash,
+                    size,
+                    dup_files,
+                );
+                self.next_group_id += 1;
+                final_groups.push(group);
             }
         }
 
