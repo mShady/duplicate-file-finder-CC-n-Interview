@@ -66,12 +66,13 @@ impl FileHasher {
 
         let mut hasher = blake3::Hasher::new();
 
-        // Read first chunk
+        // Reuse self.buffer (64KB) instead of allocating fresh Vec per call
         #[allow(clippy::cast_possible_truncation)]
         let chunk_size = PARTIAL_HASH_CHUNK_SIZE as usize;
-        let mut first_chunk = vec![0u8; chunk_size];
-        file.read_exact(&mut first_chunk)?;
-        hasher.update(&first_chunk);
+
+        // Read first chunk
+        file.read_exact(&mut self.buffer[..chunk_size])?;
+        hasher.update(&self.buffer[..chunk_size]);
 
         // Seek to last chunk
         #[allow(clippy::cast_possible_wrap)]
@@ -79,9 +80,8 @@ impl FileHasher {
         file.seek(SeekFrom::End(neg_chunk))?;
 
         // Read last chunk
-        let mut last_chunk = vec![0u8; chunk_size];
-        file.read_exact(&mut last_chunk)?;
-        hasher.update(&last_chunk);
+        file.read_exact(&mut self.buffer[..chunk_size])?;
+        hasher.update(&self.buffer[..chunk_size]);
 
         Ok(hasher.finalize().to_hex().to_string())
     }
