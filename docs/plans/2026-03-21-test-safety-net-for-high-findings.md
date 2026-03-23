@@ -305,9 +305,9 @@ Run `npm audit fix` or manually update `vitest` and `vite` in `package.json`.
 
 #### Automated Verification:
 
-- [ ] `npm audit` reports no high-severity vulnerabilities
-- [ ] `npm test -- --run` still passes (85 tests)
-- [ ] `npm run build` succeeds
+- [x] `npm audit` reports 0 vulnerabilities (was 13: 5 high, 8 moderate)
+- [x] `npm test -- --run` still passes (85 tests)
+- [x] `npm run build` succeeds
 
 ---
 
