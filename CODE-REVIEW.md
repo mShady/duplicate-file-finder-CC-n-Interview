@@ -1,17 +1,22 @@
 # Code Review
 
-**Date**: 2026-03-21
+**Date**: 2026-03-21 (verified 2026-03-23)
 **Scope**: Full repo (64 source files)
 **Languages**: Rust, TypeScript, Svelte 5
-**Tests**: 85 frontend passed (Vitest), 68 backend passed (cargo test)
-**Dependency Audit**: npm audit — high-severity vulnerability in `devalue` (transitive), moderate in `ajv`, `vite`, `vitest`; cargo audit — not installed
-**Summary**: 0 critical, 8 high (all fixed), 38 medium, 32 low
+**Tests**: 85 frontend passed (Vitest), 88 backend passed (cargo test)
+**Dependency Audit**: npm audit — 0 vulnerabilities; cargo audit — not installed
+**Summary**: 0 critical, 9 high (8 fixed, 1 open), 41 medium, 32 low
+
+## Verification (2026-03-23)
+
+All 8 high-severity findings independently verified as correctly fixed by 11 parallel review agents. The verification also found 1 new high (V1) and 3 new medium (V2-V4) issues introduced by the fixes — marked with a `V` prefix in the findings table below. Finding #88 was also marked FIXED (resolved by fix #6).
 
 ## Findings
 
 | #   | Severity | Category        | Location                                              | Description                                                                                                                                                                                   | Proposed Fix                                                                                                           | Status |
 | --- | -------- | --------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------ |
 | 1   | HIGH     | Architecture    | `src-tauri/src/commands/scan.rs:186-208`              | `cancel_scan` directly updates DB session status, while `ScanService::run()` also updates it on failure/completion. Dual ownership can cause race conditions (Cancelled vs Failed/Completed). | Delegate cancellation DB updates to `ScanService` — let `run()` handle the final status after detecting cancellation.  | FIXED  |
+| V1  | HIGH     | Architecture    | `src-tauri/src/services/scan.rs:226-263`              | Fix #7 introduced raw SQL that bypasses the DAL (`queries.rs`) and is missing the `ON CONFLICT(path) DO UPDATE` clause. Re-scanning same paths would fail with UNIQUE constraint violation.   | Add transaction-accepting variants to the DAL functions and call those instead of raw SQL.                             |        |
 | 2   | HIGH     | Correctness     | `src-tauri/src/commands/scan.rs:273-289`              | DB `i64` fields (`file_size`, `wasted_space`) cast to `u64` with `as u64`. Negative values (from overflow during storage) wrap to huge incorrect values.                                      | Use `.max(0) as u64` or `u64::try_from(value).unwrap_or(0)` for all i64-to-u64 DB casts.                               | FIXED  |
 | 3   | HIGH     | Error Handling  | `src-tauri/src/services/scan.rs:137`                  | `walker_handle.join().unwrap_or_default()` silently swallows thread panics. Walker panic → scan continues with zeroed stats, no error reported.                                               | Match on join result: if Err (panic), log payload and emit scan error event.                                           | FIXED  |
 | 4   | HIGH     | Error Handling  | `src-tauri/src/services/scan.rs:209-241`              | Phase 3 DB persistence logs warnings for individual insert failures but continues. If all writes fail (disk full, DB locked), scan reports success with zero persisted results.               | Track failed write count. If all/most group inserts fail, emit scan error instead of completion.                       | FIXED  |
@@ -38,16 +43,19 @@
 | 25  | MEDIUM   | Error Handling  | `src-tauri/src/commands/scan.rs:37`                   | Five `let _ = self.handle.emit(...)` calls silently discard emit errors. Progress/error/completion events lost with no logging.                                                               | Replace with `if let Err(e) = ... { log::warn!(...) }` at least for critical events.                                   |
 | 26  | MEDIUM   | Error Handling  | `src-tauri/src/commands/scan.rs:154`                  | If Mutex is poisoned during scan cleanup, `is_scanning` is never reset to false. App permanently blocks future scans.                                                                         | Use `AtomicBool` for `is_scanning` to avoid lock dependency in cleanup.                                                |
 | 27  | MEDIUM   | Error Handling  | `src-tauri/src/services/scan.rs:158`                  | Failed session status update (`let _ = update_status(...)`) silently discarded. Session remains 'running' in DB permanently.                                                                  | Log the error from the status update.                                                                                  |
+| V2  | MEDIUM   | Error Handling  | `src-tauri/src/services/scan.rs:173-189`              | Fix #1 removed the only code path that set `ScanStatus::Cancelled`. Cancellation is now always reported as `Failed`. Frontend cannot distinguish user cancel from real failure.               | Match on `ScanError::Cancelled` specifically and set `ScanStatus::Cancelled` (not `Failed`).                           |        |
 | 28  | MEDIUM   | Error Handling  | `src/lib/components/DeletionHistoryPanel.svelte:32`   | Bare `catch {}` silently swallows all errors. User sees '0 files / 0 B freed' with no indication of failure.                                                                                  | Log the error; consider showing a UI indicator.                                                                        |
 | 29  | MEDIUM   | Error Handling  | `src/lib/stores/scanStore.svelte.ts:63`               | `init()` has no try/catch around five sequential `listen()` calls. Any failure → unhandled promise rejection, store stays uninitialized.                                                      | Wrap in try/catch, set `_error`, log failure.                                                                          |
 | 30  | MEDIUM   | Maintainability | `src-tauri/src/scanner/walker.rs:125-384`             | Entry-processing logic (~80 lines) duplicated across `walk()`, `walk_with_callback()`, and `walk_channel()`.                                                                                  | Extract into `process_entry()` helper method.                                                                          |
 | 31  | MEDIUM   | Maintainability | `src-tauri/src/db/queries.rs:196-271`                 | ScanSession row-to-struct mapping duplicated identically in `get_latest()` and `get_paused()`.                                                                                                | Extract `row_to_session()` helper.                                                                                     |
 | 32  | MEDIUM   | Maintainability | `src-tauri/src/commands/scan.rs:235-300`              | God function: 65-line handler with DB row mapping, iteration, and aggregation. Domain logic belongs in service layer.                                                                         | Move reconstruction into `ScanService::get_results()`.                                                                 |
+| V4  | MEDIUM   | Maintainability | `src-tauri/src/services/scan.rs:226-263`              | Same root as V1 — duplicated SQL in two places means schema changes must be updated in both the DAL and the transaction code.                                                                 | Same as V1.                                                                                                            |        |
 | 33  | MEDIUM   | Performance     | `src-tauri/src/scanner/detector.rs:206-219`           | `group_by_size` builds HashMap without pre-sizing. For millions of files, multiple rehashes.                                                                                                  | Use `HashMap::with_capacity(files.len() / 4)`.                                                                         |
 | 34  | MEDIUM   | Performance     | `src-tauri/src/db/queries.rs:729-751`                 | `cleanup_missing_files` builds SQL IN clause with one placeholder per path. 100K+ files → exceeds SQLite max variable count.                                                                  | Process in batches of ~500, or use a temporary table.                                                                  |
 | 35  | MEDIUM   | Performance     | `src/lib/components/DuplicateGroupsList.svelte:53`    | All groups rendered without virtualization. Thousands of groups → slow render, high memory, janky scroll.                                                                                     | Implement virtual scrolling.                                                                                           |
 | 36  | MEDIUM   | Performance     | `src-tauri/src/services/scan.rs:94-102`               | Cancel flag polling every 50ms wastes cycles and adds cancellation latency.                                                                                                                   | Share a single `AtomicBool` directly instead of polling bridge.                                                        |
 | 37  | MEDIUM   | Performance     | `src-tauri/src/scanner/hasher.rs:90-111`              | `full_hash` doesn't leverage BLAKE3's parallel hashing for large files. `full_hash_parallel` exists but is dead code.                                                                         | Use `full_hash_parallel` for files above 1MB threshold.                                                                |
+| V3  | MEDIUM   | Performance     | `src-tauri/src/scanner/detector.rs:241,298`           | Fix #5 creates a new `FileHasher` (64KB allocation) per file inside `par_iter`. 10,000 files = 10,000 alloc/dealloc cycles. Only ~8 alive concurrently, but churn is avoidable.               | Use `par_iter().map_init()` for thread-local `FileHasher` reuse instead of per-file allocation.                        |        |
 | 38  | MEDIUM   | Security        | `src-tauri/src/commands/scan.rs:91`                   | No path validation on user-supplied scan paths. Arbitrary paths accepted without canonicalization or boundary check.                                                                          | Canonicalize with `std::fs::canonicalize()` before scanning.                                                           |
 | 39  | MEDIUM   | Security        | `src-tauri/src/commands/deletion.rs:32-39`            | No validation that deletion paths were part of scan results. Compromised frontend could craft deletion requests for arbitrary files.                                                          | Validate paths against current scan session's `scanned_files` table.                                                   |
 | 40  | MEDIUM   | Security        | `src-tauri/capabilities/default.json:6`               | `shell:allow-open` granted without scope restrictions. Allows opening arbitrary URLs/files via system shell.                                                                                  | Add scope restriction to limit URL schemes.                                                                            |
@@ -98,7 +106,7 @@
 | 85  | LOW      | Simplification  | `src-tauri/src/db/queries.rs:517-553`                 | ScannedFile row mapping duplicated in `get_by_group()` and `get_by_path()`.                                                                                                                   | Extract `row_to_scanned_file()` helper.                                                                                |
 | 86  | LOW      | Simplification  | `src-tauri/src/services/scan.rs:86-102`               | Cancel flag polling task — unnecessary when walker could accept external flag.                                                                                                                | Pass external flag directly to walker.                                                                                 |
 | 87  | LOW      | Simplification  | `src-tauri/src/commands/scan.rs:143-147`              | Two consecutive `app_handle.clone()` calls when one suffices.                                                                                                                                 | Reuse the original for one of the two uses.                                                                            |
-| 88  | LOW      | Simplification  | `src-tauri/src/scanner/hasher.rs:51-87`               | `partial_hash` allocates fresh buffers instead of reusing `self.buffer`.                                                                                                                      | Reuse `self.buffer[..chunk_size]`.                                                                                     |
+| 88  | LOW      | Simplification  | `src-tauri/src/scanner/hasher.rs:51-87`               | `partial_hash` allocates fresh buffers instead of reusing `self.buffer`.                                                                                                                      | Reuse `self.buffer[..chunk_size]`.                                                                                     | FIXED  |
 | 89  | LOW      | Simplification  | `src/lib/utils/deletionOrchestrator.ts:75-90`         | `computePendingDeletionSize` rebuilds file-size map already built in `buildDeletionRequests`.                                                                                                 | Compute size from the `DeletionRequest[]` array directly.                                                              |
 | 90  | LOW      | Types           | `src/lib/types.ts:132`                                | `FileType` union includes `'all'` — a filter sentinel mixed with domain values.                                                                                                               | Use separate `FilterFileType = FileType \| 'all'`.                                                                     |
 | 91  | LOW      | Types           | `src/lib/api/deletion.ts:16`                          | `getDeletionHistorySummary` returns `[number, number]` — positional tuple with no named fields.                                                                                               | Define `DeletionHistorySummary` interface.                                                                             |
@@ -111,6 +119,8 @@
 | 98  | LOW      | Tests           | `src-tauri/src/scanner/detector.rs:28`                | `DuplicateGroup::new()` edge cases (0, 1 files) not directly unit-tested.                                                                                                                     | Add direct constructor tests.                                                                                          |
 
 ## Review Process
+
+### Initial Review (2026-03-21)
 
 | Dimension           | Status   | Notes                                                                                       |
 | ------------------- | -------- | ------------------------------------------------------------------------------------------- |
@@ -125,6 +135,24 @@
 | Maintainability     | Reviewed | Found split state management, repeated boilerplate, magic numbers                           |
 | Architecture        | Reviewed | Found layer violations in scan results and deletion commands, race condition in cancel      |
 | Code vs Docs/Plans  | Reviewed | Compared against 5 plan files. Found unimplemented features (pause/resume, live streaming)  |
+
+### Verification Review (2026-03-23)
+
+All 8 high-severity fixes verified by 11 parallel agents focused on the changed code:
+
+| Dimension           | Verdict             | Notes                                                                 |
+| ------------------- | ------------------- | --------------------------------------------------------------------- |
+| Correctness & Bugs  | All 8 fixes correct | No new correctness bugs introduced                                    |
+| Tests & Coverage    | Adequate            | 88 backend + 85 frontend tests pass; all fix paths exercised          |
+| Error Handling      | 1 new medium found  | Cancellation always reports Failed instead of Cancelled (V2)          |
+| Types & Type Design | Clean               | All conversions type-safe; rayon Send/Sync requirements met           |
+| Comments & Docs     | 1 stale ref found   | Finding #88 resolved by fix #6 but not marked (V5)                    |
+| Simplification      | Clean               | All fixes are minimal correct implementations                         |
+| Security            | npm audit clean     | 0 vulnerabilities (was 13). TOCTOU in deletion noted but pre-existing |
+| Performance         | 1 new medium found  | Per-file FileHasher allocation in par_iter could use map_init (V3)    |
+| Maintainability     | 1 new medium found  | Raw SQL duplicates DAL queries (V4, same root as V1)                  |
+| Architecture        | 1 new high found    | Transaction SQL bypasses DAL, missing ON CONFLICT clause (V1)         |
+| Code vs Docs/Plans  | All FIXED verified  | All 8 status claims independently confirmed                           |
 
 ## Known Test Gaps
 
