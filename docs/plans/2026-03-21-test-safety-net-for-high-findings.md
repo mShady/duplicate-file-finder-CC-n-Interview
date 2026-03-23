@@ -286,8 +286,8 @@ The Phase 3 tests (persists_groups_to_db, session_status_completed) already serv
 
 #### Automated Verification:
 
-- [ ] `cargo test scanner::hasher::tests` passes
-- [ ] All 68+ existing tests still pass
+- [x] `cargo test scanner::hasher::tests` passes — 13 tests (10 existing + 3 new)
+- [x] All tests pass — 84 total
 
 ---
 
