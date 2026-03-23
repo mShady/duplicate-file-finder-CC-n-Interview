@@ -915,4 +915,92 @@ mod tests {
             "should emit exactly one of error or complete, got error={has_error} complete={has_complete}"
         );
     }
+
+    #[tokio::test]
+    async fn test_scan_service_aborts_when_all_group_inserts_fail() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let content = b"duplicate for abort test";
+        std::fs::write(temp_dir.path().join("dup1.txt"), content).unwrap();
+        std::fs::write(temp_dir.path().join("dup2.txt"), content).unwrap();
+
+        let config = ScanConfig {
+            paths: vec![temp_dir.path().to_path_buf()],
+            follow_symlinks: false,
+            max_depth: None,
+            parallelism: crate::scanner::ParallelismMode::Light,
+        };
+
+        let (db, session_id) = setup_scan_db(&config.paths).await;
+
+        // Drop the duplicate_groups table so all INSERTs fail in Phase 3
+        {
+            let db_guard = db.lock().await;
+            sqlx::query("DROP TABLE duplicate_groups")
+                .execute(db_guard.pool())
+                .await
+                .unwrap();
+        }
+
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let (sink, captured) = DetailedMockEventSink::new();
+
+        ScanService::run(config, session_id, cancel_flag, db, sink).await;
+
+        // The scan should emit an error (not complete) because all inserts failed
+        let events = captured.events.lock().unwrap();
+        assert!(
+            events.contains(&"error".to_string()),
+            "should emit error when all group inserts fail"
+        );
+        assert!(
+            !events.contains(&"complete".to_string()),
+            "should NOT emit complete when all group inserts fail"
+        );
+
+        let errors = captured.errors.lock().unwrap();
+        assert!(!errors.is_empty(), "should have at least one error");
+        assert!(
+            errors[0].1.contains("Failed to persist") || errors[0].1.contains("Failed to commit"),
+            "error message should mention persistence failure, got: {}",
+            errors[0].1
+        );
+    }
+
+    /// Extracts a human-readable message from a panic payload,
+    /// using the same logic as `ScanService::run()`.
+    fn extract_panic_message(payload: &(dyn std::any::Any + Send)) -> String {
+        payload
+            .downcast_ref::<&str>()
+            .copied()
+            .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
+            .unwrap_or("unknown panic")
+            .to_string()
+    }
+
+    #[test]
+    fn test_panic_payload_extraction_str() {
+        // panic!("message") produces a &str payload
+        let result = std::panic::catch_unwind(|| panic!("walker exploded"));
+        let msg = extract_panic_message(&*result.unwrap_err());
+        assert_eq!(msg, "walker exploded");
+    }
+
+    #[test]
+    fn test_panic_payload_extraction_string() {
+        // panic!("{}", var) or .unwrap() on Err produces a String payload
+        let result = std::panic::catch_unwind(|| {
+            let reason = "formatted reason".to_string();
+            panic!("{reason}");
+        });
+        let msg = extract_panic_message(&*result.unwrap_err());
+        assert_eq!(msg, "formatted reason");
+    }
+
+    #[test]
+    fn test_panic_payload_extraction_unknown() {
+        // panic with a non-string type falls back to "unknown panic"
+        let result = std::panic::catch_unwind(|| std::panic::panic_any(42_i32));
+        let msg = extract_panic_message(&*result.unwrap_err());
+        assert_eq!(msg, "unknown panic");
+    }
 }
