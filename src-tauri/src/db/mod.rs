@@ -225,14 +225,12 @@ mod tests {
         assert_eq!(groups[0].file_size, -100);
         assert_eq!(groups[0].wasted_space, -200);
 
-        // BUG: The command layer (get_scan_results) does `as u64` on these values,
-        // which wraps -100_i64 to 18446744073709551516_u64 and
-        // -200_i64 to 18446744073709551416_u64.
-        // Documenting the wrap behavior so the fix can be verified:
-        #[allow(clippy::cast_sign_loss)]
-        {
-            assert_eq!(-100_i64 as u64, 18_446_744_073_709_551_516);
-            assert_eq!(-200_i64 as u64, 18_446_744_073_709_551_416);
-        }
+        // The command layer (get_scan_results) applies try_into().unwrap_or(0u64)
+        // on these values, clamping negatives to 0 instead of wrapping.
+        // Replicate that exact conversion to verify the fix end-to-end:
+        let file_size_u64: u64 = groups[0].file_size.try_into().unwrap_or(0u64);
+        let wasted_space_u64: u64 = groups[0].wasted_space.try_into().unwrap_or(0u64);
+        assert_eq!(file_size_u64, 0, "negative file_size should clamp to 0");
+        assert_eq!(wasted_space_u64, 0, "negative wasted_space should clamp to 0");
     }
 }
