@@ -360,4 +360,57 @@ mod tests {
         // Full hashes should be different
         assert_ne!(full1, full2);
     }
+
+    #[test]
+    fn test_full_hash_parallel_matches_sequential() {
+        let dir = tempdir().unwrap();
+
+        // Create a file >1MB to exercise the parallel hashing path
+        let content = vec![0xABu8; 2 * 1024 * 1024]; // 2MB
+        let path = create_test_file(dir.path(), "large.bin", &content);
+
+        let mut hasher = FileHasher::new();
+        let sequential = hasher.full_hash(&path).unwrap();
+        let parallel = hasher.full_hash_parallel(&path).unwrap();
+
+        assert_eq!(sequential, parallel);
+    }
+
+    #[test]
+    fn test_partial_hash_deterministic_across_calls() {
+        let dir = tempdir().unwrap();
+
+        // Create a file large enough for partial hashing (>8KB)
+        let content = vec![0xCDu8; 16384];
+        let path = create_test_file(dir.path(), "repeat.bin", &content);
+
+        let mut hasher = FileHasher::new();
+        let hash1 = hasher.partial_hash(&path).unwrap();
+        let hash2 = hasher.partial_hash(&path).unwrap();
+        let hash3 = hasher.partial_hash(&path).unwrap();
+
+        assert_eq!(hash1, hash2);
+        assert_eq!(hash2, hash3);
+    }
+
+    #[test]
+    fn test_partial_hash_different_files_interleaved() {
+        let dir = tempdir().unwrap();
+
+        // Two distinct files, both large enough for partial hashing
+        let content_a = vec![0xAAu8; 16384];
+        let content_b = vec![0xBBu8; 16384];
+        let path_a = create_test_file(dir.path(), "file_a.bin", &content_a);
+        let path_b = create_test_file(dir.path(), "file_b.bin", &content_b);
+
+        let mut hasher = FileHasher::new();
+
+        // Interleave: A, B, A — verify no buffer contamination
+        let hash_a1 = hasher.partial_hash(&path_a).unwrap();
+        let hash_b = hasher.partial_hash(&path_b).unwrap();
+        let hash_a2 = hasher.partial_hash(&path_a).unwrap();
+
+        assert_eq!(hash_a1, hash_a2, "file_a hash should be stable across interleaved calls");
+        assert_ne!(hash_a1, hash_b, "different files should produce different hashes");
+    }
 }
