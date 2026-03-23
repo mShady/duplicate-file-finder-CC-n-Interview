@@ -126,6 +126,10 @@
 | Architecture        | Reviewed | Found layer violations in scan results and deletion commands, race condition in cancel      |
 | Code vs Docs/Plans  | Reviewed | Compared against 5 plan files. Found unimplemented features (pause/resume, live streaming)  |
 
+## Known Test Gaps
+
+- **Finding #3 (walker panic handling):** The panic-payload extraction logic is unit-tested (3 tests for `&str`, `String`, and unknown payloads), but the full integration path — walker thread panics → `ScanService::run()` catches it → emits error event → sets session to Failed — is not tested. Testing this would require making `DirectoryWalker` accept a trait so a panicking mock can be injected. The fix (10 lines of pattern matching) is structurally straightforward and has been code-reviewed.
+
 ## Limitations
 
 - **cargo audit** is not installed — Rust dependency vulnerabilities could not be checked. Install with `cargo install cargo-audit` and run `cargo audit`.
