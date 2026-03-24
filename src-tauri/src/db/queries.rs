@@ -370,14 +370,19 @@ pub mod duplicate_groups {
     use super::{DuplicateGroup, SqlitePool};
 
     /// Create a new duplicate group
-    pub async fn create(
-        pool: &SqlitePool,
+    ///
+    /// Accepts any `SQLite` executor (pool or transaction).
+    pub async fn create<'e, E>(
+        executor: E,
         hash: &str,
         file_size: i64,
         file_count: i32,
         wasted_space: i64,
         scan_session_id: Option<i64>,
-    ) -> Result<i64, sqlx::Error> {
+    ) -> Result<i64, sqlx::Error>
+    where
+        E: sqlx::SqliteExecutor<'e>,
+    {
         let result = sqlx::query(
             "INSERT INTO duplicate_groups (hash, file_size, file_count, wasted_space, scan_session_id)
              VALUES (?, ?, ?, ?, ?) RETURNING id",
@@ -387,7 +392,7 @@ pub mod duplicate_groups {
         .bind(file_count)
         .bind(wasted_space)
         .bind(scan_session_id)
-        .fetch_one(pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(sqlx::Row::get(&result, 0))
@@ -470,9 +475,12 @@ pub mod scanned_files {
     );
 
     /// Insert a scanned file
+    ///
+    /// Accepts any `SQLite` executor (pool or transaction).
+    /// Uses `ON CONFLICT(path) DO UPDATE` to handle re-scans gracefully.
     #[allow(clippy::too_many_arguments)]
-    pub async fn insert(
-        pool: &SqlitePool,
+    pub async fn insert<'e, E>(
+        executor: E,
         path: &str,
         size: i64,
         partial_hash: Option<&str>,
@@ -481,7 +489,10 @@ pub mod scanned_files {
         modified_at: i64,
         group_id: Option<i64>,
         scan_session_id: Option<i64>,
-    ) -> Result<i64, sqlx::Error> {
+    ) -> Result<i64, sqlx::Error>
+    where
+        E: sqlx::SqliteExecutor<'e>,
+    {
         let result = sqlx::query(
             "INSERT INTO scanned_files (path, size, partial_hash, full_hash, created_at, modified_at, group_id, scan_session_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -504,7 +515,7 @@ pub mod scanned_files {
         .bind(modified_at)
         .bind(group_id)
         .bind(scan_session_id)
-        .fetch_one(pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(sqlx::Row::get(&result, 0))
