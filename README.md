@@ -6,6 +6,8 @@
 
 A desktop application for finding and removing duplicate files, built with Tauri 2 and Svelte 5. Currently targeting **macOS**, with Windows support planned for a later stage.
 
+> **What's this project?** DupliFind is a playground for exploring AI-assisted development with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [CodeLayer](https://www.humanlayer.dev), and [Thariq's Claude Code Interview command](https://gist.github.com/robzolkos/40b70ed2dd045603149c6b3eed4649ad). The app is real and functional — but the primary goal is experimenting with AI-driven workflows.
+
 <!-- TODO: Add screenshot or GIF demo here -->
 <!-- ![DupliFind Screenshot](docs/assets/screenshot.png) -->
 
