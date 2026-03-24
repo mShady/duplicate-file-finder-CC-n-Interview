@@ -47,6 +47,10 @@ curl -s -X POST "https://api.github.com/repos/OWNER/REPO/pulls" \
 
 Always use `/cl:commit` to create commits. Before invoking the command, run `npx prettier --write .` to auto-format so that any Prettier changes are visible in the diff and reflected in the commit message. `/cl:commit` can create multiple commits in a single invocation — group related changes into meaningful commits.
 
+## Code Reviews
+
+All code review reports go in `docs/reviews/`. Use the naming convention `CODE-REVIEW-PR<number>.md` for PR-specific reviews. The main repository-wide review is `docs/reviews/CODE-REVIEW.md`.
+
 ## Dead Code Annotations
 
 The following items have `#[allow(dead_code)]` or `#[allow(unused_imports)]` because they are not yet used in production code but are needed in future plan phases. When a phase starts **using** one of these items, remove its suppression annotation:
