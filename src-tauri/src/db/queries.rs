@@ -864,4 +864,94 @@ mod tests {
         let session = scan_sessions::get_latest(db.pool()).await.unwrap();
         assert_eq!(session.unwrap().status, "completed");
     }
+
+    #[tokio::test]
+    async fn test_duplicate_groups_upsert_on_conflict() {
+        let (db, _dir) = setup_test_db().await;
+
+        // Create a session for the groups
+        let paths = vec!["/test".to_string()];
+        let session_id = scan_sessions::create(db.pool(), &paths).await.unwrap();
+
+        // Insert a group with hash "abc123"
+        let id1 = duplicate_groups::create(db.pool(), "abc123", 1024, 3, 2048, Some(session_id))
+            .await
+            .unwrap();
+        assert!(id1 > 0);
+
+        // Insert again with the same hash but different values — should upsert
+        let id2 = duplicate_groups::create(db.pool(), "abc123", 2048, 5, 8192, Some(session_id))
+            .await
+            .unwrap();
+
+        // Should return the same row id (updated, not a new row)
+        assert_eq!(id1, id2);
+
+        // Verify the values were updated
+        let groups = duplicate_groups::get_by_session(db.pool(), session_id)
+            .await
+            .unwrap();
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].file_size, 2048);
+        assert_eq!(groups[0].file_count, 5);
+        assert_eq!(groups[0].wasted_space, 8192);
+    }
+
+    #[tokio::test]
+    async fn test_scanned_files_upsert_on_conflict() {
+        let (db, _dir) = setup_test_db().await;
+
+        // Create a session and group
+        let paths = vec!["/test".to_string()];
+        let session_id = scan_sessions::create(db.pool(), &paths).await.unwrap();
+        let group_id =
+            duplicate_groups::create(db.pool(), "hash1", 1024, 2, 1024, Some(session_id))
+                .await
+                .unwrap();
+
+        // Insert a file
+        let id1 = scanned_files::insert(
+            db.pool(),
+            "/test/file.txt",
+            1024,
+            Some("partial1"),
+            Some("full1"),
+            1000,
+            2000,
+            Some(group_id),
+            Some(session_id),
+        )
+        .await
+        .unwrap();
+        assert!(id1 > 0);
+
+        // Insert again with same path but different values — should upsert
+        let id2 = scanned_files::insert(
+            db.pool(),
+            "/test/file.txt",
+            2048,
+            Some("partial2"),
+            Some("full2"),
+            3000,
+            4000,
+            Some(group_id),
+            Some(session_id),
+        )
+        .await
+        .unwrap();
+
+        // Should return the same row id
+        assert_eq!(id1, id2);
+
+        // Verify the values were updated
+        let file = scanned_files::get_by_path(db.pool(), "/test/file.txt")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(file.size, 2048);
+        assert_eq!(file.partial_hash, Some("partial2".to_string()));
+        assert_eq!(file.full_hash, Some("full2".to_string()));
+        assert_eq!(file.created_at, 3000);
+        assert_eq!(file.modified_at, 4000);
+    }
 }
