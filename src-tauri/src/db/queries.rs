@@ -369,9 +369,11 @@ pub mod deletion_history {
 pub mod duplicate_groups {
     use super::{DuplicateGroup, SqlitePool};
 
-    /// Create a new duplicate group
+    /// Create or update a duplicate group.
     ///
-    /// Accepts any `SQLite` executor (pool or transaction).
+    /// Accepts any `SqliteExecutor` (pool or transaction).
+    /// Uses `ON CONFLICT(hash) DO UPDATE` to handle re-scans gracefully.
+    /// Returns the row ID (inserted or updated).
     pub async fn create<'e, E>(
         executor: E,
         hash: &str,
@@ -385,7 +387,13 @@ pub mod duplicate_groups {
     {
         let result = sqlx::query(
             "INSERT INTO duplicate_groups (hash, file_size, file_count, wasted_space, scan_session_id)
-             VALUES (?, ?, ?, ?, ?) RETURNING id",
+             VALUES (?, ?, ?, ?, ?)
+             ON CONFLICT(hash) DO UPDATE SET
+                file_size = excluded.file_size,
+                file_count = excluded.file_count,
+                wasted_space = excluded.wasted_space,
+                scan_session_id = excluded.scan_session_id
+             RETURNING id",
         )
         .bind(hash)
         .bind(file_size)
@@ -474,10 +482,11 @@ pub mod scanned_files {
         Option<i64>,
     );
 
-    /// Insert a scanned file
+    /// Insert or update a scanned file.
     ///
-    /// Accepts any `SQLite` executor (pool or transaction).
+    /// Accepts any `SqliteExecutor` (pool or transaction).
     /// Uses `ON CONFLICT(path) DO UPDATE` to handle re-scans gracefully.
+    /// Returns the row ID (inserted or updated).
     #[allow(clippy::too_many_arguments)]
     pub async fn insert<'e, E>(
         executor: E,
