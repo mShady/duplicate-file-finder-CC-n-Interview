@@ -2,7 +2,7 @@
 
 ## Overview
 
-Write tests BEFORE fixing the 8 high-severity findings from CODE-REVIEW.md. The tests serve as a safety net: they document the current (buggy) behavior, then validate the fixes without regressions.
+Write tests BEFORE fixing the 8 high-severity findings from docs/reviews/CODE-REVIEW.md. The tests serve as a safety net: they document the current (buggy) behavior, then validate the fixes without regressions.
 
 ## Current State
 
@@ -340,4 +340,4 @@ npx prettier --check .  # Formatting clean
 npm audit             # 0 vulnerabilities
 ```
 
-All 8 high-severity findings fixed. Verification review found 4 new issues (V1-V4 in CODE-REVIEW.md).
+All 8 high-severity findings fixed. Verification review found 4 new issues (V1-V4 in docs/reviews/CODE-REVIEW.md).
