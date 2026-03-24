@@ -2,7 +2,9 @@
 
 ## Overview
 
-DupliFind is a cross-platform desktop application for finding and removing duplicate files on Mac and Windows systems. The app scans storage devices to identify files with identical content, groups them together, and presents them in an intuitive interface where users can review each group, decide which copy to keep, and safely remove the rest to reclaim disk space.
+DupliFind is a desktop application for finding and removing duplicate files. The app scans storage devices to identify files with identical content, groups them together, and presents them in an intuitive interface where users can review each group, decide which copy to keep, and safely remove the rest to reclaim disk space.
+
+> **Platform Note**: Development and testing currently targets **macOS**. Windows support is planned for the platform polish stage (see [Plan 14](plans/14-platform-polish.md)).
 
 ---
 
@@ -46,7 +48,7 @@ DupliFind is a cross-platform desktop application for finding and removing dupli
 - **Framework**: Tauri (Rust backend + web frontend)
 - **Frontend**: Svelte + TypeScript
 - **Database**: SQLite for all local storage (scan results, file indexes, settings, deletion history)
-- **Target Platforms**: macOS, Windows (desktop only for v1)
+- **Target Platforms**: macOS first, Windows planned for polish stage (desktop only)
 
 ### Dependencies & Versions
 
