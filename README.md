@@ -1,6 +1,13 @@
 # DupliFind
 
-A cross-platform desktop application for finding and removing duplicate files on Mac and Windows systems.
+[![CI](https://github.com/mShady/duplicate-file-finder-CC-n-Interview/actions/workflows/claude.yml/badge.svg)](https://github.com/mShady/duplicate-file-finder-CC-n-Interview/actions/workflows/claude.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Status: Alpha](https://img.shields.io/badge/Status-Alpha-orange.svg)](#roadmap)
+
+A desktop application for finding and removing duplicate files, built with Tauri 2 and Svelte 5. Currently targeting **macOS**, with Windows support planned for a later stage.
+
+<!-- TODO: Add screenshot or GIF demo here -->
+<!-- ![DupliFind Screenshot](docs/assets/screenshot.png) -->
 
 ## Features
 
@@ -9,7 +16,7 @@ A cross-platform desktop application for finding and removing duplicate files on
 - **Safe Deletion**: Files are moved to system Trash/Recycle Bin, not permanently deleted
 - **Protected Folders**: Designate folders as protected to prevent accidental deletion
 - **Incremental Scanning**: Quick scan mode uses cached hashes for faster subsequent scans
-- **Cross-Platform**: Native experience on both macOS and Windows
+- **macOS First**: Native macOS experience, with Windows support planned
 
 ## Tech Stack
 
@@ -19,8 +26,6 @@ A cross-platform desktop application for finding and removing duplicate files on
 - **Hash Algorithm**: BLAKE3
 
 ## Prerequisites
-
-### macOS
 
 - macOS 10.15 or later
 - Xcode Command Line Tools
@@ -34,20 +39,7 @@ chmod +x scripts/setup-mac.sh
 ./scripts/setup-mac.sh
 ```
 
-### Windows
-
-- Windows 10 (1803+) or Windows 11
-- Visual Studio Build Tools 2022
-- WebView2 Runtime
-- Node.js 20+
-- Rust toolchain
-
-Run the setup script in PowerShell as Administrator:
-
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-.\scripts\setup-windows.ps1
-```
+> **Windows**: Not yet supported. Windows setup instructions and a setup script (`scripts/setup-windows.ps1`) exist for future use. See [ROADMAP.md](ROADMAP.md) for timeline.
 
 ## Getting Started
 
@@ -119,6 +111,18 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
     ├── Specification.md   # Product specification
     └── plans/             # Implementation plans
 ```
+
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for the full feature roadmap. Current status:
+
+- **v0.1 Core** — Complete (scanning, detection, results UI, deletion)
+- **v0.2 Polish** — Next (progress UI, settings, file operations, filtering, keyboard nav)
+- **v0.3 Production Ready** — Planned (permissions, error handling, platform polish, system tray)
+
+## Contributing
+
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for development setup and conventions.
 
 ## License
 
