@@ -223,33 +223,31 @@ impl ScanService {
             };
 
             for group in &detection_result.groups {
-                match sqlx::query(
-                    "INSERT INTO duplicate_groups (hash, file_size, file_count, wasted_space, scan_session_id)
-                     VALUES (?, ?, ?, ?, ?) RETURNING id",
+                #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
+                match queries::duplicate_groups::create(
+                    &mut *tx,
+                    &group.hash,
+                    group.file_size as i64,
+                    group.files.len() as i32,
+                    group.wasted_space as i64,
+                    Some(session_id),
                 )
-                .bind(&group.hash)
-                .bind(group.file_size as i64)
-                .bind(group.files.len() as i32)
-                .bind(group.wasted_space as i64)
-                .bind(Some(session_id))
-                .fetch_one(&mut *tx)
                 .await
                 {
-                    Ok(row) => {
-                        let group_id: i64 = sqlx::Row::get(&row, 0);
+                    Ok(group_id) => {
                         for file in &group.files {
-                            if let Err(e) = sqlx::query(
-                                "INSERT INTO scanned_files (path, size, partial_hash, full_hash, created_at, modified_at, group_id, scan_session_id)
-                                 VALUES (?, ?, NULL, ?, ?, ?, ?, ?)",
+                            #[allow(clippy::cast_possible_wrap)]
+                            if let Err(e) = queries::scanned_files::insert(
+                                &mut *tx,
+                                &file.path.display().to_string(),
+                                file.size as i64,
+                                None,
+                                Some(&group.hash),
+                                file.created_at,
+                                file.modified_at,
+                                Some(group_id),
+                                Some(session_id),
                             )
-                            .bind(file.path.display().to_string())
-                            .bind(file.size as i64)
-                            .bind(Some(&group.hash))
-                            .bind(file.created_at)
-                            .bind(file.modified_at)
-                            .bind(Some(group_id))
-                            .bind(Some(session_id))
-                            .execute(&mut *tx)
                             .await
                             {
                                 log::warn!("Failed to insert scanned file: {e}");
