@@ -391,8 +391,7 @@ pub mod duplicate_groups {
              ON CONFLICT(hash) DO UPDATE SET
                 file_size = excluded.file_size,
                 file_count = excluded.file_count,
-                wasted_space = excluded.wasted_space,
-                scan_session_id = excluded.scan_session_id
+                wasted_space = excluded.wasted_space
              RETURNING id",
         )
         .bind(hash)
