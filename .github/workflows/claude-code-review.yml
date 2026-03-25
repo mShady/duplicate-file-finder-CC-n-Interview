@@ -1,24 +1,24 @@
 name: Claude Code Review
 
 on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+        type: number
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+
+    concurrency:
+      group: claude-review-${{ inputs.pr_number || github.event.pull_request.number }}
+      cancel-in-progress: true
+
     permissions:
       contents: read
       pull-requests: write
@@ -38,12 +38,46 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: 'claude[bot]'
           track_progress: true
-          use_sticky_comment: true
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ inputs.pr_number || github.event.pull_request.number }}
+
+            ## Step 1: Code Quality Review
+            Run /code-review:code-review ${{ github.repository }}/pull/${{ inputs.pr_number || github.event.pull_request.number }}
+
+            ## Step 2: Security Scan
+            After the code review completes, perform a security-focused scan of the PR diff.
+            Use `gh pr diff ${{ inputs.pr_number || github.event.pull_request.number }}` to read the changes.
+
+            Check for:
+            - Hardcoded secrets, API keys, tokens, or credentials [CRITICAL]
+            - SQL injection, command injection, or code injection [CRITICAL]
+            - Cross-Site Scripting (XSS) — reflected, stored, or DOM-based [HIGH]
+            - Broken authentication or authorization logic [HIGH]
+            - Insecure direct object references (IDOR) [HIGH]
+            - Server-Side Request Forgery (SSRF) [MEDIUM]
+            - Insecure deserialization [MEDIUM]
+            - Missing input validation at system boundaries [MEDIUM]
+            - Race conditions or TOCTOU issues [MEDIUM]
+            - Sensitive data exposure in logs or error messages [MEDIUM]
+
+            For each finding, post an inline comment on the specific line using
+            `mcp__github_inline_comment__create_inline_comment` with `confirmed: true`.
+            Format each comment as:
+            **[SEVERITY]** Brief description of the issue.
+            **Why:** Explanation of the risk.
+            **Fix:** Suggested remediation.
+
+            If NO security issues are found, do not post any inline comments for this step.
+
+            ## Step 3: Summary
+            Post a single top-level PR comment via `gh pr comment` summarizing:
+            - Total findings count by severity (CRITICAL / HIGH / MEDIUM / LOW)
+            - Brief list of the most important findings
+            - Overall security assessment (PASS / NEEDS ATTENTION / BLOCKED)
+            If no security issues were found, state "Security scan: PASS — no issues found."
           claude_args: |
             --model claude-opus-4-6
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*)"
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
