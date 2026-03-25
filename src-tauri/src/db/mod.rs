@@ -94,7 +94,7 @@ impl Database {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::tempdir;
+    use tempfile::{tempdir, TempDir};
 
     #[tokio::test]
     async fn test_database_creation() {
@@ -124,8 +124,12 @@ mod tests {
         assert_eq!(result.0, 1);
     }
 
-    /// Helper: create a test database and a scan session, returning (`Database`, `session_id`).
-    async fn setup_test_db_with_session() -> (Database, i64) {
+    /// Helper: create a test database and a scan session.
+    ///
+    /// Returns (`Database`, `session_id`, `TempDir`). The `TempDir` must be kept
+    /// alive for the test's duration — dropping it deletes the DB file, which
+    /// causes "unable to open database file" errors on concurrent pool access.
+    async fn setup_test_db_with_session() -> (Database, i64, TempDir) {
         let temp_dir = tempdir().unwrap();
         let db = Database::new(temp_dir.path().join("test.db"))
             .await
@@ -142,12 +146,12 @@ mod tests {
         )
         .await
         .unwrap();
-        (db, session_id)
+        (db, session_id, temp_dir)
     }
 
     #[tokio::test]
     async fn test_db_roundtrip_large_file_size() {
-        let (db, session_id) = setup_test_db_with_session().await;
+        let (db, session_id, _dir) = setup_test_db_with_session().await;
 
         // Insert a group with file_size near i64::MAX
         let large_size: i64 = i64::MAX; // 9_223_372_036_854_775_807
@@ -177,7 +181,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_db_roundtrip_zero_wasted_space() {
-        let (db, session_id) = setup_test_db_with_session().await;
+        let (db, session_id, _dir) = setup_test_db_with_session().await;
 
         let group_id = queries::duplicate_groups::create(
             db.pool(),
@@ -202,7 +206,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_db_negative_value_cast_behavior() {
-        let (db, session_id) = setup_test_db_with_session().await;
+        let (db, session_id, _dir) = setup_test_db_with_session().await;
 
         // Directly insert a row with negative file_size via raw SQL.
         // This simulates data corruption or overflow from a u64 > i64::MAX
