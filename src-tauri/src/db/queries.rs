@@ -494,10 +494,10 @@ pub mod scanned_files {
     /// Insert or update a scanned file.
     ///
     /// Accepts any `SqliteExecutor` (pool or transaction).
-    /// Uses `ON CONFLICT(path) DO UPDATE` to handle re-scans gracefully.
-    /// Returns the row ID (inserted or updated).
+    /// Uses `ON CONFLICT(path) DO UPDATE` to handle re-scans gracefully,
+    /// with `COALESCE` to preserve existing hash values when `None` is passed.
     #[allow(clippy::too_many_arguments)]
-    pub async fn insert<'e, E>(
+    pub async fn upsert<'e, E>(
         executor: E,
         path: &str,
         size: i64,
@@ -507,11 +507,11 @@ pub mod scanned_files {
         modified_at: i64,
         group_id: Option<i64>,
         scan_session_id: i64,
-    ) -> Result<i64, sqlx::Error>
+    ) -> Result<(), sqlx::Error>
     where
         E: sqlx::SqliteExecutor<'e> + Send,
     {
-        let result = sqlx::query(
+        sqlx::query(
             "INSERT INTO scanned_files (path, size, partial_hash, full_hash, created_at, modified_at, group_id, scan_session_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(path) DO UPDATE SET
@@ -522,8 +522,7 @@ pub mod scanned_files {
                 modified_at = excluded.modified_at,
                 group_id = excluded.group_id,
                 scan_session_id = excluded.scan_session_id,
-                scanned_at = strftime('%s', 'now')
-             RETURNING id",
+                scanned_at = strftime('%s', 'now')",
         )
         .bind(path)
         .bind(size)
@@ -533,10 +532,10 @@ pub mod scanned_files {
         .bind(modified_at)
         .bind(group_id)
         .bind(scan_session_id)
-        .fetch_one(executor)
+        .execute(executor)
         .await?;
 
-        Ok(sqlx::Row::get(&result, 0))
+        Ok(())
     }
 
     /// Get files by group ID
@@ -970,7 +969,7 @@ mod tests {
                 .unwrap();
 
         // Insert a file
-        let id1 = scanned_files::insert(
+        scanned_files::upsert(
             db.pool(),
             "/test/file.txt",
             1024,
@@ -983,12 +982,9 @@ mod tests {
         )
         .await
         .unwrap();
-        assert!(id1 > 0);
 
-        // Insert again with same path but different values — should upsert.
-        // V5: SQLite's ON CONFLICT ... RETURNING returns the existing row's id on update,
-        // so id2 == id1 confirms the upsert hit the same row rather than inserting a new one.
-        let id2 = scanned_files::insert(
+        // Insert again with same path but different values — should upsert
+        scanned_files::upsert(
             db.pool(),
             "/test/file.txt",
             2048,
@@ -1002,9 +998,7 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(id1, id2);
-
-        // Verify the values were updated
+        // Verify the values were updated (upsert hit the same row)
         let file = scanned_files::get_by_path(db.pool(), "/test/file.txt")
             .await
             .unwrap()
@@ -1030,7 +1024,7 @@ mod tests {
 
         let mut tx = db.pool().begin().await.unwrap();
 
-        let file_id = scanned_files::insert(
+        scanned_files::upsert(
             &mut *tx,
             "/test/tx_file.txt",
             512,
@@ -1043,7 +1037,6 @@ mod tests {
         )
         .await
         .unwrap();
-        assert!(file_id > 0);
 
         tx.commit().await.unwrap();
 
@@ -1068,7 +1061,7 @@ mod tests {
             .unwrap();
 
         // First insert with both hashes populated
-        scanned_files::insert(
+        scanned_files::upsert(
             db.pool(),
             "/test/coalesce.txt",
             1024,
@@ -1084,7 +1077,7 @@ mod tests {
 
         // Re-insert with partial_hash = None, full_hash = Some (production pattern)
         // COALESCE should preserve "partial1" and update full_hash to "full2"
-        scanned_files::insert(
+        scanned_files::upsert(
             db.pool(),
             "/test/coalesce.txt",
             2048,
@@ -1115,7 +1108,7 @@ mod tests {
         );
 
         // Also verify: passing None for both preserves both existing values
-        scanned_files::insert(
+        scanned_files::upsert(
             db.pool(),
             "/test/coalesce.txt",
             4096,
