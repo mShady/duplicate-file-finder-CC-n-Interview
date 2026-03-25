@@ -222,8 +222,8 @@ impl ScanService {
                 }
             };
 
+            #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
             for group in &detection_result.groups {
-                #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
                 match queries::duplicate_groups::create(
                     &mut *tx,
                     &group.hash,
@@ -236,7 +236,6 @@ impl ScanService {
                 {
                     Ok(group_id) => {
                         for file in &group.files {
-                            #[allow(clippy::cast_possible_wrap)]
                             if let Err(e) = queries::scanned_files::insert(
                                 &mut *tx,
                                 &file.path.display().to_string(),
@@ -261,7 +260,9 @@ impl ScanService {
                 }
             }
 
-            // If all group inserts failed, roll back and treat the scan as failed
+            // If all group inserts failed, roll back and treat the scan as failed.
+            // Without ON CONFLICT, failures here are real DB errors (disk full, constraint
+            // violations from duplicate hashes in detector output, etc.).
             if total_groups > 0 && failed_groups == total_groups {
                 log::error!(
                     "All {total_groups} group inserts failed — marking scan as failed"
