@@ -663,9 +663,12 @@ mod tests {
     }
 
     /// Helper: set up a DB and scan session for a given temp directory.
+    ///
+    /// Returns the `TempDir` so callers keep it alive — dropping it deletes the
+    /// DB file, causing "unable to open database file" errors under concurrent access.
     async fn setup_scan_db(
         paths: &[std::path::PathBuf],
-    ) -> (Arc<AsyncMutex<crate::db::Database>>, i64) {
+    ) -> (Arc<AsyncMutex<crate::db::Database>>, i64, tempfile::TempDir) {
         let db_dir = tempfile::tempdir().unwrap();
         let db = crate::db::Database::new(db_dir.path().join("test.db"))
             .await
@@ -680,7 +683,7 @@ mod tests {
                 .unwrap()
         };
 
-        (db, session_id)
+        (db, session_id, db_dir)
     }
 
     #[tokio::test]
@@ -697,7 +700,7 @@ mod tests {
             parallelism: crate::scanner::ParallelismMode::Light,
         };
 
-        let (db, session_id) = setup_scan_db(&config.paths).await;
+        let (db, session_id, _db_dir) = setup_scan_db(&config.paths).await;
 
         let cancel_flag = Arc::new(AtomicBool::new(false));
         let (sink, _captured) = DetailedMockEventSink::new();
@@ -728,7 +731,7 @@ mod tests {
             parallelism: crate::scanner::ParallelismMode::Light,
         };
 
-        let (db, session_id) = setup_scan_db(&config.paths).await;
+        let (db, session_id, _db_dir) = setup_scan_db(&config.paths).await;
 
         let cancel_flag = Arc::new(AtomicBool::new(false));
         let (sink, _events) = MockEventSink::new();
@@ -761,7 +764,7 @@ mod tests {
             parallelism: crate::scanner::ParallelismMode::Light,
         };
 
-        let (db, session_id) = setup_scan_db(&config.paths).await;
+        let (db, session_id, _db_dir) = setup_scan_db(&config.paths).await;
 
         let cancel_flag = Arc::new(AtomicBool::new(false));
         let (sink, captured) = DetailedMockEventSink::new();
@@ -796,7 +799,7 @@ mod tests {
             parallelism: crate::scanner::ParallelismMode::Light,
         };
 
-        let (db, session_id) = setup_scan_db(&config.paths).await;
+        let (db, session_id, _db_dir) = setup_scan_db(&config.paths).await;
 
         let cancel_flag = Arc::new(AtomicBool::new(false));
         let (sink, captured) = DetailedMockEventSink::new();
@@ -830,7 +833,7 @@ mod tests {
             parallelism: crate::scanner::ParallelismMode::Light,
         };
 
-        let (db, session_id) = setup_scan_db(&config.paths).await;
+        let (db, session_id, _db_dir) = setup_scan_db(&config.paths).await;
 
         // Pre-cancel
         let cancel_flag = Arc::new(AtomicBool::new(true));
@@ -876,7 +879,7 @@ mod tests {
             parallelism: crate::scanner::ParallelismMode::Light,
         };
 
-        let (db, session_id) = setup_scan_db(&config.paths).await;
+        let (db, session_id, _db_dir) = setup_scan_db(&config.paths).await;
         let cancel_flag = Arc::new(AtomicBool::new(false));
         let cancel_clone = Arc::clone(&cancel_flag);
 
@@ -909,7 +912,7 @@ mod tests {
             parallelism: crate::scanner::ParallelismMode::Light,
         };
 
-        let (db, session_id) = setup_scan_db(&config.paths).await;
+        let (db, session_id, _db_dir) = setup_scan_db(&config.paths).await;
         let cancel_flag = Arc::new(AtomicBool::new(true));
         let (sink, captured) = DetailedMockEventSink::new();
 
@@ -940,7 +943,7 @@ mod tests {
             parallelism: crate::scanner::ParallelismMode::Light,
         };
 
-        let (db, session_id) = setup_scan_db(&config.paths).await;
+        let (db, session_id, _db_dir) = setup_scan_db(&config.paths).await;
 
         // Drop the duplicate_groups table so all INSERTs fail in Phase 3
         {
