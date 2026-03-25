@@ -202,6 +202,7 @@ impl ScanService {
 
             let total_groups = detection_result.groups.len();
             let mut failed_groups: usize = 0;
+            let mut persisted_wasted_space: u64 = 0;
 
             // Use a transaction to batch all inserts into a single disk sync
             let mut tx = match sqlx::pool::Pool::begin(db_guard.pool()).await {
@@ -235,6 +236,7 @@ impl ScanService {
                 .await
                 {
                     Ok(group_id) => {
+                        persisted_wasted_space += group.wasted_space;
                         for file in &group.files {
                             if let Err(e) = queries::scanned_files::insert(
                                 &mut *tx,
@@ -298,14 +300,15 @@ impl ScanService {
                 return;
             }
 
-            // Update session stats (outside the transaction since the groups are committed)
+            // Update session stats using actual persisted counts (not detection totals)
+            let persisted_groups = total_groups - failed_groups;
             if let Err(e) = queries::scan_sessions::update_stats(
                 db_guard.pool(),
                 session_id,
                 walker_stats.total_files as i64,
                 walker_stats.total_bytes as i64,
-                detection_result.groups.len() as i32,
-                detection_result.total_wasted_space as i64,
+                persisted_groups as i32,
+                persisted_wasted_space as i64,
             )
             .await
             {
