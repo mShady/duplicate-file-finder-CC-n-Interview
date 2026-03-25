@@ -878,9 +878,14 @@ mod tests {
         assert!(id1 > 0);
 
         // Second insert with same (hash, session) hits the UNIQUE constraint
-        let result =
-            duplicate_groups::create(db.pool(), "abc123", 2048, 5, 8192, session_id).await;
-        assert!(result.is_err(), "expected UNIQUE violation for same hash + same session");
+        let err = duplicate_groups::create(db.pool(), "abc123", 2048, 5, 8192, session_id)
+            .await
+            .expect_err("expected UNIQUE violation for same hash + same session");
+        let err_msg = err.to_string();
+        assert!(
+            err_msg.contains("UNIQUE constraint failed"),
+            "expected UNIQUE constraint error, got: {err_msg}"
+        );
     }
 
     #[tokio::test]
