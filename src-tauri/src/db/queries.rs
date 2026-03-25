@@ -136,12 +136,17 @@ pub mod scan_sessions {
         Ok(sqlx::Row::get(&result, 0))
     }
 
-    /// Update scan session status
-    pub async fn update_status(
-        pool: &SqlitePool,
+    /// Update scan session status.
+    ///
+    /// Accepts any `SqliteExecutor` (pool or transaction).
+    pub async fn update_status<'e, E>(
+        executor: E,
         id: i64,
         status: ScanStatus,
-    ) -> Result<(), sqlx::Error> {
+    ) -> Result<(), sqlx::Error>
+    where
+        E: sqlx::SqliteExecutor<'e> + Send,
+    {
         #[allow(clippy::cast_possible_wrap)]
         let now = if status == ScanStatus::Completed || status == ScanStatus::Cancelled {
             Some(
@@ -160,21 +165,26 @@ pub mod scan_sessions {
         .bind(status.as_str())
         .bind(now)
         .bind(id)
-        .execute(pool)
+        .execute(executor)
         .await?;
 
         Ok(())
     }
 
-    /// Update scan session statistics
-    pub async fn update_stats(
-        pool: &SqlitePool,
+    /// Update scan session statistics.
+    ///
+    /// Accepts any `SqliteExecutor` (pool or transaction).
+    pub async fn update_stats<'e, E>(
+        executor: E,
         id: i64,
         total_files: i64,
         total_size: i64,
         duplicate_groups: i32,
         wasted_space: i64,
-    ) -> Result<(), sqlx::Error> {
+    ) -> Result<(), sqlx::Error>
+    where
+        E: sqlx::SqliteExecutor<'e> + Send,
+    {
         sqlx::query(
             "UPDATE scan_sessions
              SET total_files = ?, total_size = ?, duplicate_groups = ?, wasted_space = ?
@@ -185,7 +195,7 @@ pub mod scan_sessions {
         .bind(duplicate_groups)
         .bind(wasted_space)
         .bind(id)
-        .execute(pool)
+        .execute(executor)
         .await?;
 
         Ok(())
