@@ -5,7 +5,7 @@
 **Languages**: Rust, TypeScript, Svelte 5
 **Tests**: 85 frontend passed (Vitest), 88 backend passed (cargo test)
 **Dependency Audit**: npm audit — 0 vulnerabilities; cargo audit — not installed
-**Summary**: 0 critical, 9 high (8 fixed, 1 open), 41 medium, 32 low
+**Summary**: 0 critical, 9 high (9 fixed, 0 open), 41 medium, 32 low
 
 ## Verification (2026-03-23)
 
@@ -146,7 +146,7 @@ All 8 high-severity fixes verified by 11 parallel agents focused on the changed 
 | Tests & Coverage    | Adequate            | 88 backend + 85 frontend tests pass; all fix paths exercised          |
 | Error Handling      | 1 new medium found  | Cancellation always reports Failed instead of Cancelled (V2)          |
 | Types & Type Design | Clean               | All conversions type-safe; rayon Send/Sync requirements met           |
-| Comments & Docs     | 1 stale ref found   | Finding #88 resolved by fix #6 but not marked (V5)                    |
+| Comments & Docs     | 1 stale ref found   | Finding #88 resolved by fix #6 but not marked                         |
 | Simplification      | Clean               | All fixes are minimal correct implementations                         |
 | Security            | npm audit clean     | 0 vulnerabilities (was 13). TOCTOU in deletion noted but pre-existing |
 | Performance         | 1 new medium found  | Per-file FileHasher allocation in par_iter could use map_init (V3)    |
