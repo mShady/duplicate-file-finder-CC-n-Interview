@@ -197,12 +197,19 @@ impl ScanService {
 
         // Phase 3: Store results in database inside a single transaction
         // to avoid thousands of sequential round-trips under the mutex.
+        // persisted_* counters track what actually made it into the DB.
+        // Declared outside the DB block so the ScanComplete event can use them.
+        // Initial values are overwritten after commit; early-return paths (tx failure,
+        // all-groups-failed, commit failure) exit before reaching the ScanComplete event.
+        #[allow(unused_assignments)]
+        let mut persisted_groups: usize = 0;
+        #[allow(unused_assignments)]
+        let mut persisted_wasted_space: u64 = 0;
         {
             let db_guard = db.lock().await;
 
             let total_groups = detection_result.groups.len();
             let mut failed_groups: usize = 0;
-            let mut persisted_wasted_space: u64 = 0;
 
             // Use a transaction to batch all inserts into a single disk sync
             let mut tx = match sqlx::pool::Pool::begin(db_guard.pool()).await {
@@ -301,7 +308,7 @@ impl ScanService {
             }
 
             // Update session stats using actual persisted counts (not detection totals)
-            let persisted_groups = total_groups - failed_groups;
+            persisted_groups = total_groups - failed_groups;
             if let Err(e) = queries::scan_sessions::update_stats(
                 db_guard.pool(),
                 session_id,
@@ -328,14 +335,15 @@ impl ScanService {
 
         let duration_ms = start_time.elapsed().as_millis() as u64;
 
-        // Emit completion event
+        // Emit completion event using persisted counts so the frontend
+        // matches the DB session stats (important when some groups fail to insert).
         sink.on_complete(&ScanComplete {
             session_id,
             total_files: walker_stats.total_files,
             total_bytes: walker_stats.total_bytes,
-            duplicate_groups: detection_result.groups.len(),
+            duplicate_groups: persisted_groups,
             duplicate_files: detection_result.duplicate_count,
-            wasted_space: detection_result.total_wasted_space,
+            wasted_space: persisted_wasted_space,
             duration_ms,
         });
 
