@@ -3,8 +3,10 @@
 -- so a re-scan cannot silently steal or overwrite another session's groups.
 --
 -- SQLite does not support ALTER TABLE ... DROP CONSTRAINT, so we recreate the table.
+-- Uses PRAGMA defer_foreign_keys (works inside sqlx's implicit transaction, unlike
+-- PRAGMA foreign_keys = OFF which is silently ignored inside transactions).
 
-PRAGMA foreign_keys = OFF;
+PRAGMA defer_foreign_keys = ON;
 
 CREATE TABLE duplicate_groups_new (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,5 +31,3 @@ ALTER TABLE duplicate_groups_new RENAME TO duplicate_groups;
 -- Recreate indexes (the old UNIQUE index on hash alone is gone; the new composite UNIQUE
 -- constraint automatically creates an index on (hash, scan_session_id))
 CREATE INDEX IF NOT EXISTS idx_duplicate_groups_wasted_space ON duplicate_groups(wasted_space DESC);
-
-PRAGMA foreign_keys = ON;
