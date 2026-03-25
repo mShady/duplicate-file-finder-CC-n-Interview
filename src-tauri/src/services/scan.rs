@@ -238,7 +238,7 @@ impl ScanService {
                     Ok(group_id) => {
                         persisted_wasted_space += group.wasted_space;
                         for file in &group.files {
-                            if let Err(e) = queries::scanned_files::insert(
+                            if let Err(e) = queries::scanned_files::upsert(
                                 &mut *tx,
                                 &file.path.display().to_string(),
                                 file.size as i64,
