@@ -374,13 +374,17 @@ pub mod duplicate_groups {
     /// Accepts any `SqliteExecutor` (pool or transaction).
     /// The UNIQUE constraint is `(hash, scan_session_id)`, so each session
     /// owns its own group rows and cannot collide with other sessions.
+    ///
+    /// `scan_session_id` is required (not optional) because the UNIQUE constraint
+    /// relies on it being non-NULL — `SQLite` treats NULLs as distinct for UNIQUE,
+    /// which would silently bypass deduplication.
     pub async fn create<'e, E>(
         executor: E,
         hash: &str,
         file_size: i64,
         file_count: i32,
         wasted_space: i64,
-        scan_session_id: Option<i64>,
+        scan_session_id: i64,
     ) -> Result<i64, sqlx::Error>
     where
         E: sqlx::SqliteExecutor<'e> + Send,
@@ -492,7 +496,7 @@ pub mod scanned_files {
         created_at: i64,
         modified_at: i64,
         group_id: Option<i64>,
-        scan_session_id: Option<i64>,
+        scan_session_id: i64,
     ) -> Result<i64, sqlx::Error>
     where
         E: sqlx::SqliteExecutor<'e> + Send,
@@ -868,14 +872,14 @@ mod tests {
         let session_id = scan_sessions::create(db.pool(), &paths).await.unwrap();
 
         // First insert succeeds
-        let id1 = duplicate_groups::create(db.pool(), "abc123", 1024, 3, 2048, Some(session_id))
+        let id1 = duplicate_groups::create(db.pool(), "abc123", 1024, 3, 2048, session_id)
             .await
             .unwrap();
         assert!(id1 > 0);
 
         // Second insert with same (hash, session) hits the UNIQUE constraint
         let result =
-            duplicate_groups::create(db.pool(), "abc123", 2048, 5, 8192, Some(session_id)).await;
+            duplicate_groups::create(db.pool(), "abc123", 2048, 5, 8192, session_id).await;
         assert!(result.is_err(), "expected UNIQUE violation for same hash + same session");
     }
 
@@ -888,10 +892,10 @@ mod tests {
         let session_1 = scan_sessions::create(db.pool(), &paths).await.unwrap();
         let session_2 = scan_sessions::create(db.pool(), &paths).await.unwrap();
 
-        let id1 = duplicate_groups::create(db.pool(), "abc123", 1024, 3, 2048, Some(session_1))
+        let id1 = duplicate_groups::create(db.pool(), "abc123", 1024, 3, 2048, session_1)
             .await
             .unwrap();
-        let id2 = duplicate_groups::create(db.pool(), "abc123", 2048, 5, 8192, Some(session_2))
+        let id2 = duplicate_groups::create(db.pool(), "abc123", 2048, 5, 8192, session_2)
             .await
             .unwrap();
 
@@ -923,7 +927,7 @@ mod tests {
         let mut tx = db.pool().begin().await.unwrap();
 
         let group_id =
-            duplicate_groups::create(&mut *tx, "txhash", 512, 2, 512, Some(session_id))
+            duplicate_groups::create(&mut *tx, "txhash", 512, 2, 512, session_id)
                 .await
                 .unwrap();
         assert!(group_id > 0);
@@ -946,7 +950,7 @@ mod tests {
         let paths = vec!["/test".to_string()];
         let session_id = scan_sessions::create(db.pool(), &paths).await.unwrap();
         let group_id =
-            duplicate_groups::create(db.pool(), "hash1", 1024, 2, 1024, Some(session_id))
+            duplicate_groups::create(db.pool(), "hash1", 1024, 2, 1024, session_id)
                 .await
                 .unwrap();
 
@@ -960,7 +964,7 @@ mod tests {
             1000,
             2000,
             Some(group_id),
-            Some(session_id),
+            session_id,
         )
         .await
         .unwrap();
@@ -978,7 +982,7 @@ mod tests {
             3000,
             4000,
             Some(group_id),
-            Some(session_id),
+            session_id,
         )
         .await
         .unwrap();
@@ -1005,7 +1009,7 @@ mod tests {
         let paths = vec!["/test".to_string()];
         let session_id = scan_sessions::create(db.pool(), &paths).await.unwrap();
         let group_id =
-            duplicate_groups::create(db.pool(), "hash1", 1024, 2, 1024, Some(session_id))
+            duplicate_groups::create(db.pool(), "hash1", 1024, 2, 1024, session_id)
                 .await
                 .unwrap();
 
@@ -1020,7 +1024,7 @@ mod tests {
             1000,
             2000,
             Some(group_id),
-            Some(session_id),
+            session_id,
         )
         .await
         .unwrap();

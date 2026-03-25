@@ -157,7 +157,7 @@ mod tests {
             large_size,
             2,
             large_size,
-            Some(session_id),
+            session_id,
         )
         .await
         .unwrap();
@@ -185,7 +185,7 @@ mod tests {
             1024,
             2,
             0, // zero wasted space
-            Some(session_id),
+            session_id,
         )
         .await
         .unwrap();

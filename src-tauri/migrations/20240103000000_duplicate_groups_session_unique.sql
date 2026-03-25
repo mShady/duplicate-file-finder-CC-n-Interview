@@ -13,7 +13,7 @@ CREATE TABLE duplicate_groups_new (
     file_count INTEGER NOT NULL DEFAULT 0,
     wasted_space INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-    scan_session_id INTEGER,
+    scan_session_id INTEGER NOT NULL,
     UNIQUE (hash, scan_session_id),
     FOREIGN KEY (scan_session_id) REFERENCES scan_sessions(id) ON DELETE CASCADE
 );

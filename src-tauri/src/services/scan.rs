@@ -230,7 +230,7 @@ impl ScanService {
                     group.file_size as i64,
                     group.files.len() as i32,
                     group.wasted_space as i64,
-                    Some(session_id),
+                    session_id,
                 )
                 .await
                 {
@@ -245,7 +245,7 @@ impl ScanService {
                                 file.created_at,
                                 file.modified_at,
                                 Some(group_id),
-                                Some(session_id),
+                                session_id,
                             )
                             .await
                             {
