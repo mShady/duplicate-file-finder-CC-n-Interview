@@ -5,7 +5,7 @@
 **Languages**: Rust, TypeScript, Svelte 5
 **Tests**: 85 frontend passed (Vitest), 88 backend passed (cargo test)
 **Dependency Audit**: npm audit — 0 vulnerabilities; cargo audit — not installed
-**Summary**: 0 critical, 9 high (9 fixed, 0 open), 41 medium, 32 low
+**Summary**: 0 critical, 10 high (10 fixed, 0 open), 51 medium, 54 low
 
 ## Verification (2026-03-23)
 
