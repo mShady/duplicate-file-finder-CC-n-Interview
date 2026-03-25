@@ -369,11 +369,11 @@ pub mod deletion_history {
 pub mod duplicate_groups {
     use super::{DuplicateGroup, SqlitePool};
 
-    /// Create or update a duplicate group.
+    /// Create a duplicate group for a scan session.
     ///
     /// Accepts any `SqliteExecutor` (pool or transaction).
-    /// Uses `ON CONFLICT(hash) DO UPDATE` to handle re-scans gracefully.
-    /// Returns the row ID (inserted or updated).
+    /// The UNIQUE constraint is `(hash, scan_session_id)`, so each session
+    /// owns its own group rows and cannot collide with other sessions.
     pub async fn create<'e, E>(
         executor: E,
         hash: &str,
@@ -383,15 +383,11 @@ pub mod duplicate_groups {
         scan_session_id: Option<i64>,
     ) -> Result<i64, sqlx::Error>
     where
-        E: sqlx::SqliteExecutor<'e>,
+        E: sqlx::SqliteExecutor<'e> + Send,
     {
         let result = sqlx::query(
             "INSERT INTO duplicate_groups (hash, file_size, file_count, wasted_space, scan_session_id)
              VALUES (?, ?, ?, ?, ?)
-             ON CONFLICT(hash) DO UPDATE SET
-                file_size = excluded.file_size,
-                file_count = excluded.file_count,
-                wasted_space = excluded.wasted_space
              RETURNING id",
         )
         .bind(hash)
@@ -499,15 +495,15 @@ pub mod scanned_files {
         scan_session_id: Option<i64>,
     ) -> Result<i64, sqlx::Error>
     where
-        E: sqlx::SqliteExecutor<'e>,
+        E: sqlx::SqliteExecutor<'e> + Send,
     {
         let result = sqlx::query(
             "INSERT INTO scanned_files (path, size, partial_hash, full_hash, created_at, modified_at, group_id, scan_session_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(path) DO UPDATE SET
                 size = excluded.size,
-                partial_hash = excluded.partial_hash,
-                full_hash = excluded.full_hash,
+                partial_hash = COALESCE(excluded.partial_hash, scanned_files.partial_hash),
+                full_hash = COALESCE(excluded.full_hash, scanned_files.full_hash),
                 created_at = excluded.created_at,
                 modified_at = excluded.modified_at,
                 group_id = excluded.group_id,
@@ -865,35 +861,81 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_duplicate_groups_upsert_on_conflict() {
+    async fn test_duplicate_groups_same_hash_same_session_is_unique_violation() {
         let (db, _dir) = setup_test_db().await;
 
-        // Create a session for the groups
         let paths = vec!["/test".to_string()];
         let session_id = scan_sessions::create(db.pool(), &paths).await.unwrap();
 
-        // Insert a group with hash "abc123"
+        // First insert succeeds
         let id1 = duplicate_groups::create(db.pool(), "abc123", 1024, 3, 2048, Some(session_id))
             .await
             .unwrap();
         assert!(id1 > 0);
 
-        // Insert again with the same hash but different values — should upsert
-        let id2 = duplicate_groups::create(db.pool(), "abc123", 2048, 5, 8192, Some(session_id))
+        // Second insert with same (hash, session) hits the UNIQUE constraint
+        let result =
+            duplicate_groups::create(db.pool(), "abc123", 2048, 5, 8192, Some(session_id)).await;
+        assert!(result.is_err(), "expected UNIQUE violation for same hash + same session");
+    }
+
+    #[tokio::test]
+    async fn test_duplicate_groups_same_hash_different_sessions() {
+        // V4: Each session owns its own group rows — same hash in two sessions is fine
+        let (db, _dir) = setup_test_db().await;
+
+        let paths = vec!["/test".to_string()];
+        let session_1 = scan_sessions::create(db.pool(), &paths).await.unwrap();
+        let session_2 = scan_sessions::create(db.pool(), &paths).await.unwrap();
+
+        let id1 = duplicate_groups::create(db.pool(), "abc123", 1024, 3, 2048, Some(session_1))
+            .await
+            .unwrap();
+        let id2 = duplicate_groups::create(db.pool(), "abc123", 2048, 5, 8192, Some(session_2))
             .await
             .unwrap();
 
-        // Should return the same row id (updated, not a new row)
-        assert_eq!(id1, id2);
+        // Different rows — each session owns its group
+        assert_ne!(id1, id2);
 
-        // Verify the values were updated
+        // Each session sees only its own group
+        let groups_1 = duplicate_groups::get_by_session(db.pool(), session_1)
+            .await
+            .unwrap();
+        assert_eq!(groups_1.len(), 1);
+        assert_eq!(groups_1[0].file_size, 1024);
+
+        let groups_2 = duplicate_groups::get_by_session(db.pool(), session_2)
+            .await
+            .unwrap();
+        assert_eq!(groups_2.len(), 1);
+        assert_eq!(groups_2[0].file_size, 2048);
+    }
+
+    #[tokio::test]
+    async fn test_duplicate_groups_create_via_transaction() {
+        // #6: Verify SqliteExecutor generic works with a transaction, not just a pool
+        let (db, _dir) = setup_test_db().await;
+
+        let paths = vec!["/test".to_string()];
+        let session_id = scan_sessions::create(db.pool(), &paths).await.unwrap();
+
+        let mut tx = db.pool().begin().await.unwrap();
+
+        let group_id =
+            duplicate_groups::create(&mut *tx, "txhash", 512, 2, 512, Some(session_id))
+                .await
+                .unwrap();
+        assert!(group_id > 0);
+
+        tx.commit().await.unwrap();
+
+        // Verify the group is visible after commit
         let groups = duplicate_groups::get_by_session(db.pool(), session_id)
             .await
             .unwrap();
         assert_eq!(groups.len(), 1);
-        assert_eq!(groups[0].file_size, 2048);
-        assert_eq!(groups[0].file_count, 5);
-        assert_eq!(groups[0].wasted_space, 8192);
+        assert_eq!(groups[0].hash, "txhash");
     }
 
     #[tokio::test]
@@ -924,7 +966,9 @@ mod tests {
         .unwrap();
         assert!(id1 > 0);
 
-        // Insert again with same path but different values — should upsert
+        // Insert again with same path but different values — should upsert.
+        // V5: SQLite's ON CONFLICT ... RETURNING returns the existing row's id on update,
+        // so id2 == id1 confirms the upsert hit the same row rather than inserting a new one.
         let id2 = scanned_files::insert(
             db.pool(),
             "/test/file.txt",
@@ -939,7 +983,6 @@ mod tests {
         .await
         .unwrap();
 
-        // Should return the same row id
         assert_eq!(id1, id2);
 
         // Verify the values were updated
@@ -952,5 +995,44 @@ mod tests {
         assert_eq!(file.full_hash, Some("full2".to_string()));
         assert_eq!(file.created_at, 3000);
         assert_eq!(file.modified_at, 4000);
+    }
+
+    #[tokio::test]
+    async fn test_scanned_files_insert_via_transaction() {
+        // #6: Verify SqliteExecutor generic works with a transaction for scanned_files too
+        let (db, _dir) = setup_test_db().await;
+
+        let paths = vec!["/test".to_string()];
+        let session_id = scan_sessions::create(db.pool(), &paths).await.unwrap();
+        let group_id =
+            duplicate_groups::create(db.pool(), "hash1", 1024, 2, 1024, Some(session_id))
+                .await
+                .unwrap();
+
+        let mut tx = db.pool().begin().await.unwrap();
+
+        let file_id = scanned_files::insert(
+            &mut *tx,
+            "/test/tx_file.txt",
+            512,
+            Some("phash"),
+            Some("fhash"),
+            1000,
+            2000,
+            Some(group_id),
+            Some(session_id),
+        )
+        .await
+        .unwrap();
+        assert!(file_id > 0);
+
+        tx.commit().await.unwrap();
+
+        // Verify the file is visible after commit
+        let file = scanned_files::get_by_path(db.pool(), "/test/tx_file.txt")
+            .await
+            .unwrap();
+        assert!(file.is_some());
+        assert_eq!(file.unwrap().size, 512);
     }
 }
