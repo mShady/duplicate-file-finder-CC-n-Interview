@@ -1039,4 +1039,94 @@ mod tests {
         assert!(file.is_some());
         assert_eq!(file.unwrap().size, 512);
     }
+
+    #[tokio::test]
+    async fn test_scanned_files_coalesce_preserves_existing_hashes() {
+        // W3: Verify COALESCE preserves existing partial_hash/full_hash when None is passed.
+        // This mirrors the production pattern in scan.rs where partial_hash = None.
+        let (db, _dir) = setup_test_db().await;
+
+        let paths = vec!["/test".to_string()];
+        let session_id = scan_sessions::create(db.pool(), &paths).await.unwrap();
+        let group_id = duplicate_groups::create(db.pool(), "hash1", 1024, 2, 1024, session_id)
+            .await
+            .unwrap();
+
+        // First insert with both hashes populated
+        scanned_files::insert(
+            db.pool(),
+            "/test/coalesce.txt",
+            1024,
+            Some("partial1"),
+            Some("full1"),
+            1000,
+            2000,
+            Some(group_id),
+            session_id,
+        )
+        .await
+        .unwrap();
+
+        // Re-insert with partial_hash = None, full_hash = Some (production pattern)
+        // COALESCE should preserve "partial1" and update full_hash to "full2"
+        scanned_files::insert(
+            db.pool(),
+            "/test/coalesce.txt",
+            2048,
+            None,
+            Some("full2"),
+            3000,
+            4000,
+            Some(group_id),
+            session_id,
+        )
+        .await
+        .unwrap();
+
+        let file = scanned_files::get_by_path(db.pool(), "/test/coalesce.txt")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(file.size, 2048, "size should be updated");
+        assert_eq!(
+            file.partial_hash,
+            Some("partial1".to_string()),
+            "COALESCE should preserve existing partial_hash when None is passed"
+        );
+        assert_eq!(
+            file.full_hash,
+            Some("full2".to_string()),
+            "full_hash should be updated to new value"
+        );
+
+        // Also verify: passing None for both preserves both existing values
+        scanned_files::insert(
+            db.pool(),
+            "/test/coalesce.txt",
+            4096,
+            None,
+            None,
+            5000,
+            6000,
+            Some(group_id),
+            session_id,
+        )
+        .await
+        .unwrap();
+
+        let file = scanned_files::get_by_path(db.pool(), "/test/coalesce.txt")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            file.partial_hash,
+            Some("partial1".to_string()),
+            "COALESCE should still preserve partial_hash"
+        );
+        assert_eq!(
+            file.full_hash,
+            Some("full2".to_string()),
+            "COALESCE should still preserve full_hash"
+        );
+    }
 }
