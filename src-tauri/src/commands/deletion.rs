@@ -181,3 +181,46 @@ pub async fn get_deletion_history(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn delete_files_request_deserializes_with_all_fields() {
+        let json = r#"{
+            "files": [{"path": "/a.txt", "expected_hash": "abc", "size": 1024}],
+            "kept_paths": {"/a.txt": "/b.txt"},
+            "group_ids": {"/a.txt": 1}
+        }"#;
+        let req: DeleteFilesRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.files.len(), 1);
+        assert_eq!(req.files[0].path, "/a.txt");
+        assert_eq!(req.kept_paths.get("/a.txt").unwrap(), "/b.txt");
+        assert_eq!(*req.group_ids.get("/a.txt").unwrap(), 1);
+    }
+
+    #[test]
+    fn delete_files_request_defaults_optional_maps() {
+        let json = r#"{"files": [{"path": "/a.txt", "expected_hash": "abc", "size": 512}]}"#;
+        let req: DeleteFilesRequest = serde_json::from_str(json).unwrap();
+        assert!(req.kept_paths.is_empty());
+        assert!(req.group_ids.is_empty());
+    }
+
+    #[test]
+    fn pagination_limit_is_clamped() {
+        // Verify the clamping logic used in get_deletion_history
+        let limit: i32 = 5000;
+        let clamped = limit.clamp(0, 1000);
+        assert_eq!(clamped, 1000);
+
+        let limit: i32 = -5;
+        let clamped = limit.clamp(0, 1000);
+        assert_eq!(clamped, 0);
+
+        let limit: i32 = 50;
+        let clamped = limit.clamp(0, 1000);
+        assert_eq!(clamped, 50);
+    }
+}

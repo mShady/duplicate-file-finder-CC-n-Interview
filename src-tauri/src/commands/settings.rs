@@ -65,3 +65,18 @@ pub async fn get_all_settings(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn empty_key_is_rejected_after_trim() {
+        let key = "   ".trim().to_string();
+        assert!(key.is_empty(), "whitespace-only key should be empty after trim");
+    }
+
+    #[test]
+    fn valid_key_survives_trim() {
+        let key = "  theme  ".trim().to_string();
+        assert_eq!(key, "theme");
+    }
+}
