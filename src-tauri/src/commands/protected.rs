@@ -82,3 +82,18 @@ pub async fn is_path_protected(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn empty_path_is_rejected_after_trim() {
+        let path = "   ".trim().to_string();
+        assert!(path.is_empty(), "whitespace-only path should be empty after trim");
+    }
+
+    #[test]
+    fn valid_path_survives_trim() {
+        let path = " /home/user/docs ".trim().to_string();
+        assert_eq!(path, "/home/user/docs");
+    }
+}

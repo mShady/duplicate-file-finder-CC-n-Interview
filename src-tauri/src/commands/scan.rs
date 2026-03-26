@@ -276,3 +276,61 @@ pub async fn get_scan_results(
         stats: crate::scanner::DetectionStats::default(),
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scan_request_deserializes_with_paths_and_parallelism() {
+        let json = r#"{"paths": ["/home/user/docs"], "parallelism": "light"}"#;
+        let req: ScanRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.paths, vec!["/home/user/docs"]);
+        assert_eq!(req.parallelism.as_deref(), Some("light"));
+    }
+
+    #[test]
+    fn scan_request_deserializes_without_parallelism() {
+        let json = r#"{"paths": ["/tmp"]}"#;
+        let req: ScanRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.paths, vec!["/tmp"]);
+        assert!(req.parallelism.is_none());
+    }
+
+    #[test]
+    fn scan_response_serializes_correctly() {
+        let resp = ScanResponse {
+            session_id: 42,
+            message: "Scan started".to_string(),
+        };
+        let json: serde_json::Value = serde_json::to_value(&resp).unwrap();
+        assert_eq!(json["session_id"], 42);
+        assert_eq!(json["message"], "Scan started");
+    }
+
+    /// Mirrors the parallelism parsing logic from `start_scan`.
+    fn parse_parallelism(input: Option<&str>) -> ParallelismMode {
+        match input {
+            Some("light") => ParallelismMode::Light,
+            Some("aggressive") => ParallelismMode::Aggressive,
+            _ => ParallelismMode::Normal,
+        }
+    }
+
+    #[test]
+    fn parallelism_parsing_matches_expected_modes() {
+        assert!(matches!(
+            parse_parallelism(Some("light")),
+            ParallelismMode::Light
+        ));
+        assert!(matches!(
+            parse_parallelism(Some("aggressive")),
+            ParallelismMode::Aggressive
+        ));
+        assert!(matches!(parse_parallelism(None), ParallelismMode::Normal));
+        assert!(matches!(
+            parse_parallelism(Some("unknown")),
+            ParallelismMode::Normal
+        ));
+    }
+}
