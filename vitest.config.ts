@@ -11,6 +11,7 @@ export default defineConfig({
     alias: {
       $lib: path.resolve(__dirname, 'src/lib'),
     },
+    conditions: ['browser'],
   },
   test: {
     include: ['src/**/*.{test,spec}.{js,ts}', 'tests/**/*.{test,spec}.{js,ts}'],

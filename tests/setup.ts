@@ -1,6 +1,8 @@
 // Test setup file for Vitest
 
-import { vi, beforeEach } from 'vitest';
+import { vi, afterEach, beforeEach } from 'vitest';
+import '@testing-library/jest-dom/vitest';
+import { cleanup } from '@testing-library/svelte';
 
 // Mock Tauri APIs for testing
 vi.mock('@tauri-apps/api/core', () => ({
@@ -21,7 +23,11 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
   open: vi.fn(),
 }));
 
-// Reset mocks before each test
+// Clean up rendered components and reset mocks between tests
+afterEach(() => {
+  cleanup();
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
