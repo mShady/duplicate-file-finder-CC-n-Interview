@@ -496,6 +496,11 @@ pub mod scanned_files {
     /// Accepts any `SqliteExecutor` (pool or transaction).
     /// Uses `ON CONFLICT(path) DO UPDATE` to handle re-scans gracefully,
     /// with `COALESCE` to preserve existing hash values when `None` is passed.
+    ///
+    /// The WHERE clause on the ON CONFLICT update ensures only the **same session**
+    /// can overwrite an existing row. A different session scanning the same path
+    /// will not re-parent the file, preventing cross-session contamination
+    /// (the same pattern V1 fixed for `duplicate_groups`).
     #[allow(clippy::too_many_arguments)]
     pub async fn upsert<'e, E>(
         executor: E,
@@ -522,7 +527,8 @@ pub mod scanned_files {
                 modified_at = excluded.modified_at,
                 group_id = excluded.group_id,
                 scan_session_id = excluded.scan_session_id,
-                scanned_at = strftime('%s', 'now')",
+                scanned_at = strftime('%s', 'now')
+             WHERE scanned_files.scan_session_id = excluded.scan_session_id",
         )
         .bind(path)
         .bind(size)
@@ -1135,6 +1141,125 @@ mod tests {
             file.full_hash,
             Some("full2".to_string()),
             "COALESCE should still preserve full_hash"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_scanned_files_upsert_does_not_reparent_across_sessions() {
+        // Y1: Verify that session 2 scanning the same file path does NOT overwrite
+        // session 1's group_id or scan_session_id. The WHERE clause on the ON CONFLICT
+        // update restricts overwrites to the same session.
+        let (db, _dir) = setup_test_db().await;
+
+        let paths = vec!["/test".to_string()];
+        let session_1 = scan_sessions::create(db.pool(), &paths).await.unwrap();
+        let session_2 = scan_sessions::create(db.pool(), &paths).await.unwrap();
+
+        let group_s1 = duplicate_groups::create(db.pool(), "hash1", 1024, 2, 1024, session_1)
+            .await
+            .unwrap();
+        let group_s2 = duplicate_groups::create(db.pool(), "hash1", 1024, 2, 1024, session_2)
+            .await
+            .unwrap();
+
+        // Session 1 inserts the file
+        scanned_files::upsert(
+            db.pool(),
+            "/test/shared.txt",
+            1024,
+            Some("partial1"),
+            Some("full1"),
+            1000,
+            2000,
+            Some(group_s1),
+            session_1,
+        )
+        .await
+        .unwrap();
+
+        // Session 2 scans the same path — should NOT overwrite session 1's row
+        scanned_files::upsert(
+            db.pool(),
+            "/test/shared.txt",
+            2048,
+            Some("partial2"),
+            Some("full2"),
+            3000,
+            4000,
+            Some(group_s2),
+            session_2,
+        )
+        .await
+        .unwrap();
+
+        // The file should still belong to session 1
+        let file = scanned_files::get_by_path(db.pool(), "/test/shared.txt")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            file.group_id,
+            Some(group_s1),
+            "file should still belong to session 1's group"
+        );
+        // Size should NOT be updated by session 2
+        assert_eq!(file.size, 1024, "session 2 should not overwrite session 1's data");
+    }
+
+    #[tokio::test]
+    async fn test_scanned_files_upsert_allows_same_session_update() {
+        // Companion to the cross-session test: verify same-session upsert still works
+        let (db, _dir) = setup_test_db().await;
+
+        let paths = vec!["/test".to_string()];
+        let session_id = scan_sessions::create(db.pool(), &paths).await.unwrap();
+        let group_id = duplicate_groups::create(db.pool(), "hash1", 1024, 2, 1024, session_id)
+            .await
+            .unwrap();
+
+        scanned_files::upsert(
+            db.pool(),
+            "/test/rescan.txt",
+            1024,
+            Some("partial1"),
+            Some("full1"),
+            1000,
+            2000,
+            Some(group_id),
+            session_id,
+        )
+        .await
+        .unwrap();
+
+        // Same session re-scans — should update
+        scanned_files::upsert(
+            db.pool(),
+            "/test/rescan.txt",
+            2048,
+            None,
+            Some("full2"),
+            3000,
+            4000,
+            Some(group_id),
+            session_id,
+        )
+        .await
+        .unwrap();
+
+        let file = scanned_files::get_by_path(db.pool(), "/test/rescan.txt")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(file.size, 2048, "same-session upsert should update size");
+        assert_eq!(
+            file.partial_hash,
+            Some("partial1".to_string()),
+            "COALESCE should preserve partial_hash"
+        );
+        assert_eq!(
+            file.full_hash,
+            Some("full2".to_string()),
+            "full_hash should be updated"
         );
     }
 }
