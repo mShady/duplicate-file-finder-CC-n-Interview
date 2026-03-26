@@ -1,11 +1,11 @@
 # Code Review — PR #38
 
 **Date**: 2026-03-26 (final review after all fixes)
-**Scope**: PR #38 (`feature/fix-v1-v4-dal-bypass` vs `main`) — 11 files, 25 commits (622 insertions, 112 deletions)
+**Scope**: PR #38 (`feature/fix-v1-v4-dal-bypass` vs `main`) — 13 files, 30 commits (1524 insertions, 569 deletions)
 **Languages**: Rust, SQL, Markdown
-**Tests**: 94 Rust passed, 0 failed; 85 frontend passed, 0 failed
-**Dependency Audit**: npm audit: 2 advisories (picomatch — dev dependency); cargo audit: 1 advisory (rsa — no fix, transitive via sqlx-mysql)
-**Summary**: 0 critical, 1 high, 3 medium, 4 low new — plus 25 FIXED/INVALID and 8 PRE-EXISTING from previous reviews
+**Tests**: 96 Rust passed, 0 failed; 85 frontend passed, 0 failed
+**Dependency Audit**: npm audit: 0 vulnerabilities; cargo audit: 1 phantom advisory (rsa — not in dep tree, Cargo.lock artifact from cargo#10801)
+**Summary**: 0 critical, 0 high, 0 medium, 0 low new — all Y1-Y4 FIXED. 29 FIXED/INVALID and 8 PRE-EXISTING from previous reviews. 4 LOW still OPEN (W13, V8, V7, W14).
 
 ## Findings
 
@@ -68,17 +68,17 @@ All 25 findings marked FIXED were verified against the current source code by Ag
 
 | Dimension           | Status   | Notes                                                                             |
 | ------------------- | -------- | --------------------------------------------------------------------------------- |
-| Correctness & Bugs  | Reviewed | Cross-session file re-parenting (Y1); all prior FIXED confirmed                   |
-| Tests & Coverage    | Reviewed | 94 Rust + 85 frontend pass; X4 TempDir fix verified; W14 rollback test still open |
+| Correctness & Bugs  | Reviewed | Y1 FIXED (cross-session WHERE clause); all 29 FIXED findings confirmed            |
+| Tests & Coverage    | Reviewed | 96 Rust + 85 frontend pass; Y1 added 2 tests; W14 rollback test still open        |
 | Error Handling      | Reviewed | Silent `let _ =` pattern on status updates (pre-existing); #4 FIXED confirmed     |
 | Types & Type Design | Reviewed | W1/V9 FIXED confirmed; function-level cast suppression (pre-existing)             |
-| Comments & Docs     | Reviewed | X1 still OPEN (CODE-REVIEW.md counts); X3 FIXED confirmed                         |
+| Comments & Docs     | Reviewed | X1 still OPEN (CODE-REVIEW.md counts)                                             |
 | Simplification      | Reviewed | V8 still OPEN; DRY violations in row mapping (pre-existing)                       |
-| Security            | Reviewed | npm: 2 picomatch advisories (Y3); cargo: rsa eliminable via feature flag (Y4)     |
+| Security            | Reviewed | npm: 0 vulnerabilities (Y3 FIXED); cargo: rsa eliminated from dep tree (Y4 FIXED) |
 | Performance         | Reviewed | #9 FIXED confirmed; N+1 in get_results (pre-existing)                             |
 | Maintainability     | Reviewed | W6/W7 FIXED confirmed; V2 INVALID confirmed                                       |
-| Architecture        | Reviewed | V1 FIXED confirmed; P1 still pre-existing                                         |
-| Code vs Docs/Plans  | Reviewed | 25 FIXED findings verified; 0 false claims                                        |
+| Architecture        | Reviewed | V1/Y1 FIXED confirmed; P1 still pre-existing                                      |
+| Code vs Docs/Plans  | Reviewed | 29 FIXED findings verified against source; 0 false claims                         |
 
 ## Limitations
 
