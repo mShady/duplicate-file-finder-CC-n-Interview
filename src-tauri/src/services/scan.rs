@@ -205,6 +205,8 @@ impl ScanService {
         let mut persisted_groups: usize = 0;
         #[allow(unused_assignments)]
         let mut persisted_wasted_space: u64 = 0;
+        #[allow(unused_assignments)]
+        let mut persisted_duplicate_files: u64 = 0;
         {
             let db_guard = db.lock().await;
 
@@ -244,6 +246,8 @@ impl ScanService {
                 {
                     Ok(group_id) => {
                         persisted_wasted_space += group.wasted_space;
+                        persisted_duplicate_files +=
+                            group.files.len().saturating_sub(1) as u64;
                         for file in &group.files {
                             if let Err(e) = queries::scanned_files::upsert(
                                 &mut *tx,
@@ -342,7 +346,7 @@ impl ScanService {
             total_files: walker_stats.total_files,
             total_bytes: walker_stats.total_bytes,
             duplicate_groups: persisted_groups,
-            duplicate_files: detection_result.duplicate_count,
+            duplicate_files: persisted_duplicate_files,
             wasted_space: persisted_wasted_space,
             duration_ms,
         });
