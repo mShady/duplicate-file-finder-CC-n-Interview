@@ -75,3 +75,12 @@ docs/                   # Documentation & plans
 - **Frontend**: Svelte 5 runes for reactivity (not Svelte 4 stores)
 - **API layer**: All Tauri `invoke()` calls go through typed wrappers in `src/lib/api/`
 - **Database**: All SQL goes through the DAL in `src-tauri/src/db/queries.rs`
+
+## Testing Convention (test-as-you-go)
+
+Every new feature or bug fix must include corresponding automated tests before merging. Tests are not a follow-up task — they are part of the feature.
+
+- **Frontend**: Vitest component tests (`tests/components/`) for UI behavior, unit tests (`tests/utils/`) for logic. Use shared factories from `tests/factories.ts`.
+- **Backend**: Rust `#[cfg(test)]` modules for serialization contracts, input validation, and business logic. Integration tests in service modules (`services/scan.rs`, `services/deletion.rs`).
+- **What remains manual**: Native OS dialogs, trash sound/behavior, visual polish, drag-to-resize (jsdom has no layout engine).
+- **Verification**: All checks in CLAUDE.md's "Automated Verification" section must pass before a PR is considered complete.
