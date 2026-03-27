@@ -11,7 +11,7 @@ function mockInvoke(handlers: Record<string, unknown>) {
       const val = handlers[cmd];
       return val instanceof Error ? Promise.reject(val) : Promise.resolve(val);
     }
-    return Promise.resolve(undefined);
+    return Promise.reject(new Error(`Unexpected invoke: ${cmd}`));
   });
 }
 
