@@ -4,14 +4,15 @@ import { invoke } from '@tauri-apps/api/core';
 import DeletionHistoryPanel from '$lib/components/DeletionHistoryPanel.svelte';
 import type { DeletionRecord } from '$lib/types';
 
-function mockEmptyHistory() {
-  // First call: getDeletionHistorySummary -> [0, 0]
-  // Second call: getDeletionHistory -> []
-  vi.mocked(invoke).mockResolvedValueOnce([0, 0]).mockResolvedValueOnce([]);
-}
-
-function mockHistoryWithRecords(records: DeletionRecord[], totalCount: number, totalFreed: number) {
-  vi.mocked(invoke).mockResolvedValueOnce([totalCount, totalFreed]).mockResolvedValueOnce(records);
+/** Mock invoke by dispatching on the Tauri command name, not call order. */
+function mockInvoke(handlers: Record<string, unknown>) {
+  vi.mocked(invoke).mockImplementation((cmd: string) => {
+    if (cmd in handlers) {
+      const val = handlers[cmd];
+      return val instanceof Error ? Promise.reject(val) : Promise.resolve(val);
+    }
+    return Promise.resolve(undefined);
+  });
 }
 
 const sampleRecord: DeletionRecord = {
@@ -33,7 +34,10 @@ describe('DeletionHistoryPanel', () => {
   });
 
   it('shows empty state when no history', async () => {
-    mockEmptyHistory();
+    mockInvoke({
+      get_deletion_history_summary: [0, 0],
+      get_deletion_history: [],
+    });
     render(DeletionHistoryPanel, { props: { onClose: vi.fn() } });
     await waitFor(() => {
       expect(screen.getByText('No deletion history yet')).toBeInTheDocument();
@@ -41,7 +45,10 @@ describe('DeletionHistoryPanel', () => {
   });
 
   it('renders records with file name and size', async () => {
-    mockHistoryWithRecords([sampleRecord], 1, 2048);
+    mockInvoke({
+      get_deletion_history_summary: [1, 2048],
+      get_deletion_history: [sampleRecord],
+    });
     render(DeletionHistoryPanel, { props: { onClose: vi.fn() } });
     await waitFor(() => {
       expect(screen.getByText('report.pdf')).toBeInTheDocument();
@@ -49,16 +56,50 @@ describe('DeletionHistoryPanel', () => {
   });
 
   it('summary header shows total count and freed space', async () => {
-    mockHistoryWithRecords([sampleRecord], 5, 10240);
+    mockInvoke({
+      get_deletion_history_summary: [5, 10240],
+      get_deletion_history: [sampleRecord],
+    });
     render(DeletionHistoryPanel, { props: { onClose: vi.fn() } });
     await waitFor(() => {
       expect(screen.getByText(/5 files/)).toBeInTheDocument();
-      expect(screen.getByText(/freed/)).toBeInTheDocument();
+      expect(screen.getByText(/10 KB/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows error state when API rejects', async () => {
+    mockInvoke({
+      get_deletion_history_summary: [0, 0],
+      get_deletion_history: new Error('Network error'),
+    });
+    render(DeletionHistoryPanel, { props: { onClose: vi.fn() } });
+    await waitFor(() => {
+      expect(screen.getByText(/Network error/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows Load More button when a full page of records is returned', async () => {
+    // pageSize is 50 in the component — returning exactly 50 records means hasMore = true
+    const fullPage = Array.from({ length: 50 }, (_, i) => ({
+      ...sampleRecord,
+      id: i + 1,
+      file_path: `/files/file${i}.txt`,
+    }));
+    mockInvoke({
+      get_deletion_history_summary: [100, 50000],
+      get_deletion_history: fullPage,
+    });
+    render(DeletionHistoryPanel, { props: { onClose: vi.fn() } });
+    await waitFor(() => {
+      expect(screen.getByText('Load More')).toBeInTheDocument();
     });
   });
 
   it('Close button calls onClose', () => {
-    mockEmptyHistory();
+    mockInvoke({
+      get_deletion_history_summary: [0, 0],
+      get_deletion_history: [],
+    });
     const onClose = vi.fn();
     render(DeletionHistoryPanel, { props: { onClose } });
     screen.getByText('Close').click();
