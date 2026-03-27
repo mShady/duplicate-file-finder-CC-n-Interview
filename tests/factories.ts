@@ -17,7 +17,7 @@ export function makeGroup(
   const paths = options?.paths;
 
   const files: DuplicateFile[] = Array.from({ length: fileCount }, (_, i) => ({
-    path: paths ? paths[i] : `/files/group${id}/file${i}.txt`,
+    path: paths?.[i] ?? `/files/group${id}/file${i}.txt`,
     size: fileSize,
     created_at: 1000 + i,
     modified_at: 2000 + i,
