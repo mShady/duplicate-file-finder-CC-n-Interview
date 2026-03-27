@@ -1,5 +1,6 @@
 //! Protected folders Tauri commands
 
+use super::validate_non_empty;
 use crate::db::models::ProtectedFolder;
 use crate::db::queries;
 use crate::state::AppState;
@@ -12,10 +13,7 @@ pub async fn add_protected_folder(
     path: String,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<i64, String> {
-    let path = path.trim().to_string();
-    if path.is_empty() {
-        return Err("Protected folder path cannot be empty".to_string());
-    }
+    let path = validate_non_empty(&path, "Protected folder path")?;
 
     let db = {
         let state = state.lock().map_err(|e| e.to_string())?;
@@ -67,10 +65,7 @@ pub async fn is_path_protected(
     path: String,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<bool, String> {
-    let path = path.trim().to_string();
-    if path.is_empty() {
-        return Err("Path cannot be empty".to_string());
-    }
+    let path = validate_non_empty(&path, "Path")?;
 
     let db = {
         let state = state.lock().map_err(|e| e.to_string())?;
@@ -81,19 +76,4 @@ pub async fn is_path_protected(
     queries::protected_folders::is_protected(db.pool(), &path)
         .await
         .map_err(|e| e.to_string())
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn empty_path_is_rejected_after_trim() {
-        let path = "   ".trim().to_string();
-        assert!(path.is_empty(), "whitespace-only path should be empty after trim");
-    }
-
-    #[test]
-    fn valid_path_survives_trim() {
-        let path = " /home/user/docs ".trim().to_string();
-        assert_eq!(path, "/home/user/docs");
-    }
 }

@@ -168,7 +168,7 @@ pub async fn get_deletion_history(
     state: State<'_, Mutex<AppState>>,
 ) -> Result<Vec<crate::db::models::DeletionRecord>, String> {
     // Validate pagination parameters
-    let limit = limit.clamp(0, 1000);
+    let limit = limit.clamp(0, super::MAX_PAGE_SIZE);
     let offset = offset.max(0);
 
     let db = {
@@ -206,21 +206,5 @@ mod tests {
         let req: DeleteFilesRequest = serde_json::from_str(json).unwrap();
         assert!(req.kept_paths.is_empty());
         assert!(req.group_ids.is_empty());
-    }
-
-    #[test]
-    fn pagination_limit_is_clamped() {
-        // Verify the clamping logic used in get_deletion_history
-        let limit: i32 = 5000;
-        let clamped = limit.clamp(0, 1000);
-        assert_eq!(clamped, 1000);
-
-        let limit: i32 = -5;
-        let clamped = limit.clamp(0, 1000);
-        assert_eq!(clamped, 0);
-
-        let limit: i32 = 50;
-        let clamped = limit.clamp(0, 1000);
-        assert_eq!(clamped, 50);
     }
 }
