@@ -48,4 +48,43 @@ describe('FolderPicker', () => {
       title: 'Select folders to scan',
     });
   });
+
+  it('deduplicates paths when dialog returns already-selected path', async () => {
+    vi.mocked(open).mockResolvedValueOnce(['/a', '/new']);
+    const onPathsChange = vi.fn();
+    render(FolderPicker, {
+      props: { selectedPaths: ['/a', '/b'], onPathsChange },
+    });
+    screen.getByText('Add Folder').click();
+    await vi.waitFor(() => {
+      expect(onPathsChange).toHaveBeenCalledWith(['/a', '/b', '/new']);
+    });
+  });
+
+  it('handles dialog returning a single string (non-array)', async () => {
+    vi.mocked(open).mockResolvedValueOnce('/single' as unknown as string[]);
+    const onPathsChange = vi.fn();
+    render(FolderPicker, {
+      props: { selectedPaths: [], onPathsChange },
+    });
+    screen.getByText('Add Folder').click();
+    await vi.waitFor(() => {
+      expect(onPathsChange).toHaveBeenCalledWith(['/single']);
+    });
+  });
+
+  it('handles dialog rejection gracefully', async () => {
+    vi.mocked(open).mockRejectedValueOnce(new Error('Dialog cancelled'));
+    const onPathsChange = vi.fn();
+    render(FolderPicker, {
+      props: { selectedPaths: ['/existing'], onPathsChange },
+    });
+    screen.getByText('Add Folder').click();
+    // Wait for the async error path to complete
+    await vi.waitFor(() => {
+      expect(open).toHaveBeenCalled();
+    });
+    // onPathsChange should NOT have been called
+    expect(onPathsChange).not.toHaveBeenCalled();
+  });
 });
