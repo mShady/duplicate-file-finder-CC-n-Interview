@@ -26,6 +26,15 @@ pub struct ScanResponse {
     pub message: String,
 }
 
+/// Parses the optional parallelism string from the frontend into a [`ParallelismMode`].
+pub(crate) fn parse_parallelism(input: Option<&str>) -> ParallelismMode {
+    match input {
+        Some("light") => ParallelismMode::Light,
+        Some("aggressive") => ParallelismMode::Aggressive,
+        _ => ParallelismMode::Normal,
+    }
+}
+
 /// Bridges [`ScanEventSink`] to Tauri frontend events via [`AppHandle`].
 struct TauriEventSink {
     handle: AppHandle,
@@ -96,11 +105,7 @@ pub async fn start_scan(
     }
 
     // Parse parallelism mode
-    let parallelism = match request.parallelism.as_deref() {
-        Some("light") => ParallelismMode::Light,
-        Some("aggressive") => ParallelismMode::Aggressive,
-        _ => ParallelismMode::Normal,
-    };
+    let parallelism = parse_parallelism(request.parallelism.as_deref());
 
     // Create scan session in database
     let session_id = {
@@ -308,28 +313,22 @@ mod tests {
         assert_eq!(json["message"], "Scan started");
     }
 
-    /// Mirrors the parallelism parsing logic from `start_scan`.
-    fn parse_parallelism(input: Option<&str>) -> ParallelismMode {
-        match input {
-            Some("light") => ParallelismMode::Light,
-            Some("aggressive") => ParallelismMode::Aggressive,
-            _ => ParallelismMode::Normal,
-        }
-    }
-
     #[test]
     fn parallelism_parsing_matches_expected_modes() {
         assert!(matches!(
-            parse_parallelism(Some("light")),
+            super::parse_parallelism(Some("light")),
             ParallelismMode::Light
         ));
         assert!(matches!(
-            parse_parallelism(Some("aggressive")),
+            super::parse_parallelism(Some("aggressive")),
             ParallelismMode::Aggressive
         ));
-        assert!(matches!(parse_parallelism(None), ParallelismMode::Normal));
         assert!(matches!(
-            parse_parallelism(Some("unknown")),
+            super::parse_parallelism(None),
+            ParallelismMode::Normal
+        ));
+        assert!(matches!(
+            super::parse_parallelism(Some("unknown")),
             ParallelismMode::Normal
         ));
     }
