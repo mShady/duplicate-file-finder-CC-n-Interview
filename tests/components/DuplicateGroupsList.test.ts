@@ -1,23 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import DuplicateGroupsList from '$lib/components/DuplicateGroupsList.svelte';
-import type { DuplicateGroup } from '$lib/types';
-
-function makeGroup(id: number, fileSize: number, fileCount: number): DuplicateGroup {
-  return {
-    id,
-    hash: `hash_${id}`,
-    file_size: fileSize,
-    files: Array.from({ length: fileCount }, (_, i) => ({
-      path: `/files/file${i}.txt`,
-      size: fileSize,
-      created_at: 1000 + i,
-      modified_at: 2000 + i,
-      is_original: i === 0,
-    })),
-    wasted_space: fileSize * (fileCount - 1),
-  };
-}
+import { makeGroup } from '../factories';
 
 describe('DuplicateGroupsList', () => {
   it('renders empty state when no groups', () => {

@@ -1,26 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import SmartSelectionPanel from '$lib/components/SmartSelectionPanel.svelte';
-import type { DuplicateGroup } from '$lib/types';
-
-function makeGroup(id: number, paths: string[]): DuplicateGroup {
-  return {
-    id,
-    hash: `hash_${id}`,
-    file_size: 1024,
-    files: paths.map((p, i) => ({
-      path: p,
-      size: 1024,
-      created_at: 1000 + i,
-      modified_at: 2000 + i,
-      is_original: i === 0,
-    })),
-    wasted_space: 1024 * (paths.length - 1),
-  };
-}
+import { makeGroup } from '../factories';
 
 const defaultProps = {
-  groups: [makeGroup(1, ['/a.txt', '/b.txt'])],
+  groups: [makeGroup(1, 1024, 2, { paths: ['/a.txt', '/b.txt'] })],
   selectedFiles: new Set<string>(),
   onSelectionChange: vi.fn(),
 };
