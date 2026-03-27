@@ -36,6 +36,10 @@ export function makeGroup(
 /**
  * Factory for DetectionResult test fixtures.
  * Derives duplicate_count, total_wasted_space, and unique_files from groups.
+ *
+ * Note on unique_files: set to groups.length (one unique hash per group).
+ * The backend computes total_files - duplicate_count which equals this when
+ * all files belong to duplicate groups (no standalone non-duplicate files).
  */
 export function makeResult(groups: DuplicateGroup[]): DetectionResult {
   const duplicateCount = groups.reduce((s, g) => s + g.files.length - 1, 0);
