@@ -1,5 +1,6 @@
 //! Settings-related Tauri commands
 
+use super::validate_non_empty;
 use crate::db::queries;
 use crate::state::AppState;
 use std::sync::Mutex;
@@ -11,10 +12,7 @@ pub async fn get_setting(
     key: String,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<Option<String>, String> {
-    let key = key.trim().to_string();
-    if key.is_empty() {
-        return Err("Setting key cannot be empty".to_string());
-    }
+    let key = validate_non_empty(&key, "Setting key")?;
 
     let db = {
         let state = state.lock().map_err(|e| e.to_string())?;
@@ -34,10 +32,7 @@ pub async fn set_setting(
     value: String,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<(), String> {
-    let key = key.trim().to_string();
-    if key.is_empty() {
-        return Err("Setting key cannot be empty".to_string());
-    }
+    let key = validate_non_empty(&key, "Setting key")?;
 
     let db = {
         let state = state.lock().map_err(|e| e.to_string())?;
@@ -64,19 +59,4 @@ pub async fn get_all_settings(
     queries::settings::get_all(db.pool())
         .await
         .map_err(|e| e.to_string())
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn empty_key_is_rejected_after_trim() {
-        let key = "   ".trim().to_string();
-        assert!(key.is_empty(), "whitespace-only key should be empty after trim");
-    }
-
-    #[test]
-    fn valid_key_survives_trim() {
-        let key = "  theme  ".trim().to_string();
-        assert_eq!(key, "theme");
-    }
 }
