@@ -41,4 +41,31 @@ describe('DeleteConfirmDialog', () => {
     screen.getByText('Cancel').click();
     expect(onCancel).toHaveBeenCalledOnce();
   });
+
+  it('confirm button calls onConfirm in normal mode', () => {
+    const onConfirm = vi.fn();
+    render(DeleteConfirmDialog, { props: { ...defaultProps, onConfirm } });
+    screen.getByText('Delete to Trash').click();
+    expect(onConfirm).toHaveBeenCalledOnce();
+  });
+
+  it('allInGroup checkbox enables confirm button when checked', async () => {
+    const onConfirm = vi.fn();
+    render(DeleteConfirmDialog, {
+      props: { ...defaultProps, allInGroup: true, onConfirm },
+    });
+    const confirmBtn = screen.getByText('Delete ALL Copies');
+    expect(confirmBtn).toBeDisabled();
+
+    // Check the confirmation checkbox
+    const checkbox = screen.getByRole('checkbox');
+    checkbox.click();
+
+    await vi.waitFor(() => {
+      expect(confirmBtn).not.toBeDisabled();
+    });
+
+    confirmBtn.click();
+    expect(onConfirm).toHaveBeenCalledOnce();
+  });
 });
