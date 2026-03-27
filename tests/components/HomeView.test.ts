@@ -47,7 +47,7 @@ describe('HomeView', () => {
   it('shows View Previous Results when detectionResult provided', () => {
     const result = makeResult([makeGroup(1, 100, 2)]);
     render(HomeView, { props: { ...defaultProps, detectionResult: result } });
-    expect(screen.getByText(/View Previous Results/)).toBeInTheDocument();
+    expect(screen.getByText('View Previous Results (1 group)')).toBeInTheDocument();
   });
 
   it('calls onStartScan when button clicked', () => {

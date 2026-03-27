@@ -44,7 +44,8 @@
 
     {#if detectionResult}
       <button class="results-link" onclick={onViewResults}>
-        View Previous Results ({detectionResult.groups.length} groups)
+        View Previous Results ({detectionResult.groups.length}
+        {detectionResult.groups.length === 1 ? 'group' : 'groups'})
       </button>
     {/if}
   </div>
