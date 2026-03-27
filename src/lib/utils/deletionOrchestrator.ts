@@ -69,6 +69,7 @@ export function updateResultsAfterDeletion(
     groups: updatedGroups,
     duplicate_count: duplicateCount,
     total_wasted_space: totalWastedSpace,
+    unique_files: updatedGroups.length,
   };
 }
 
