@@ -1,11 +1,11 @@
 # Code Review — PR #41
 
-**Date**: 2026-03-28 (re-review #2 after fixing V1-V3 + CI-1 through CI-3)
-**Scope**: PR #41 `feature/36-automate-verification` — 26 source files (excluding package-lock.json)
+**Date**: 2026-03-28 (re-review #3 — final review after fixing W1-W4)
+**Scope**: PR #41 `feature/36-automate-verification` — 27 source files (excluding package-lock.json)
 **Languages**: TypeScript, Rust, Svelte
 **Tests**: 171 frontend passed, 107 backend passed — 0 failures
-**Dependency Audit**: npm audit: 1 moderate (dev-only, brace-expansion); cargo audit: unmaintained GTK3 bindings only (Tauri Linux deps, not actionable)
-**Summary**: 0 critical, 0 high, 1 medium, 3 low (all original + V-findings FIXED, 4 new W-findings)
+**Dependency Audit**: npm audit: network issues (offline); cargo audit: pre-existing advisories only (rsa phantom, GTK3 unmaintained)
+**Summary**: 0 critical, 0 high, 0 medium, 0 low — all findings FIXED, 0 new findings
 
 ## Findings
 
@@ -40,19 +40,19 @@
 
 ## Review Process
 
-| Dimension           | Status   | Notes                                                                                                |
-| ------------------- | -------- | ---------------------------------------------------------------------------------------------------- |
-| Correctness & Bugs  | Reviewed | Traced all execution paths. No new issues.                                                           |
-| Tests & Coverage    | Reviewed | Ran test suite: 171 frontend passed, 107 backend passed. 4 low findings.                             |
-| Error Handling      | Reviewed | Pre-existing silent emit pattern noted. No new issues in PR code.                                    |
-| Types & Type Design | Reviewed | Minor `\|\|` vs `??` in pre-existing code. No new type safety issues.                                |
-| Comments & Docs     | Reviewed | All comments accurate. No stale or misleading docs.                                                  |
-| Simplification      | Reviewed | One test file has extractable helper (ResultsView). Merged into W1 maintainability finding.          |
-| Security            | Reviewed | npm audit: 1 moderate (dev-only). cargo audit: GTK3 unmaintained (Tauri deps). No new issues.        |
-| Performance         | Reviewed | Pre-existing P3/P4 unchanged. No new performance issues in PR code.                                  |
-| Maintainability     | Reviewed | Local factory duplication in FileDetailsPanel (W1) and naming collision in DeleteSummaryDialog (W2). |
-| Architecture        | Reviewed | Clean layer boundaries. validate_non_empty and parse_parallelism correctly scoped.                   |
-| Code vs Docs/Plans  | Reviewed | CLAUDE.md test count stale (W4). Plan file counts are historical snapshots — expected.               |
+| Dimension           | Status   | Notes                                                                         |
+| ------------------- | -------- | ----------------------------------------------------------------------------- |
+| Correctness & Bugs  | Reviewed | Traced all execution paths. No issues.                                        |
+| Tests & Coverage    | Reviewed | 171 frontend + 107 backend passed. W1-W3 confirmed FIXED. No new issues.      |
+| Error Handling      | Reviewed | Pre-existing patterns (P8) unchanged. No new issues.                          |
+| Types & Type Design | Reviewed | All types correct. No new issues.                                             |
+| Comments & Docs     | Reviewed | All comments accurate. No stale or misleading docs.                           |
+| Simplification      | Reviewed | Code is clean. No unnecessary complexity.                                     |
+| Security            | Reviewed | npm audit: offline. cargo audit: pre-existing advisories only. No new issues. |
+| Performance         | Reviewed | Pre-existing P3/P4 unchanged. No new performance issues.                      |
+| Maintainability     | Reviewed | W1 (shared factory), W2 (rename) confirmed FIXED. No new issues.              |
+| Architecture        | Reviewed | Clean layer boundaries. No issues.                                            |
+| Code vs Docs/Plans  | Reviewed | W4 (stale count) confirmed FIXED. No new discrepancies.                       |
 
 ## Limitations
 
