@@ -20,7 +20,7 @@ npm run build         # Vite production build
 ### Backend (from src-tauri/)
 
 ```bash
-cargo test            # Rust unit tests (94+ tests)
+cargo test            # Rust unit tests (all must pass)
 cargo clippy          # Rust linter - must produce zero warnings
 ```
 
