@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/svelte';
 import DeleteSummaryDialog from '$lib/components/DeleteSummaryDialog.svelte';
 import type { BatchDeletionResult } from '$lib/types';
 
-function makeResult(
+function makeBatchResult(
   successCount: number,
   failCount: number,
   totalFreed: number
@@ -28,7 +28,7 @@ function makeResult(
 describe('DeleteSummaryDialog', () => {
   it('shows successful deletion count', () => {
     render(DeleteSummaryDialog, {
-      props: { result: makeResult(5, 0, 5120), onClose: vi.fn() },
+      props: { result: makeBatchResult(5, 0, 5120), onClose: vi.fn() },
     });
     expect(screen.getByText('5')).toBeInTheDocument();
     expect(screen.getByText('Files deleted')).toBeInTheDocument();
@@ -36,7 +36,7 @@ describe('DeleteSummaryDialog', () => {
 
   it('shows failed deletion count when there are failures', () => {
     render(DeleteSummaryDialog, {
-      props: { result: makeResult(3, 2, 3072), onClose: vi.fn() },
+      props: { result: makeBatchResult(3, 2, 3072), onClose: vi.fn() },
     });
     expect(screen.getByText('2')).toBeInTheDocument();
     expect(screen.getByText('Failed')).toBeInTheDocument();
@@ -45,7 +45,7 @@ describe('DeleteSummaryDialog', () => {
   it('Done button calls onClose', () => {
     const onClose = vi.fn();
     render(DeleteSummaryDialog, {
-      props: { result: makeResult(1, 0, 1024), onClose },
+      props: { result: makeBatchResult(1, 0, 1024), onClose },
     });
     screen.getByText('Done').click();
     expect(onClose).toHaveBeenCalledOnce();
