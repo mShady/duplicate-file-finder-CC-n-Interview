@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, waitFor } from '@testing-library/svelte';
 import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
 
 const defaultProps = {
@@ -61,7 +61,7 @@ describe('DeleteConfirmDialog', () => {
     const checkbox = screen.getByRole('checkbox');
     checkbox.click();
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(confirmBtn).not.toBeDisabled();
     });
 
