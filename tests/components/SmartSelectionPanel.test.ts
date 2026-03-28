@@ -23,17 +23,19 @@ describe('SmartSelectionPanel', () => {
     expect(screen.getByText('Select by Location')).toBeDisabled();
   });
 
-  it('clicking Select All Except Oldest calls onSelectionChange', () => {
+  it('clicking Select All Except Oldest calls onSelectionChange with newer file', () => {
     const onSelectionChange = vi.fn();
     render(SmartSelectionPanel, { props: { ...defaultProps, onSelectionChange } });
     screen.getByText('Select All Except Oldest').click();
     expect(onSelectionChange).toHaveBeenCalledOnce();
+    expect(onSelectionChange).toHaveBeenCalledWith(new Set(['/b.txt']));
   });
 
-  it('clicking Select Deepest Files calls onSelectionChange', () => {
+  it('clicking Select Deepest Files calls onSelectionChange with newer file', () => {
     const onSelectionChange = vi.fn();
     render(SmartSelectionPanel, { props: { ...defaultProps, onSelectionChange } });
     screen.getByText('Select Deepest Files').click();
     expect(onSelectionChange).toHaveBeenCalledOnce();
+    expect(onSelectionChange).toHaveBeenCalledWith(new Set(['/b.txt']));
   });
 });
