@@ -200,7 +200,9 @@ impl ScanService {
         // persisted_* counters track what actually made it into the DB.
         // Declared outside the DB block so the ScanComplete event can use them.
         // Initial values are overwritten after commit; early-return paths (tx failure,
-        // all-groups-failed, commit failure) exit before reaching the ScanComplete event.
+        // any insert/upsert failure, commit failure) exit before reaching the ScanComplete
+        // event. Because any failure aborts before commit, the committed path always has
+        // complete data, so these counts are accurate when the event fires.
         #[allow(unused_assignments)]
         let mut persisted_groups: usize = 0;
         #[allow(unused_assignments)]
@@ -212,6 +214,7 @@ impl ScanService {
 
             let total_groups = detection_result.groups.len();
             let mut failed_groups: usize = 0;
+            let mut failed_files: usize = 0;
 
             // Use a transaction to batch all inserts into a single disk sync
             let mut tx = match sqlx::pool::Pool::begin(db_guard.pool()).await {
@@ -263,6 +266,7 @@ impl ScanService {
                             .await
                             {
                                 log::warn!("Failed to insert scanned file: {e}");
+                                failed_files += 1;
                             }
                         }
                     }
@@ -273,12 +277,14 @@ impl ScanService {
                 }
             }
 
-            // If all group inserts failed, roll back and treat the scan as failed.
-            // Without ON CONFLICT, failures here are real DB errors (disk full, constraint
-            // violations from duplicate hashes in detector output, etc.).
-            if total_groups > 0 && failed_groups == total_groups {
+            // Persistence is atomic: any insert failure (a group OR any file)
+            // aborts the whole transaction so we never commit a group row with
+            // missing files. Inserts/upserts should not fail under normal
+            // conditions, so a failure here means a real DB error (disk full,
+            // table missing, lock, constraint violation) and the scan is failed.
+            if failed_groups > 0 || failed_files > 0 {
                 log::error!(
-                    "All {total_groups} group inserts failed — marking scan as failed"
+                    "Persistence failed ({failed_files} file(s), {failed_groups} group(s)) — rolling back and marking scan as failed"
                 );
                 let _ = tx.rollback().await;
                 let _ = queries::scan_sessions::update_status(
@@ -290,7 +296,7 @@ impl ScanService {
                 sink.on_error(
                     session_id,
                     &format!(
-                        "Failed to persist scan results: all {total_groups} group inserts failed"
+                        "Failed to persist scan results: {failed_files} file(s) and {failed_groups} group(s) could not be saved; the scan was rolled back and no changes were made."
                     ),
                 );
                 return;
@@ -981,6 +987,69 @@ mod tests {
             "error message should mention persistence failure, got: {}",
             errors[0].1
         );
+    }
+
+    #[tokio::test]
+    async fn test_scan_service_aborts_when_file_inserts_fail() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let content = b"duplicate for file-insert abort test";
+        std::fs::write(temp_dir.path().join("dup1.txt"), content).unwrap();
+        std::fs::write(temp_dir.path().join("dup2.txt"), content).unwrap();
+
+        let config = ScanConfig {
+            paths: vec![temp_dir.path().to_path_buf()],
+            follow_symlinks: false,
+            max_depth: None,
+            parallelism: crate::scanner::ParallelismMode::Light,
+        };
+
+        let (db, session_id, _db_dir) = setup_scan_db(&config.paths).await;
+
+        // Drop scanned_files so group inserts succeed but every file upsert in
+        // Phase 3 fails. The group row must NOT be left committed with zero
+        // files — the whole transaction must roll back and the scan must fail.
+        {
+            let db_guard = db.lock().await;
+            sqlx::query("DROP TABLE scanned_files")
+                .execute(db_guard.pool())
+                .await
+                .unwrap();
+        }
+
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let (sink, captured) = DetailedMockEventSink::new();
+
+        ScanService::run(config, session_id, cancel_flag, Arc::clone(&db), sink).await;
+
+        // Must report failure, not silent success.
+        {
+            let events = captured.events.lock().unwrap();
+            assert!(
+                events.contains(&"error".to_string()),
+                "should emit error when file inserts fail"
+            );
+            assert!(
+                !events.contains(&"complete".to_string()),
+                "should NOT emit complete when file inserts fail"
+            );
+        }
+
+        // Strongest check: the transaction rolled back, so no group rows remain.
+        let db_guard = db.lock().await;
+        let group_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM duplicate_groups")
+            .fetch_one(db_guard.pool())
+            .await
+            .unwrap();
+        assert_eq!(
+            group_count, 0,
+            "transaction must roll back — no orphaned group rows with zero files"
+        );
+
+        let session = queries::scan_sessions::get_latest(db_guard.pool())
+            .await
+            .unwrap()
+            .expect("session should exist");
+        assert_eq!(session.status, "failed");
     }
 
     /// Extracts a human-readable message from a panic payload,

@@ -12,6 +12,7 @@ const defaultProps = {
   onPathsChange: vi.fn(),
   onStartScan: vi.fn(),
   onViewResults: vi.fn(),
+  onDismissError: vi.fn(),
 };
 
 describe('HomeView', () => {
@@ -23,6 +24,15 @@ describe('HomeView', () => {
   it('shows error banner when error is set', () => {
     render(HomeView, { props: { ...defaultProps, error: 'Something went wrong' } });
     expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong');
+  });
+
+  it('calls onDismissError when the error banner dismiss button is clicked', () => {
+    const onDismissError = vi.fn();
+    render(HomeView, {
+      props: { ...defaultProps, error: 'Something went wrong', onDismissError },
+    });
+    screen.getByRole('button', { name: 'Dismiss error' }).click();
+    expect(onDismissError).toHaveBeenCalledOnce();
   });
 
   it('scan button disabled when no paths selected', () => {

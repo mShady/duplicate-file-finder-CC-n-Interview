@@ -10,6 +10,7 @@
     onPathsChange: (paths: string[]) => void;
     onStartScan: () => void;
     onViewResults: () => void;
+    onDismissError: () => void;
   }
 
   let {
@@ -20,6 +21,7 @@
     onPathsChange,
     onStartScan,
     onViewResults,
+    onDismissError,
   }: Props = $props();
 </script>
 
@@ -29,7 +31,12 @@
     <p>Scan your drives to find and remove duplicate files.</p>
 
     {#if error}
-      <div class="error-banner" role="alert">{error}</div>
+      <div class="error-banner" role="alert">
+        <span class="error-message">{error}</span>
+        <button class="error-dismiss" onclick={onDismissError} aria-label="Dismiss error"
+          >&times;</button
+        >
+      </div>
     {/if}
 
     <FolderPicker {selectedPaths} {onPathsChange} />
@@ -82,6 +89,21 @@
     border-radius: 4px;
     margin-bottom: 1rem;
     text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .error-dismiss {
+    background: none;
+    border: none;
+    color: var(--error);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    line-height: 1;
+    flex-shrink: 0;
   }
 
   .scan-button {
