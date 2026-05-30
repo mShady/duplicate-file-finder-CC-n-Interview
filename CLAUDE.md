@@ -4,6 +4,16 @@
 
 - Always optimize for correctness over speed.
 
+## Development Workflow
+
+These rules govern how all work on this project is done. They override default behavior.
+
+1. **Skills first.** Use the superpowers skills. Before any creative or implementation work, check for an applicable skill (`using-superpowers`), and use `test-driven-development` for all coding.
+2. **TDD is mandatory.** Follow red-green-refactor at the core of every feature, bug fix, refactor, and behavior change: write one minimal failing test, watch it fail for the right reason, write the minimal code to make it pass, then refactor while staying green. **No production code without a failing test first.** The only exceptions are throwaway prototypes, generated code, and configuration/docs, and only after asking.
+3. **BDD for end-to-end behavior.** User-facing and UI behavior is covered with BDD-style Given/When/Then scenarios, including UI tests where a user-facing flow exists. This project favors the **BDD route over raw E2E**. The framework is intentionally unspecified until the BDD harness is established; standing up that harness is the next priority after issue #39.
+4. **Surface design changes.** It is expected and encouraged to surface design or plan changes discovered during the TDD/BDD flow rather than forcing the original plan.
+5. **Never assume, ask.** Always surface open questions to the user instead of proceeding on silent assumptions.
+
 ## Automated Verification
 
 When asked to run automated verification (or when plan steps call for it), run **all** of the following checks. All must pass before considering verification complete.

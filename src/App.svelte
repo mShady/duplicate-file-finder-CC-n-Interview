@@ -216,6 +216,7 @@
         onPathsChange={handlePathsChange}
         onStartScan={startScan}
         onViewResults={() => (currentView = 'results')}
+        onDismissError={() => (scanStore.error = null)}
       />
     {:else if currentView === 'scanning'}
       <ScanningView
